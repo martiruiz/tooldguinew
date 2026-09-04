@@ -170,7 +170,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
       supabase.from('tasks').update(patch).eq('id', task.id).then(({ error }) => {
         if (error) { console.error('[auto-save] error:', error.message); return }
         setSaved(true); setIsDirty(false); setTimeout(() => setSaved(false), 1500)
-        onUpdated({ ...task, [field]: value.trim() || null } as Task)
+        fetchFullTask()
       })
     }, 1000)
   }
@@ -213,6 +213,16 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
     setSaving(false)
   }
 
+  const fetchFullTask = async () => {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('tasks')
+      .select('*, client:clients(id,name), project:projects(id,name), responsible:profiles!tasks_responsible_id_fkey(id,full_name,avatar_url)')
+      .eq('id', task.id)
+      .single()
+    if (data) onUpdated(data as Task)
+  }
+
   const saveDropdown = async (field: string, value: string) => {
     const prev = form[field as keyof typeof form]
     const updated = { ...form, [field]: value }
@@ -220,7 +230,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
     const supabase = createClient()
     const { error } = await supabase.from('tasks').update({ [field]: value || null }).eq('id', task.id)
     if (error) { console.error('[saveDropdown] error:', error.message, field); return }
-    onUpdated({ ...task, [field]: value || null } as Task)
+    fetchFullTask()
     if (field === 'status' && value !== prev) {
       const fromLabel = STATUS_COLS.find(c => c.status === prev)?.label || prev
       const toLabel = STATUS_COLS.find(c => c.status === value)?.label || value

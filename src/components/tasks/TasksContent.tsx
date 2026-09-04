@@ -1357,6 +1357,7 @@ function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onSta
           word-break: break-word;
           flex: 1;
           min-width: 0;
+          text-transform: uppercase;
         }
 
         .kcard-footer {
@@ -1614,6 +1615,7 @@ function ListView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete }: {
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+          text-transform: uppercase;
         }
 
         .list-meta {
