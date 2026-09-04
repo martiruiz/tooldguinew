@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   CheckSquare, Square, Plus, Loader2, ChevronRight,
-  Clock, User, AlertCircle, CheckCircle2, Circle, PlayCircle, Eye
+  Clock, User, AlertCircle, CheckCircle2, Circle, PlayCircle, Eye,
+  Pencil, Trash2, X, Check
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Project, Task, Profile } from '@/types'
@@ -98,14 +99,21 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
   const router = useRouter()
   const sb = createClient()
 
-  const templates = TASK_TEMPLATES[project.type] || TASK_TEMPLATES.custom
+  type TemplateItem = { title: string; description: string; priority: string }
+
+  const baseTemplates = TASK_TEMPLATES[project.type] || TASK_TEMPLATES.custom
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
+  const [localTemplates, setLocalTemplates] = useState<TemplateItem[]>(baseTemplates)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [creating, setCreating] = useState(false)
   const [assignee, setAssignee] = useState(currentUser.id)
   const [editingName, setEditingName] = useState(false)
   const [nameValue, setNameValue] = useState(project.name)
   const nameInputRef = useRef<HTMLInputElement>(null)
+  const [editingTpl, setEditingTpl] = useState<number | null>(null)
+  const [tplEdit, setTplEdit] = useState<TemplateItem>({ title: '', description: '', priority: 'medium' })
+  const [addingTpl, setAddingTpl] = useState(false)
+  const [newTpl, setNewTpl] = useState<TemplateItem>({ title: '', description: '', priority: 'medium' })
 
   const saveProjectName = async () => {
     const trimmed = nameValue.trim()
@@ -116,7 +124,7 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
   }
 
   const existingTitles = new Set(tasks.map(t => t.title.toLowerCase()))
-  const pendingTemplates = templates.filter(t => !existingTitles.has(t.title.toLowerCase()))
+  const pendingTemplates = localTemplates.filter(t => !existingTitles.has(t.title.toLowerCase()))
 
   const toggle = (i: number) => {
     setSelected(prev => {
@@ -129,6 +137,29 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
   const toggleAll = () => {
     if (selected.size === pendingTemplates.length) setSelected(new Set())
     else setSelected(new Set(pendingTemplates.map((_, i) => i)))
+  }
+
+  const deleteTemplate = (idx: number) => {
+    setLocalTemplates(prev => prev.filter((_, i) => i !== idx))
+    setSelected(new Set())
+  }
+
+  const startEditTpl = (idx: number, t: TemplateItem) => {
+    setEditingTpl(idx)
+    setTplEdit({ ...t })
+  }
+
+  const saveEditTpl = (idx: number) => {
+    if (!tplEdit.title.trim()) return
+    setLocalTemplates(prev => prev.map((t, i) => i === idx ? { ...tplEdit, title: tplEdit.title.trim() } : t))
+    setEditingTpl(null)
+  }
+
+  const addNewTemplate = () => {
+    if (!newTpl.title.trim()) return
+    setLocalTemplates(prev => [...prev, { ...newTpl, title: newTpl.title.trim() }])
+    setNewTpl({ title: '', description: '', priority: 'medium' })
+    setAddingTpl(false)
   }
 
   const createSelected = async () => {
@@ -152,7 +183,7 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
     router.refresh()
   }
 
-  const createOne = async (template: typeof templates[0]) => {
+  const createOne = async (template: TemplateItem) => {
     const { data, error } = await sb.from('tasks').insert({
       title: template.title,
       description: template.description,
@@ -168,7 +199,7 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
 
   const typeLabel: Record<string, string> = {
     social_media: 'Social Media', content: 'Contingut', event: 'Event',
-    matchday: 'Matchday', campaign: 'Campanya', reporting: 'Reporting', custom: 'Personalitzat',
+    matchday: 'Matchday', campaign: 'Projecte', reporting: 'Reporting', custom: 'Personalitzat',
   }
 
   return (
@@ -176,7 +207,7 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
       {/* Back link */}
       <Link href="/projects" className="back-link">
         <ChevronRight size={13} style={{ transform: 'rotate(180deg)' }} />
-        Totes les campanyes
+        Tots els projectes
       </Link>
 
       {/* Project header */}
@@ -208,15 +239,19 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
         <div className="col-templates">
           <div className="section-header">
             <div>
-              <h2>Tasques per iniciar la campanya</h2>
-              <p className="section-sub">{pendingTemplates.length} tasques recomanades per a campanyes de {typeLabel[project.type] ?? project.type}</p>
+              <h2>Tasques per iniciar el projecte</h2>
+              <p className="section-sub">{pendingTemplates.length} tasques disponibles per a projectes de {typeLabel[project.type] ?? project.type}</p>
             </div>
+            <button className="btn-add-tpl" onClick={() => setAddingTpl(true)} title="Nova tasca">
+              <Plus size={14} strokeWidth={2.5} />
+              Nova
+            </button>
           </div>
 
-          {pendingTemplates.length === 0 ? (
+          {pendingTemplates.length === 0 && !addingTpl ? (
             <div className="all-done">
               <CheckCircle2 size={32} color="#16A34A" strokeWidth={1.5} />
-              <p>Totes les tasques recomanades ja estan creades.</p>
+              <p>Totes les tasques ja estan creades al projecte.</p>
             </div>
           ) : (
             <>
@@ -239,6 +274,40 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
                 {pendingTemplates.map((t, i) => {
                   const prio = PRIORITY_COLORS[t.priority]
                   const isSel = selected.has(i)
+                  const isEdit = editingTpl === i
+                  if (isEdit) {
+                    return (
+                      <div key={i} className="template-card template-card--editing">
+                        <input
+                          className="tpl-edit-title"
+                          value={tplEdit.title}
+                          autoFocus
+                          onChange={e => setTplEdit(p => ({ ...p, title: e.target.value }))}
+                          onKeyDown={e => { if (e.key === 'Enter') saveEditTpl(i); if (e.key === 'Escape') setEditingTpl(null) }}
+                          placeholder="Títol de la tasca"
+                        />
+                        <textarea
+                          className="tpl-edit-desc"
+                          value={tplEdit.description}
+                          onChange={e => setTplEdit(p => ({ ...p, description: e.target.value }))}
+                          placeholder="Descripció (opcional)"
+                          rows={2}
+                        />
+                        <div className="tpl-edit-footer">
+                          <select className="tpl-prio-select" value={tplEdit.priority} onChange={e => setTplEdit(p => ({ ...p, priority: e.target.value }))}>
+                            <option value="urgent">Urgent</option>
+                            <option value="high">Alta</option>
+                            <option value="medium">Normal</option>
+                            <option value="low">Baixa</option>
+                          </select>
+                          <div className="tpl-edit-btns">
+                            <button className="tpl-btn tpl-btn--cancel" onClick={() => setEditingTpl(null)}><X size={13} /></button>
+                            <button className="tpl-btn tpl-btn--save" onClick={() => saveEditTpl(i)}><Check size={13} />Desar</button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  }
                   return (
                     <div key={i} className={`template-card${isSel ? ' selected' : ''}`}>
                       <button className="template-check" onClick={() => toggle(i)}>
@@ -246,12 +315,14 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
                       </button>
                       <div className="template-body">
                         <div className="template-title">{t.title}</div>
-                        <div className="template-desc">{t.description}</div>
+                        {t.description && <div className="template-desc">{t.description}</div>}
                       </div>
                       <div className="template-actions">
                         <span className="prio-badge" style={{ background: prio.bg, color: prio.color }}>
                           {prio.label}
                         </span>
+                        <button className="btn-tpl-action" onClick={() => startEditTpl(i, t)} title="Editar"><Pencil size={12} /></button>
+                        <button className="btn-tpl-action btn-tpl-del" onClick={() => deleteTemplate(i)} title="Eliminar"><Trash2 size={12} /></button>
                         <button className="btn-add-one" onClick={() => createOne(t)} title="Afegir aquesta tasca">
                           <Plus size={13} />
                         </button>
@@ -259,6 +330,38 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
                     </div>
                   )
                 })}
+
+                {addingTpl && (
+                  <div className="template-card template-card--editing">
+                    <input
+                      className="tpl-edit-title"
+                      value={newTpl.title}
+                      autoFocus
+                      onChange={e => setNewTpl(p => ({ ...p, title: e.target.value }))}
+                      onKeyDown={e => { if (e.key === 'Enter') addNewTemplate(); if (e.key === 'Escape') setAddingTpl(false) }}
+                      placeholder="Títol de la nova tasca"
+                    />
+                    <textarea
+                      className="tpl-edit-desc"
+                      value={newTpl.description}
+                      onChange={e => setNewTpl(p => ({ ...p, description: e.target.value }))}
+                      placeholder="Descripció (opcional)"
+                      rows={2}
+                    />
+                    <div className="tpl-edit-footer">
+                      <select className="tpl-prio-select" value={newTpl.priority} onChange={e => setNewTpl(p => ({ ...p, priority: e.target.value }))}>
+                        <option value="urgent">Urgent</option>
+                        <option value="high">Alta</option>
+                        <option value="medium">Normal</option>
+                        <option value="low">Baixa</option>
+                      </select>
+                      <div className="tpl-edit-btns">
+                        <button className="tpl-btn tpl-btn--cancel" onClick={() => setAddingTpl(false)}><X size={13} /></button>
+                        <button className="tpl-btn tpl-btn--save" onClick={addNewTemplate}><Check size={13} />Afegir</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {selected.size > 0 && (
@@ -283,7 +386,7 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
           {tasks.length === 0 ? (
             <div className="empty-tasks">
               <Clock size={28} color="#D0D0D0" strokeWidth={1.5} />
-              <p>Encara no hi ha tasques. Afegeix-ne des de les recomanades.</p>
+              <p>Encara no hi ha tasques. Afegeix-ne des del llistat.</p>
             </div>
           ) : (
             <div className="tasks-list">
@@ -369,11 +472,58 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
         .template-body { flex: 1; min-width: 0; }
         .template-title { font-size: 13.5px; font-weight: 600; color: #0a0a0a; margin-bottom: 4px; }
         .template-desc { font-size: 12.5px; color: #5C5C5C; line-height: 1.5; }
-        .template-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+        .template-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
         .prio-badge { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
         .prio-badge.sm { font-size: 10px; padding: 2px 6px; }
+        .btn-tpl-action {
+          width: 26px; height: 26px; border: 1px solid #E8E8E8; border-radius: 6px;
+          background: white; cursor: pointer; display: flex; align-items: center;
+          justify-content: center; color: #9A9A9A; transition: all 0.15s; opacity: 0;
+        }
+        .template-card:hover .btn-tpl-action { opacity: 1; }
+        .btn-tpl-action:hover { border-color: #4A82C6; color: #4A82C6; }
+        .btn-tpl-del:hover { border-color: #DC2626 !important; color: #DC2626 !important; }
         .btn-add-one { width: 26px; height: 26px; border: 1px solid #E8E8E8; border-radius: 6px; background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #9A9A9A; transition: all 0.15s; }
         .btn-add-one:hover { border-color: #4A82C6; color: #4A82C6; }
+        .btn-add-tpl {
+          display: flex; align-items: center; gap: 5px; flex-shrink: 0;
+          height: 30px; padding: 0 12px; background: #1B2B4B; color: white;
+          border: none; border-radius: 8px; font-size: 12.5px; font-weight: 600;
+          cursor: pointer; font-family: inherit; transition: background 0.15s;
+        }
+        .btn-add-tpl:hover { background: #2a3f6a; }
+        .template-card--editing {
+          flex-direction: column; gap: 8px; border-color: #4A82C6;
+          background: #F8FBFF;
+        }
+        .tpl-edit-title {
+          font-size: 13.5px; font-weight: 600; color: #0a0a0a;
+          border: 1px solid #D0D8E8; border-radius: 7px; padding: 7px 10px;
+          outline: none; font-family: inherit; width: 100%;
+        }
+        .tpl-edit-title:focus { border-color: #4A82C6; }
+        .tpl-edit-desc {
+          font-size: 12.5px; color: #5C5C5C; border: 1px solid #D0D8E8;
+          border-radius: 7px; padding: 6px 10px; outline: none; font-family: inherit;
+          width: 100%; resize: vertical; line-height: 1.5;
+        }
+        .tpl-edit-desc:focus { border-color: #4A82C6; }
+        .tpl-edit-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .tpl-prio-select {
+          height: 30px; padding: 0 8px; border: 1px solid #E8E8E8; border-radius: 7px;
+          font-size: 12.5px; color: #0a0a0a; background: white; outline: none;
+          font-family: inherit; cursor: pointer;
+        }
+        .tpl-edit-btns { display: flex; align-items: center; gap: 6px; }
+        .tpl-btn {
+          display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px;
+          border-radius: 7px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+          font-family: inherit; border: none; transition: background 0.15s;
+        }
+        .tpl-btn--cancel { background: #F0F0F0; color: #5C5C5C; }
+        .tpl-btn--cancel:hover { background: #E0E0E0; }
+        .tpl-btn--save { background: #4A82C6; color: white; }
+        .tpl-btn--save:hover { background: #3A6FB5; }
 
         .create-bar { display: flex; align-items: center; justify-content: space-between; background: #1B2B4B; border-radius: 10px; padding: 12px 16px; gap: 12px; }
         .create-count { font-size: 13px; font-weight: 600; color: white; }
