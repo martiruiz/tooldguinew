@@ -96,17 +96,31 @@ export default function LoginPage() {
         /* LEFT */
         .left {
           flex: 1; position: relative;
-          background: linear-gradient(155deg, #091527 0%, #0d2050 45%, #142870 100%);
+          background: #050e1f;
           display: none; overflow: hidden; flex-direction: column;
         }
         @media (min-width: 600px) { .left { display: flex; } }
-        .line {
-          position: absolute; top: 0; bottom: 0; width: 1px;
-          background: linear-gradient(to bottom, transparent 5%, #4A8FE035 45%, #4A8FE015 70%, transparent 95%);
+        .left::before {
+          content: '';
+          position: absolute; inset: 0;
+          background:
+            radial-gradient(ellipse 60px 100% at 18% 60%, rgba(74,143,224,0.55) 0%, transparent 100%),
+            radial-gradient(ellipse 30px 80% at 28% 55%, rgba(120,180,255,0.25) 0%, transparent 100%),
+            radial-gradient(ellipse 80px 90% at 38% 65%, rgba(30,90,180,0.18) 0%, transparent 100%),
+            radial-gradient(ellipse 20px 70% at 48% 50%, rgba(74,143,224,0.12) 0%, transparent 100%),
+            radial-gradient(ellipse 50px 85% at 58% 60%, rgba(50,110,200,0.10) 0%, transparent 100%),
+            radial-gradient(ellipse 15px 60% at 66% 55%, rgba(74,143,224,0.08) 0%, transparent 100%),
+            radial-gradient(ellipse 40px 75% at 74% 58%, rgba(30,70,150,0.07) 0%, transparent 100%),
+            radial-gradient(ellipse 10px 50% at 82% 52%, rgba(74,143,224,0.05) 0%, transparent 100%);
+          pointer-events: none;
         }
-        .l1 { left: 33%; }
-        .l2 { left: 55%; opacity: 0.6; }
-        .l3 { left: 77%; opacity: 0.3; }
+        .left::after {
+          content: '';
+          position: absolute; inset: 0;
+          background: linear-gradient(to top, #050e1f 0%, transparent 35%, transparent 65%, #050e1f 100%);
+          pointer-events: none;
+        }
+        .line { display: none; }
         .left-content {
           position: relative; z-index: 1; display: flex; flex-direction: column;
           justify-content: flex-end; padding: 40px 44px; height: 100%;
@@ -150,8 +164,22 @@ export default function LoginPage() {
         }
         .submit:hover:not(:disabled) { background: #3A6BB0; }
         .submit:disabled { opacity: 0.7; cursor: not-allowed; }
-        .forgot { text-align: center; font-size: 12px; color: #4A7FC1; text-decoration: none; transition: color 0.15s; }
-        .forgot:hover { color: #3A6BB0; text-decoration: underline; }
+        .forgot {
+          display: flex; align-items: center; justify-content: center; gap: 5px;
+          text-align: center; font-size: 12.5px; font-weight: 500;
+          color: #1B2B4B; text-decoration: none; transition: color 0.15s;
+          padding: 6px 0;
+        }
+        .forgot::before {
+          content: ''; display: inline-block;
+          width: 14px; height: 1px; background: #1B2B4B; opacity: 0.3;
+        }
+        .forgot::after {
+          content: ''; display: inline-block;
+          width: 14px; height: 1px; background: #1B2B4B; opacity: 0.3;
+        }
+        .forgot:hover { color: #4A7FC1; }
+        .forgot:hover::before, .forgot:hover::after { background: #4A7FC1; }
         .footer { text-align: center; font-size: 11.5px; color: #B0B8C8; padding-top: 10px; border-top: 1px solid #E5E8EE; }
       `}</style>
     </div>

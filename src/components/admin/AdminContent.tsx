@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Shield, User, Users, Edit2, Power } from 'lucide-react'
+import { Plus, Shield, User, Users, Edit2, Power, KeyRound, X, Eye, EyeOff } from 'lucide-react'
 import { cn, roleLabels, getInitials } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
@@ -18,6 +18,34 @@ export function AdminContent({ members, currentUserId }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
+  // Change password modal
+  const [pwdMember, setPwdMember] = useState<Profile | null>(null)
+  const [pwd, setPwd] = useState('')
+  const [pwdConfirm, setPwdConfirm] = useState('')
+  const [pwdShow, setPwdShow] = useState(false)
+  const [pwdLoading, setPwdLoading] = useState(false)
+  const [pwdError, setPwdError] = useState('')
+  const [pwdSuccess, setPwdSuccess] = useState('')
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (pwd !== pwdConfirm) { setPwdError('Les contrasenyes no coincideixen.'); return }
+    if (pwd.length < 8) { setPwdError('Mínim 8 caràcters.'); return }
+    setPwdLoading(true)
+    setPwdError('')
+    const res = await fetch('/api/admin/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: pwdMember?.id, password: pwd }),
+    })
+    const data = await res.json()
+    setPwdLoading(false)
+    if (!res.ok) { setPwdError(data.error || 'Error.'); return }
+    setPwdSuccess('Contrasenya actualitzada correctament.')
+    setPwd(''); setPwdConfirm('')
+    setTimeout(() => { setPwdMember(null); setPwdSuccess('') }, 1500)
+  }
 
   const handleToggleActive = async (member: Profile) => {
     if (member.id === currentUserId) return
@@ -209,8 +237,12 @@ export function AdminContent({ members, currentUserId }: Props) {
                     <Power size={13} strokeWidth={2} />
                   </button>
                 )}
-                <button className="action-btn" title="Editar">
-                  <Edit2 size={13} strokeWidth={2} />
+                <button
+                  className="action-btn"
+                  title="Canviar contrasenya"
+                  onClick={() => { setPwdMember(member); setPwd(''); setPwdConfirm(''); setPwdError(''); setPwdSuccess('') }}
+                >
+                  <KeyRound size={13} strokeWidth={2} />
                 </button>
               </div>
             </div>
@@ -502,7 +534,93 @@ export function AdminContent({ members, currentUserId }: Props) {
           transition: all 0.15s;
         }
         .action-btn:hover { border-color: #D0D0D0; color: #0a0a0a; }
+
+        /* Password modal */
+        .pwd-overlay {
+          position: fixed; inset: 0; z-index: 1000;
+          background: rgba(0,0,0,0.4);
+          display: flex; align-items: center; justify-content: center; padding: 24px;
+        }
+        .pwd-modal {
+          background: white; border-radius: 16px; width: 100%; max-width: 400px;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.2); overflow: hidden;
+        }
+        .pwd-modal-hdr {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 18px 20px 14px; border-bottom: 1px solid #F0F0F0;
+        }
+        .pwd-modal-hdr h3 { font-size: 15px; font-weight: 700; color: #0a0a0a; }
+        .pwd-modal-hdr p { font-size: 12px; color: #6B7280; margin-top: 2px; }
+        .pwd-close { width: 26px; height: 26px; border: none; background: #F0F0F0; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #5C5C5C; }
+        .pwd-close:hover { background: #E8E8E8; }
+        .pwd-form { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 14px; }
+        .pwd-field { display: flex; flex-direction: column; gap: 5px; }
+        .pwd-field label { font-size: 11px; font-weight: 700; color: #5C5C5C; text-transform: uppercase; letter-spacing: 0.04em; }
+        .pwd-input-wrap { position: relative; }
+        .pwd-input-wrap input {
+          width: 100%; height: 40px; padding: 0 40px 0 12px;
+          border: 1.5px solid #E8E8E8; border-radius: 8px;
+          font-size: 14px; color: #0a0a0a; background: #FAFAFA;
+          outline: none; font-family: inherit; transition: border-color 0.15s;
+        }
+        .pwd-input-wrap input:focus { border-color: #1B2B4B; background: white; }
+        .pwd-eye { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #9CA3AF; display: flex; align-items: center; }
+        .pwd-error { font-size: 12px; color: #DC2626; background: #FEF2F2; border: 1px solid #FECACA; padding: 8px 12px; border-radius: 7px; }
+        .pwd-success { font-size: 12px; color: #16A34A; background: #F0FDF4; border: 1px solid #BBF7D0; padding: 8px 12px; border-radius: 7px; }
+        .pwd-submit { height: 40px; background: #1B2B4B; color: white; border: none; border-radius: 8px; font-size: 13.5px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+        .pwd-submit:hover:not(:disabled) { background: #253d6d; }
+        .pwd-submit:disabled { opacity: 0.6; cursor: not-allowed; }
       `}</style>
+
+      {/* Change password modal */}
+      {pwdMember && (
+        <div className="pwd-overlay" onClick={e => e.target === e.currentTarget && setPwdMember(null)}>
+          <div className="pwd-modal">
+            <div className="pwd-modal-hdr">
+              <div>
+                <h3>Canviar contrasenya</h3>
+                <p>{pwdMember.full_name} · {pwdMember.email}</p>
+              </div>
+              <button className="pwd-close" onClick={() => setPwdMember(null)}><X size={13} /></button>
+            </div>
+            <form className="pwd-form" onSubmit={handleChangePassword}>
+              <div className="pwd-field">
+                <label>Nova contrasenya</label>
+                <div className="pwd-input-wrap">
+                  <input
+                    type={pwdShow ? 'text' : 'password'}
+                    value={pwd}
+                    onChange={e => setPwd(e.target.value)}
+                    placeholder="Mínim 8 caràcters"
+                    required
+                    autoFocus
+                  />
+                  <button type="button" className="pwd-eye" onClick={() => setPwdShow(v => !v)}>
+                    {pwdShow ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+              <div className="pwd-field">
+                <label>Confirmar contrasenya</label>
+                <div className="pwd-input-wrap">
+                  <input
+                    type={pwdShow ? 'text' : 'password'}
+                    value={pwdConfirm}
+                    onChange={e => setPwdConfirm(e.target.value)}
+                    placeholder="Repeteix la contrasenya"
+                    required
+                  />
+                </div>
+              </div>
+              {pwdError && <div className="pwd-error">{pwdError}</div>}
+              {pwdSuccess && <div className="pwd-success">✓ {pwdSuccess}</div>}
+              <button type="submit" className="pwd-submit" disabled={pwdLoading}>
+                {pwdLoading ? 'Guardant...' : 'Actualitzar contrasenya'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
