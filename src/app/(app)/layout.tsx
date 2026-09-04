@@ -7,6 +7,7 @@ import { MentionNotifier } from '@/components/layout/MentionNotifier'
 import { GlobalActivityPanel } from '@/components/layout/GlobalActivityPanel'
 import { TeamChat } from '@/components/layout/TeamChat'
 import { LanguageProvider } from '@/contexts/LanguageContext'
+import { PageTransition } from '@/components/layout/PageTransition'
 import type { Profile } from '@/types'
 import './app-layout.css'
 
@@ -46,6 +47,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="app-mobile-nav">
           <MobileNav />
         </div>
+        <PageTransition />
         <MentionNotifier currentUserId={user.id} currentUserName={profile.full_name} />
         <GlobalActivityPanel currentUserId={user.id} profiles={allProfiles || []} />
         <TeamChat currentUserId={user.id} currentUserName={profile.full_name} profiles={allProfiles || []} />
