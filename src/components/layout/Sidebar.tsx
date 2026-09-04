@@ -37,7 +37,7 @@ const navDefs = [
 const serviceLinks = [
   { label: 'Google Drive', href: 'https://drive.google.com', abbr: 'G', color: '#1A73E8', bg: '#E8F0FE' },
   { label: 'Dropbox',      href: 'https://www.dropbox.com',  abbr: 'D', color: '#0061FF', bg: '#E5EDFF' },
-  { label: 'Metricool',    href: 'https://metricool.com',    abbr: 'M', color: '#FF6B35', bg: '#FFF0EB', fixed: true },
+  { label: 'Metricool',    href: 'https://metricool.com/es/',    abbr: 'M', color: '#FF6B35', bg: '#FFF0EB', fixed: true },
 ]
 
 function GoogleDriveIcon({ size = 18 }: { size?: number }) {
