@@ -223,7 +223,6 @@ export function AdminContent({ members, currentUserId }: Props) {
           flex: 1;
           padding: 24px 28px 40px;
           overflow-y: auto;
-          max-width: 1100px;
         }
 
         @media (max-width: 1023px) { .admin-page { padding: 16px; } }

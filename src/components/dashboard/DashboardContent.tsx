@@ -593,7 +593,6 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
         .dash {
           flex: 1;
           padding: 28px 28px 40px;
-          max-width: 1400px;
           overflow-y: auto;
         }
 

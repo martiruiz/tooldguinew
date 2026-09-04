@@ -620,7 +620,6 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
           flex: 1;
           padding: 24px 28px 40px;
           overflow-y: auto;
-          max-width: 1200px;
         }
 
         @media (max-width: 767px) {
