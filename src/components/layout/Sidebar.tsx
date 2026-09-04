@@ -65,12 +65,11 @@ function DropboxIcon({ size = 18 }: { size?: number }) {
 function GmailIcon({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-      <path fill="#EA4335" d="M6 40h6V22.5L4 16v20c0 2.2 1.8 4 4 4h-2z"/>
-      <path fill="#FBBC05" d="M36 40h6c2.2 0 4-1.8 4-4V16l-8 6.5V40z"/>
-      <path fill="#34A853" d="M36 8l-12 9-12-9H6c-2.2 0-4 1.8-4 4v4l20 15.4L42 16v-4c0-2.2-1.8-4-4-4h-2z"/>
-      <path fill="#4285F4" d="M4 16l8 6.5V40h20V22.5L40 16 24 27.4 4 16z"/>
-      <path fill="#C5221F" d="M12 22.5V40H6c-2.2 0-4-1.8-4-4V16l10 6.5z"/>
-      <path fill="#FBBC05" d="M36 22.5L42 16v20c0 2.2-1.8 4-4 4h-2V22.5z"/>
+      <path fill="#4CAF50" d="M45 16.2l-5 2.75-5 4.75V40h7s3 0 3-3V16.2z"/>
+      <path fill="#1E88E5" d="M3 16.2l3.5 2.75L13 23.7V40H6s-3 0-3-3V16.2z"/>
+      <polygon fill="#E53935" points="35,11.2 24,19.45 13,11.2 12,28 24,37.45 36,28"/>
+      <path fill="#C62828" d="M3,12.298V16.2l10,7.5V11.2L9.876,8.859C9.132,8.301,8.228,8,7.298,8h0C4.924,8,3,9.924,3,12.298z"/>
+      <path fill="#FBC02D" d="M45,12.298V16.2l-10,7.5V11.2l3.124-2.341C38.868,8.301,39.772,8,40.702,8h0 C43.076,8,45,9.924,45,12.298z"/>
     </svg>
   )
 }

@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   CheckSquare, Square, Plus, Loader2, ChevronRight,
-  Clock, User, AlertCircle, CheckCircle2, Circle, PlayCircle, Eye
+  Clock, User, AlertCircle, CheckCircle2, Circle, PlayCircle, Eye, Pencil
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Project, Task, Profile } from '@/types'
@@ -103,6 +103,17 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [creating, setCreating] = useState(false)
   const [assignee, setAssignee] = useState(currentUser.id)
+  const [editingName, setEditingName] = useState(false)
+  const [nameValue, setNameValue] = useState(project.name)
+  const nameInputRef = useRef<HTMLInputElement>(null)
+
+  const saveProjectName = async () => {
+    const trimmed = nameValue.trim()
+    if (!trimmed || trimmed === project.name) { setEditingName(false); setNameValue(project.name); return }
+    await sb.from('projects').update({ name: trimmed }).eq('id', project.id)
+    setEditingName(false)
+    router.refresh()
+  }
 
   const existingTitles = new Set(tasks.map(t => t.title.toLowerCase()))
   const pendingTemplates = templates.filter(t => !existingTitles.has(t.title.toLowerCase()))
@@ -174,7 +185,24 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
           <span className="pd-type">{typeLabel[project.type] ?? project.type}</span>
           {project.client && <span className="pd-client">{(project.client as any).name}</span>}
         </div>
-        <h1 className="pd-title">{project.name}</h1>
+        {editingName ? (
+          <input
+            ref={nameInputRef}
+            className="pd-title-input"
+            value={nameValue}
+            autoFocus
+            onChange={e => setNameValue(e.target.value)}
+            onBlur={saveProjectName}
+            onKeyDown={e => { if (e.key === 'Enter') saveProjectName(); if (e.key === 'Escape') { setEditingName(false); setNameValue(project.name) } }}
+          />
+        ) : (
+          <div className="pd-title-row">
+            <h1 className="pd-title">{nameValue}</h1>
+            <button className="pd-title-edit-btn" onClick={() => { setEditingName(true); setTimeout(() => nameInputRef.current?.focus(), 30) }} title="Editar nom">
+              <Pencil size={14} />
+            </button>
+          </div>
+        )}
         {project.description && <p className="pd-desc">{project.description}</p>}
       </div>
 
@@ -301,7 +329,21 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
         .pd-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
         .pd-type { font-size: 11px; font-weight: 700; color: #4A82C6; text-transform: uppercase; letter-spacing: 0.06em; background: #EFF6FF; padding: 3px 8px; border-radius: 5px; }
         .pd-client { font-size: 12px; color: #9A9A9A; }
-        .pd-title { font-size: 22px; font-weight: 700; color: #0a0a0a; margin-bottom: 6px; }
+        .pd-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .pd-title { font-size: 22px; font-weight: 700; color: #0a0a0a; margin-bottom: 0; }
+        .pd-title-edit-btn {
+          opacity: 0; background: none; border: none; cursor: pointer;
+          color: #9CA3AF; display: flex; align-items: center; justify-content: center;
+          padding: 4px; border-radius: 6px; transition: opacity 0.15s, color 0.12s;
+        }
+        .pd-title-row:hover .pd-title-edit-btn { opacity: 1; }
+        .pd-title-edit-btn:hover { color: #2563EB; }
+        .pd-title-input {
+          font-size: 22px; font-weight: 700; color: #0a0a0a;
+          border: none; border-bottom: 2px solid #2563EB; background: transparent;
+          outline: none; font-family: inherit; width: 100%; margin-bottom: 6px;
+          padding: 0 0 2px; letter-spacing: -0.01em;
+        }
         .pd-desc { font-size: 14px; color: #5C5C5C; line-height: 1.5; }
 
         .pd-body { display: grid; grid-template-columns: 1fr 380px; gap: 20px; align-items: start; }

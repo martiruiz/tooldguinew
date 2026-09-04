@@ -534,9 +534,9 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
       )}
 
       <style jsx>{`
-        .tasks-page { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .tasks-body { flex: 1; display: flex; overflow: hidden; }
-        .tasks-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+        .tasks-page { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+        .tasks-body { flex: 1; display: flex; min-height: 0; overflow: hidden; }
+        .tasks-main { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
 
         .tasks-toolbar {
           display: flex; align-items: center; gap: 10px;
@@ -960,8 +960,12 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
           gap: 12px;
           padding: 4px 28px 32px;
           overflow-x: auto;
+          overflow-y: hidden;
           flex: 1;
+          min-height: 0;
+          align-items: flex-start;
           -webkit-overflow-scrolling: touch;
+          scrollbar-width: thin;
         }
 
         @media (max-width: 1023px) { .kanban { padding: 4px 16px 80px; } }
@@ -969,12 +973,14 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
         .kanban-col {
           width: 260px;
           min-width: 260px;
+          flex-shrink: 0;
           display: flex;
           flex-direction: column;
           background: #F4F4F4;
           border-radius: 12px;
           overflow: visible;
           transition: background 0.15s, outline 0.15s;
+          max-height: 100%;
         }
         .kanban-col--over {
           background: #EEF4FF;
@@ -1045,9 +1051,14 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
           flex-direction: column;
           gap: 8px;
           overflow-y: auto;
-          max-height: calc(100vh - 200px);
+          flex: 1;
           min-height: 48px;
+          max-height: calc(100vh - 160px);
           border-radius: 0 0 12px 12px;
+          scrollbar-width: thin;
+        }
+        @media (max-width: 1023px) {
+          .kanban-col-body { max-height: calc(100svh - 180px); }
         }
 
         .kanban-empty {

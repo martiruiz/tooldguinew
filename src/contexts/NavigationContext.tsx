@@ -20,7 +20,7 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
   }, [])
 
   const stopLoading = useCallback(() => {
-    stopTimer.current = setTimeout(() => setLoading(false), 400)
+    stopTimer.current = setTimeout(() => setLoading(false), 80)
   }, [])
 
   return (
