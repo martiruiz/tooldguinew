@@ -1,0 +1,39 @@
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  background: #F8F8F8;
+}
+
+.app-sidebar {
+  display: none;
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 100vh;
+  /* prevent horizontal overflow from inner components */
+  overflow-x: hidden;
+}
+
+.app-mobile-nav {
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .app-sidebar {
+    display: block;
+  }
+  .app-mobile-nav {
+    display: none;
+  }
+}
+
+@media (max-width: 1023px) {
+  .app-main {
+    /* account for mobile nav (64px) + safe area on notch devices */
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+}
