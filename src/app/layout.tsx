@@ -5,9 +5,9 @@ export const metadata: Metadata = {
   title: 'GUINEW TOOLS · Agència Guinew',
   description: 'Plataforma interna de l\'Agència Guinew',
   icons: {
-    icon: '/logo-guinew.png',
-    apple: '/logo-guinew.png',
-    shortcut: '/logo-guinew.png',
+    icon: '/favicon.png',
+    apple: '/favicon.png',
+    shortcut: '/favicon.png',
   },
 }
 
