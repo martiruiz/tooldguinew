@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -9,6 +9,7 @@ export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -60,15 +61,34 @@ export default function LoginPage() {
               </div>
               <div className="field">
                 <label htmlFor="password">CONTRASENYA</label>
-                <input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required autoComplete="current-password" />
+                <div className="pass-wrap">
+                  <input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required autoComplete="current-password" />
+                  <button type="button" className="eye-btn" onClick={() => setShowPassword(v => !v)} tabIndex={-1} aria-label={showPassword ? 'Amaga contrasenya' : 'Mostra contrasenya'}>
+                    {showPassword ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                        <line x1="1" y1="1" x2="23" y2="23"/>
+                      </svg>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
               {error && <div className="err">{error}</div>}
               <button type="submit" className="submit" disabled={loading}>
                 {loading ? 'Accedint...' : 'Iniciar sessió'}
               </button>
-              <Link href="/forgot-password" className="forgot">¿Heu oblidat la contrasenya?</Link>
             </form>
-            <div className="footer">agenciaguinew.com</div>
+            <div className="footer">
+              <Link href="/forgot-password" className="forgot">Heu oblidat la contrasenya?</Link>
+              <div className="footer-sep" />
+              <span>agenciaguinew.com</span>
+            </div>
           </div>
         </div>
       </div>
@@ -140,7 +160,7 @@ export default function LoginPage() {
         @media (min-width: 600px) { .right { width: 320px; flex-shrink: 0; max-width: 320px; } }
         .right-inner { width: 100%; display: flex; flex-direction: column; gap: 18px; }
         .logo-row { display: flex; align-items: center; }
-        .logo-img { height: 30px; width: auto; object-fit: contain; }
+        .logo-img { height: 52px; width: auto; object-fit: contain; }
         .heading h2 {
           font-size: 16px; font-weight: 700; color: #1A2744;
           letter-spacing: -0.01em; font-family: 'Bai Jamjuree', sans-serif;
@@ -153,9 +173,19 @@ export default function LoginPage() {
           height: 42px; padding: 0 12px; border: 1.5px solid #DDE1E8; border-radius: 8px;
           font-size: 14px; color: #1A2744; background: white; outline: none;
           font-family: inherit; transition: border-color 0.15s, box-shadow 0.15s;
+          width: 100%;
         }
         .field input:focus { border-color: #4A7FC1; box-shadow: 0 0 0 3px rgba(74,127,193,0.15); }
         .field input::placeholder { color: #B0B8C8; }
+        .pass-wrap { position: relative; display: flex; align-items: center; }
+        .pass-wrap input { padding-right: 40px; }
+        .eye-btn {
+          position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+          background: none; border: none; cursor: pointer; padding: 4px;
+          color: #9AA3B0; display: flex; align-items: center; justify-content: center;
+          border-radius: 4px; transition: color 0.15s;
+        }
+        .eye-btn:hover { color: #4A7FC1; }
         .err { font-size: 12.5px; color: #DC2626; background: #FEF2F2; border: 1px solid #FECACA; padding: 9px 12px; border-radius: 7px; }
         .submit {
           height: 42px; background: #4A7FC1; color: white; border: none; border-radius: 8px;
@@ -165,22 +195,12 @@ export default function LoginPage() {
         .submit:hover:not(:disabled) { background: #3A6BB0; }
         .submit:disabled { opacity: 0.7; cursor: not-allowed; }
         .forgot {
-          display: flex; align-items: center; justify-content: center; gap: 5px;
-          text-align: center; font-size: 11px; font-weight: 500;
-          color: #1B2B4B; text-decoration: none; transition: color 0.15s;
-          padding: 4px 0;
-        }
-        .forgot::before {
-          content: ''; display: inline-block;
-          width: 14px; height: 1px; background: #1B2B4B; opacity: 0.3;
-        }
-        .forgot::after {
-          content: ''; display: inline-block;
-          width: 14px; height: 1px; background: #1B2B4B; opacity: 0.3;
+          font-size: 8.5px; font-weight: 400;
+          color: #1A2744; text-decoration: none; transition: color 0.15s;
         }
         .forgot:hover { color: #4A7FC1; }
-        .forgot:hover::before, .forgot:hover::after { background: #4A7FC1; }
-        .footer { text-align: center; font-size: 11.5px; color: #B0B8C8; padding-top: 10px; border-top: 1px solid #E5E8EE; }
+        .footer { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; font-size: 11.5px; color: #B0B8C8; padding-top: 10px; }
+        .footer-sep { width: 100%; height: 1px; background: #E5E8EE; }
       `}</style>
     </div>
   )

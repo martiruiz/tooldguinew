@@ -3,8 +3,9 @@
 import { useState, useMemo } from 'react'
 import {
   Plus, X, ChevronLeft, ChevronRight, Camera, Video, FileText,
-  Image, Mic, Loader2, Trash2, Clock, Pencil,
+  Image, Mic, Loader2, Trash2, Clock, Pencil, CalendarCheck,
 } from 'lucide-react'
+import { SessionDetailModal } from './SessionDetailModal'
 
 const SESSION_TYPES = [
   { value: 'foto', label: 'Foto', icon: Camera, color: '#3B82F6' },
@@ -27,6 +28,11 @@ interface Session {
   notes: string | null
   start_time?: string | null
   end_time?: string | null
+  previa_pdf_url?: string | null
+  previa_pdf_name?: string | null
+  durant_notes?: string | null
+  post_material_url?: string | null
+  post_material_name?: string | null
   created_by: string
   created_at: string
   client?: { id: string; name: string }
@@ -63,6 +69,9 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
   const [editForm, setEditForm] = useState({
     client_id: '', session_date: '', session_types: [] as string[], hours: '0', notes: '', start_time: '', end_time: '',
   })
+  const [detailSession, setDetailSession] = useState<Session | null>(null)
+  const [addCalendar, setAddCalendar] = useState(false)
+  const [calendarConnected, setCalendarConnected] = useState(true)
 
   const prevMonth = () => {
     if (month === 0) { setMonth(11); setYear(y => y - 1) }
@@ -129,7 +138,7 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
       const res = await fetch('/api/check/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, add_to_calendar: addCalendar }),
       })
       const json = await res.json()
       if (json.error) { setSaveError(json.error); return }
@@ -275,7 +284,7 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
                 {daySessions.map(session => {
                   const types = Array.isArray(session.session_types) ? session.session_types : []
                   return (
-                    <div key={session.id} className="session-row">
+                    <div key={session.id} className="session-row" onClick={() => setDetailSession(session)} style={{ cursor: 'pointer' }}>
                       <div className="session-main">
                         <div className="session-client-name">{session.client?.name || '—'}</div>
                         <div className="session-types-wrap">
@@ -301,10 +310,10 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
                         {session.hours > 0 && <div className="session-hours">{session.hours}h</div>}
                       </div>
                       <div className="session-actions">
-                        <button className="session-edit" onClick={() => openEdit(session)} title="Editar"><Pencil size={13} /></button>
+                        <button className="session-edit" onClick={e => { e.stopPropagation(); openEdit(session) }} title="Editar"><Pencil size={13} /></button>
                         <button
                           className="session-del"
-                          onClick={() => handleDelete(session.id)}
+                          onClick={e => { e.stopPropagation(); handleDelete(session.id) }}
                           disabled={deleting === session.id}
                           title="Eliminar"
                         >
@@ -381,6 +390,16 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
                 <label>Notes</label>
                 <textarea className="form-textarea" rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Observacions..." />
               </div>
+              <label className="cal-check-row">
+                <input
+                  type="checkbox"
+                  checked={addCalendar}
+                  onChange={e => setAddCalendar(e.target.checked)}
+                  className="cal-check"
+                />
+                <CalendarCheck size={14} />
+                Afegir al Google Calendar
+              </label>
             </div>
             {saveError && <div className="save-error">{saveError}</div>}
             <div className="modal-footer">
@@ -703,7 +722,29 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
 
         :global(.spin) { animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        .cal-check-row {
+          display: flex; align-items: center; gap: 7px;
+          font-size: 13px; color: #1B2B4B; font-weight: 500; cursor: pointer;
+          padding: 8px 10px; background: #F0F5FF; border-radius: 8px;
+          border: 1px solid #C7D8F8; transition: background 0.15s;
+          user-select: none;
+        }
+        .cal-check-row:hover { background: #E5EFFF; }
+        .cal-check { accent-color: #1B2B4B; width: 14px; height: 14px; cursor: pointer; }
       `}</style>
+
+      {/* Session detail modal */}
+      {detailSession && (
+        <SessionDetailModal
+          session={detailSession}
+          onClose={() => setDetailSession(null)}
+          onUpdate={updated => {
+            setSessions(prev => prev.map(s => s.id === updated.id ? updated : s))
+            setDetailSession(updated)
+          }}
+        />
+      )}
     </div>
   )
 }

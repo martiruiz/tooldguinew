@@ -9,6 +9,7 @@ import {
   Pencil, Trash2, X, Check
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { NewTaskModal } from '@/components/tasks/NewTaskModal'
 import type { Project, Task, Profile } from '@/types'
 
 /* ── Predefined task templates per campaign type ── */
@@ -110,6 +111,7 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
   const [editingName, setEditingName] = useState(false)
   const [nameValue, setNameValue] = useState(project.name)
   const nameInputRef = useRef<HTMLInputElement>(null)
+  const [showNewTask, setShowNewTask] = useState(false)
   const [editingTpl, setEditingTpl] = useState<number | null>(null)
   const [tplEdit, setTplEdit] = useState<TemplateItem>({ title: '', description: '', priority: 'medium' })
   const [addingTpl, setAddingTpl] = useState(false)
@@ -379,8 +381,14 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
         {/* Right: Tasques existents */}
         <div className="col-tasks">
           <div className="section-header">
-            <h2>Tasques de la campanya</h2>
-            <span className="task-count">{tasks.length}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h2>Tasques del projecte</h2>
+              <span className="task-count">{tasks.length}</span>
+            </div>
+            <button className="btn-add-tpl" onClick={() => setShowNewTask(true)}>
+              <Plus size={14} strokeWidth={2.5} />
+              Nova
+            </button>
           </div>
 
           {tasks.length === 0 ? (
@@ -415,6 +423,19 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
           )}
         </div>
       </div>
+
+      {showNewTask && (
+        <NewTaskModal
+          clients={project.client ? [{ id: project.client_id, name: (project.client as any).name }] : []}
+          projects={[{ id: project.id, name: project.name }]}
+          profiles={profiles}
+          currentUserId={currentUser.id}
+          defaultProjectId={project.id}
+          defaultClientId={project.client_id || undefined}
+          onClose={() => setShowNewTask(false)}
+          onCreated={(task: Task) => { setTasks(prev => [task, ...prev]); setShowNewTask(false) }}
+        />
+      )}
 
       <style jsx>{`
         :global(.back-link) {

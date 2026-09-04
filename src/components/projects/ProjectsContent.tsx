@@ -77,7 +77,7 @@ export function ProjectsContent({ projects, clients, profiles, userRole }: Props
           <Search size={14} color="#9A9A9A" />
           <input
             type="text"
-            placeholder="Buscar campanya..."
+            placeholder="Buscar projecte..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="search-input"
@@ -98,7 +98,7 @@ export function ProjectsContent({ projects, clients, profiles, userRole }: Props
 
         <button className="btn-primary" onClick={() => setShowNewCampaign(true)}>
           <Plus size={14} strokeWidth={2.5} />
-          Nova campanya
+          Nou projecte
         </button>
       </div>
 
@@ -107,10 +107,10 @@ export function ProjectsContent({ projects, clients, profiles, userRole }: Props
       {filtered.length === 0 ? (
         <div className="empty-state">
           <FolderKanban size={32} color="#D0D0D0" />
-          <p>Cap campanya trobada.</p>
+          <p>Cap projecte trobat.</p>
           <button className="btn-primary" style={{ marginTop: '12px' }} onClick={() => setShowNewCampaign(true)}>
             <Plus size={14} strokeWidth={2.5} />
-            Nova campanya
+            Nou projecte
           </button>
         </div>
       ) : (

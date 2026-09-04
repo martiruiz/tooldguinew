@@ -15,6 +15,8 @@ const healthConfig = {
 
 const statusFilter = ['Tots', 'Actius', 'Pausats', 'Inactius']
 const statusMap: Record<string, string> = { Actius: 'active', Pausats: 'paused', Inactius: 'inactive' }
+const agreementFilter = ['Tots', 'Puntual', 'Recurrent']
+const agreementMap: Record<string, string> = { Puntual: 'puntual', Recurrent: 'recurrent' }
 
 interface Props {
   clients: Client[]
@@ -23,10 +25,11 @@ interface Props {
 }
 
 export function ClientsContent({ clients: initialClients, profiles, userRole }: Props) {
-  const PAGE_SIZE = 10
+  const PAGE_SIZE = 15
   const [clients, setClients] = useState(initialClients)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('Tots')
+  const [filterAgreement, setFilterAgreement] = useState('Tots')
   const [view, setView] = useState<'grid' | 'list' | 'table'>('grid')
   const [isMobile, setIsMobile] = useState(false)
   const [page, setPage] = useState(1)
@@ -52,7 +55,8 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
   const filtered = clients.filter((c) => {
     const matchSearch = c.name.toLowerCase().includes(search.toLowerCase())
     const matchStatus = filter === 'Tots' || c.status === statusMap[filter]
-    return matchSearch && matchStatus
+    const matchAgreement = filterAgreement === 'Tots' || (c as any).agreement_type === agreementMap[filterAgreement]
+    return matchSearch && matchStatus && matchAgreement
   })
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
@@ -61,6 +65,7 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
 
   function changeSearch(v: string) { setSearch(v); setPage(1) }
   function changeFilter(f: string) { setFilter(f); setPage(1) }
+  function changeAgreement(f: string) { setFilterAgreement(f); setPage(1) }
 
   const canManage = userRole === 'superadmin' || userRole === 'manager'
 
@@ -155,16 +160,30 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
         </div>
 
         {/* Row 2: filtres */}
-        <div className="clients-filters">
-          {statusFilter.map((f) => (
-            <button
-              key={f}
-              onClick={() => changeFilter(f)}
-              className={cn('filter-btn', filter === f && 'filter-btn--active')}
-            >
-              {f}
-            </button>
-          ))}
+        <div className="clients-filters-row">
+          <div className="clients-filters">
+            {statusFilter.map((f) => (
+              <button
+                key={f}
+                onClick={() => changeFilter(f)}
+                className={cn('filter-btn', filter === f && 'filter-btn--active')}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+          <div className="filters-sep" />
+          <div className="clients-filters">
+            {agreementFilter.map((f) => (
+              <button
+                key={f}
+                onClick={() => changeAgreement(f)}
+                className={cn('filter-btn filter-btn--agreement', filterAgreement === f && 'filter-btn--active')}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -321,6 +340,8 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
           .clients-toolbar { gap: 6px; }
           .toolbar-row1 { gap: 8px; }
           .clients-search-wrap { max-width: 100%; min-width: 0; }
+          .clients-filters-row { gap: 5px; flex-wrap: wrap; }
+          .filters-sep { display: none; }
           .clients-filters { gap: 5px; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; }
           .filter-btn { height: 32px; padding: 0 10px; font-size: 12px; white-space: nowrap; flex-shrink: 0; }
           .btn-primary { padding: 0 14px; white-space: nowrap; flex-shrink: 0; }
@@ -372,6 +393,17 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
         }
 
         .clients-search::placeholder { color: #C8D0DC; }
+
+        .clients-filters-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .filters-sep {
+          width: 1px; height: 20px;
+          background: #E8E8E8; flex-shrink: 0;
+        }
 
         .clients-filters {
           display: flex;

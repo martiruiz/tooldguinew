@@ -50,7 +50,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
   const [checklist, setChecklist] = useState<CheckItem[]>(t.checklist || [])
   const [subtasks, setSubtasks] = useState<Subtask[]>(t.subtasks || [])
   const [driveLinks, setDriveLinks] = useState<DriveLink[]>(t.drive_links || [])
-  const [photos, setPhotos] = useState<{ id: string; url: string; name: string }[]>(t.photos || [])
+  const [photos, setPhotos] = useState<{ id: string; url: string; name: string; path?: string; type?: 'image' | 'video' }[]>(t.photos || [])
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const photoRef = useRef<HTMLInputElement>(null)
   const [watcherIds, setWatcherIds] = useState<string[]>(t.watcher_ids || [])
@@ -70,6 +70,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
   const [showLabelPicker, setShowLabelPicker] = useState(false)
   const [showLabelManager, setShowLabelManager] = useState(false)
   const [showWatcherPicker, setShowWatcherPicker] = useState(false)
+  const [showResponsiblePicker, setShowResponsiblePicker] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
@@ -85,6 +86,9 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
       Notification.requestPermission()
     }
+    // Log task opened
+    const supabase = createClient()
+    supabase.from('task_activity').insert({ task_id: task.id, user_id: currentUserId, action: 'task_opened', details: {} }).then(() => {})
   }, [])
 
   useEffect(() => {
@@ -112,7 +116,6 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
       .then(({ data, error }) => {
         if (error) { console.error('[task_activity fetch]', error.message); return }
         if (!data) return
-        // Enrich with profile data from the profiles prop
         const enriched = data.map(a => ({
           ...a,
           profile: profiles.find(p => p.id === a.user_id)
@@ -245,6 +248,10 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
       const name = clients.find(c => c.id === value)?.name || null
       logActivity('client_linked', { name })
     }
+    if (field === 'project_id' && value !== prev) {
+      const name = projects.find(p => p.id === value)?.name || null
+      logActivity('project_linked', { name })
+    }
   }
 
   const persist = async (patch: object) => {
@@ -253,30 +260,31 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
     if (error) console.error('[persist] error:', error.message, patch)
   }
 
+  const refreshActivities = async () => {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('task_activity')
+      .select('id, task_id, user_id, action, details, created_at')
+      .eq('task_id', task.id)
+      .order('created_at', { ascending: true })
+    if (!data) return
+    const enriched = data.map(a => ({
+      ...a,
+      profile: profiles.find(p => p.id === a.user_id)
+        ? { full_name: profiles.find(p => p.id === a.user_id)!.full_name, avatar_url: (profiles.find(p => p.id === a.user_id) as any).avatar_url }
+        : undefined,
+    }))
+    setActivities(enriched as Activity[])
+  }
+
   const logActivity = async (action: string, details: Record<string, any> = {}) => {
     const supabase = createClient()
-    const now = new Date().toISOString()
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('task_activity')
       .insert({ task_id: task.id, user_id: currentUserId, action, details })
-      .select('id, created_at')
-      .single()
-    if (error) {
-      console.error('[logActivity] insert error:', error.message, { action, details })
-      return
-    }
-    // Build activity locally — avoid join that may fail
-    const me = profiles.find(p => p.id === currentUserId)
-    const localActivity: Activity = {
-      id: data?.id || crypto.randomUUID(),
-      task_id: task.id,
-      user_id: currentUserId,
-      action,
-      details,
-      created_at: data?.created_at || now,
-      profile: me ? { full_name: me.full_name, avatar_url: (me as any).avatar_url } : undefined,
-    }
-    setActivities(prev => [...prev, localActivity])
+    if (error) { console.error('[logActivity] insert error:', error.message, { action, details }); return }
+    // Refresh from Supabase to get accurate list
+    await refreshActivities()
   }
 
   // Checklist
@@ -373,12 +381,15 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
     })
   }
 
-  // Photos
+  // Photos & Videos
   const uploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!file.type.startsWith('image/')) return
-    if (file.size > 10 * 1024 * 1024) { alert('La imatge no pot superar 10 MB'); return }
+    const isImage = file.type.startsWith('image/')
+    const isVideo = file.type.startsWith('video/')
+    if (!isImage && !isVideo) return
+    if (isImage && file.size > 10 * 1024 * 1024) { alert('La imatge no pot superar 10 MB'); return }
+    if (isVideo && file.size > 200 * 1024 * 1024) { alert('El vídeo no pot superar 200 MB'); return }
     setUploadingPhoto(true)
     try {
       const fd = new FormData()
@@ -386,12 +397,12 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
       fd.append('taskId', task.id)
       const res = await fetch('/api/tasks/upload-photo', { method: 'POST', body: fd })
       const json = await res.json()
-      if (!res.ok) { alert(`Error pujant la foto: ${json.error}`); return }
-      const items = [...photos, { id: crypto.randomUUID(), url: json.url, name: file.name }]
+      if (!res.ok) { alert(`Error pujant el fitxer: ${json.error}`); return }
+      const items = [...photos, { id: crypto.randomUUID(), url: json.url, name: file.name, path: json.path, type: json.type as 'image' | 'video' }]
       setPhotos(items)
       persist({ photos: items })
       onUpdated({ ...task, photos: items } as Task)
-      logActivity('photo_added', { name: file.name })
+      await logActivity(isVideo ? 'video_added' : 'photo_added', { name: file.name })
     } catch (err: any) {
       alert(`Error: ${err.message}`)
     } finally {
@@ -399,7 +410,17 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
       e.target.value = ''
     }
   }
-  const delPhoto = (id: string) => { const items = photos.filter(p => p.id !== id); setPhotos(items); persist({ photos: items }); onUpdated({ ...task, photos: items } as Task) }
+  const delPhoto = async (id: string) => {
+    const photo = photos.find(p => p.id === id)
+    const items = photos.filter(p => p.id !== id)
+    setPhotos(items)
+    persist({ photos: items })
+    onUpdated({ ...task, photos: items } as Task)
+    if (photo?.path) {
+      fetch('/api/tasks/upload-photo', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: photo.path }) }).catch(() => {})
+    }
+    logActivity('photo_removed', { name: photo?.name || '' })
+  }
 
   // Watchers
   const toggleWatcher = (id: string) => {
@@ -508,6 +529,8 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
       case 'label_added': return `ha afegit l'etiqueta '${details.label}'`
       case 'label_removed': return `ha tret l'etiqueta '${details.label}'`
       case 'task_created': return `ha creat aquesta tasca`
+      case 'task_opened': return `ha obert la tasca`
+      case 'project_linked': return details.name ? `ha vinculat el projecte '${details.name}'` : 'ha desvinculat el projecte'
       case 'watcher_added': return `s'ha subscrit a les notificacions`
       case 'watcher_removed': return `ha deixat de seguir la tasca`
       default: return action
@@ -547,8 +570,58 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
             {/* Title */}
             <textarea className="title-inp" value={form.title.toUpperCase()}
               onChange={e => dirty('title', e.target.value.toUpperCase())} rows={1}
+              placeholder="TÍTOL DE LA TASCA..."
               onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
             />
+
+            {/* Responsible below title */}
+            {(() => {
+              const rp = profiles.find(p => p.id === form.responsible_id) as any
+              return (
+                <div className="title-resp-row">
+                  <div className="rel-wrap">
+                    <button className="resp-chip" onClick={() => setShowResponsiblePicker(v => !v)}>
+                      {rp ? (
+                        <>
+                          <div className="resp-av">
+                            {rp.avatar_url ? <img src={rp.avatar_url} alt="" /> : getInitials(rp.full_name)}
+                          </div>
+                          <span className="resp-chip-name">{rp.full_name}</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="resp-av resp-av--empty">
+                            <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="3.5" r="2" stroke="currentColor" strokeWidth="1.5"/><path d="M1 10c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                          </div>
+                          <span className="resp-chip-name resp-chip-name--empty">Assignar responsable</span>
+                        </>
+                      )}
+                    </button>
+                    {showResponsiblePicker && (
+                      <div className="resp-picker" onClick={e => e.stopPropagation()}>
+                        <button className="resp-picker-opt" onClick={() => { saveDropdown('responsible_id', ''); setShowResponsiblePicker(false) }}>
+                          <div className="resp-av resp-av--empty" style={{ fontSize: 14 }}>—</div>
+                          <span>Sense assignar</span>
+                        </button>
+                        {profiles.map(p => {
+                          const pa = p as any
+                          return (
+                            <button key={p.id}
+                              className={`resp-picker-opt${form.responsible_id === p.id ? ' resp-picker-opt--on' : ''}`}
+                              onClick={() => { saveDropdown('responsible_id', p.id); setShowResponsiblePicker(false) }}>
+                              <div className="resp-av">
+                                {pa.avatar_url ? <img src={pa.avatar_url} alt="" /> : getInitials(p.full_name)}
+                              </div>
+                              <span>{p.full_name}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* Labels + Watchers */}
             <div className="meta-row">
@@ -774,15 +847,17 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
                   {uploadingPhoto ? <Loader2 size={11} className="spin-sm" /> : <Camera size={11} />}
                   {uploadingPhoto ? 'Pujant...' : 'Afegir foto'}
                 </button>
-                <input ref={photoRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={uploadPhoto} />
+                <input ref={photoRef} type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={uploadPhoto} />
               </div>
               {photos.length > 0 && (
                 <div className="photos-grid">
                   {photos.map((p, i) => (
                     <div key={p.id} className="photo-thumb">
-                      <img src={p.url} alt={p.name} onClick={() => setLightboxIdx(i)} />
-                      <button className="photo-del" onClick={() => delPhoto(p.id)}><Trash2 size={10} /></button>
-                      <div className="photo-zoom" onClick={() => setLightboxIdx(i)}><ZoomIn size={12} /></div>
+                      {p.type === 'video'
+                        ? <video src={p.url} className="photo-video" onClick={() => setLightboxIdx(i)} />
+                        : <img src={p.url} alt={p.name} onClick={() => setLightboxIdx(i)} />
+                      }
+                      <button className="photo-del" onClick={e => { e.stopPropagation(); delPhoto(p.id) }}><Trash2 size={10} /></button>
                     </div>
                   ))}
                 </div>
@@ -964,6 +1039,41 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
           resize: none; width: 100%; font-family: inherit; line-height: 1.3; background: transparent; padding: 0;
           text-transform: uppercase; letter-spacing: 0.01em;
         }
+        .title-inp::placeholder { color: #D0D0D0; }
+
+        /* Responsible below title */
+        .title-resp-row { margin-top: -6px; }
+        .resp-chip {
+          display: inline-flex; align-items: center; gap: 7px;
+          background: none; border: 1.5px solid transparent; border-radius: 20px;
+          padding: 3px 10px 3px 3px; cursor: pointer; font-family: inherit;
+          transition: all 0.12s;
+        }
+        .resp-chip:hover { border-color: #E8EAF0; background: #F8F9FF; }
+        .resp-av {
+          width: 24px; height: 24px; border-radius: 50%;
+          background: #1B2B4B18; color: #1B2B4B; font-size: 9px; font-weight: 800;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0; overflow: hidden;
+        }
+        .resp-av img { width: 100%; height: 100%; object-fit: cover; }
+        .resp-av--empty { background: #F0F0F0; color: #B0B0B0; }
+        .resp-chip-name { font-size: 12.5px; font-weight: 600; color: #2A3A5A; }
+        .resp-chip-name--empty { color: #B8BCC8; font-weight: 500; }
+        .resp-picker {
+          position: absolute; top: calc(100% + 6px); left: 0; z-index: 200;
+          background: white; border: 1.5px solid #EEEFF2; border-radius: 12px;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.12); min-width: 180px; overflow: hidden;
+          padding: 4px;
+        }
+        .resp-picker-opt {
+          display: flex; align-items: center; gap: 9px; width: 100%;
+          background: none; border: none; padding: 8px 10px; border-radius: 8px;
+          cursor: pointer; font-family: inherit; font-size: 13px; color: #333;
+          transition: background 0.1s;
+        }
+        .resp-picker-opt:hover { background: #F5F7FB; }
+        .resp-picker-opt--on { background: #F0F4FF; font-weight: 600; color: #1B2B4B; }
 
         /* Meta row */
         .meta-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
@@ -1051,10 +1161,10 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         .photos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
         .photo-thumb { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; cursor: pointer; background: #F0F0F0; }
         .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .photo-del { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border: none; border-radius: 4px; background: rgba(0,0,0,0.55); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.15s; }
+        .photo-video { width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer; }
+        .photo-del { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: none; border-radius: 5px; background: rgba(0,0,0,0.65); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.15s; z-index: 10; }
         .photo-thumb:hover .photo-del { opacity: 1; }
-        .photo-zoom { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0); color: white; opacity: 0; transition: all 0.15s; }
-        .photo-thumb:hover .photo-zoom { background: rgba(0,0,0,0.3); opacity: 1; }
+        .photo-del:hover { background: rgba(220,38,38,0.85); }
         :global(.spin-sm) { animation: spin 0.8s linear infinite; }
 
         /* Check / Subtask rows */

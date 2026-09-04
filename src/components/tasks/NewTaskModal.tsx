@@ -14,15 +14,16 @@ interface Props {
   currentUserId: string
   defaultStatus?: Task['status']
   defaultClientId?: string
+  defaultProjectId?: string
   onClose: () => void
   onCreated: (task: Task) => void
 }
 
-export function NewTaskModal({ clients, projects, profiles, currentUserId, defaultStatus, defaultClientId, onClose, onCreated }: Props) {
+export function NewTaskModal({ clients, projects, profiles, currentUserId, defaultStatus, defaultClientId, defaultProjectId, onClose, onCreated }: Props) {
   const [form, setForm] = useState({
     title: '',
     client_id: defaultClientId || '',
-    project_id: '',
+    project_id: defaultProjectId || '',
     responsible_id: currentUserId,
     priority: 'medium' as Task['priority'],
     status: (defaultStatus ?? 'todo') as Task['status'],

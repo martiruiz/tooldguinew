@@ -12,7 +12,27 @@ import { cn, clientTypeLabels, projectStatusLabels, taskPriorityLabels, getIniti
 import { createClient as createSupabase } from '@/lib/supabase/client'
 import { NewTaskModal } from '@/components/tasks/NewTaskModal'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
+import { AnnualPlan } from '@/components/clients/AnnualPlan'
 import type { Client, Project, Task } from '@/types'
+
+const CONTRACTED_SERVICES = [
+  'Estrategia digital',
+  'Gestión de redes sociales',
+  'Sesión de creación de contenido 1 sesión al mes',
+  'Sesión de creación de contenido 2 sesiones al mes',
+  'Analítica mensual',
+  'Suscripción a la plataforma de Sports Content Playbook',
+  'Auditoría y consultoría',
+  'Álbums fotográficos',
+  'Gabinete de prensa',
+  'Diseño gráfico',
+]
+
+function parseServices(raw: string): string[] {
+  if (!raw) return []
+  try { const p = JSON.parse(raw); return Array.isArray(p) ? p : [] }
+  catch { return raw.split(',').map(s => s.trim()).filter(Boolean) }
+}
 
 const healthConfig = {
   healthy: { label: 'Healthy', bg: '#F0FDF4', color: '#16A34A' },
@@ -29,7 +49,7 @@ const statusBadge: Record<string, { bg: string; color: string }> = {
   archived: { bg: '#F0F0F0', color: '#9A9A9A' },
 }
 
-type Tab = 'campanyes' | 'tasques' | 'briefing' | 'estrategia' | 'metriques' | 'resum'
+type Tab = 'campanyes' | 'tasques' | 'briefing' | 'estrategia' | 'metriques' | 'resum' | 'pla'
 
 interface Props {
   client: Client
@@ -62,13 +82,16 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
     contact_email: client.contact_email || '',
     contact_phone: client.contact_phone || '',
   })
+  const [servicesOpen, setServicesOpen] = useState(false)
   const [acordFields, setAcordFields] = useState({
     sessions_count: (client as any).sessions_count ?? '',
     agreement_type: (client as any).agreement_type || '',
     contract_duration: (client as any).contract_duration || '',
-    contracted_services: (client as any).contracted_services || '',
     account_manager_id: (client as any).account_manager_id || '',
   })
+  const [selectedServices, setSelectedServices] = useState<string[]>(() =>
+    parseServices((client as any).contracted_services || '')
+  )
   const [acordDirty, setAcordDirty] = useState(false)
   const [acordSaving, setAcordSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
@@ -107,6 +130,10 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
     setAcordFields(prev => ({ ...prev, [k]: e.target.value }))
     setAcordDirty(true)
   }
+  const setAcordVal = (k: keyof typeof acordFields, v: string) => {
+    setAcordFields(prev => ({ ...prev, [k]: v }))
+    setAcordDirty(true)
+  }
 
   const handleAcordSave = async () => {
     setAcordSaving(true)
@@ -116,7 +143,7 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
         sessions_count: acordFields.sessions_count !== '' ? Number(acordFields.sessions_count) : null,
         agreement_type: acordFields.agreement_type || null,
         contract_duration: acordFields.contract_duration || null,
-        contracted_services: acordFields.contracted_services || null,
+        contracted_services: selectedServices.length > 0 ? JSON.stringify(selectedServices) : null,
         account_manager_id: acordFields.account_manager_id || null,
       }
       await supabase.from('clients').update(payload).eq('id', localClient.id)
@@ -189,10 +216,11 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'resum', label: 'Resum' },
-    { key: 'campanyes', label: `Campanyes (${projects.length})` },
-    { key: 'tasques', label: `Tasques (${tasks.length})` },
     { key: 'briefing', label: 'Briefing' },
     { key: 'estrategia', label: 'Estratègia' },
+    { key: 'pla', label: 'Pla de contingut anual' },
+    { key: 'campanyes', label: `Projectes (${projects.length})` },
+    { key: 'tasques', label: `Tasques (${tasks.length})` },
     { key: 'metriques', label: 'Mètriques' },
   ]
 
@@ -311,6 +339,117 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
             </div>
           </div>
         </div>
+
+      {/* Agreement section — inside the white card, below contact */}
+      <div className="acord-panel">
+        <div className="acord-panel-header">
+          <span className="acord-panel-label">Acord</span>
+          {acordDirty && (
+            <button className="btn-save" onClick={handleAcordSave} disabled={acordSaving}>
+              {acordSaving ? <Loader2 size={13} className="spin" /> : <Save size={13} />}
+              Desar acord
+            </button>
+          )}
+        </div>
+        <div className="acord-grid">
+          <div className="acord-field">
+            <label className="acord-label">Sessions contractades</label>
+            <select className="acord-select" value={acordFields.sessions_count} onChange={setAcordField('sessions_count')}>
+              <option value="">Sense especificar</option>
+              {['1','2','3','4','5','6','7','8','9','10'].map(n => (
+                <option key={n} value={n}>{n} sessió{Number(n) > 1 ? 's' : ''}</option>
+              ))}
+            </select>
+          </div>
+          <div className="acord-field">
+            <label className="acord-label">Tipus de client</label>
+            <select className="acord-select" value={acordFields.agreement_type} onChange={setAcordField('agreement_type')}>
+              <option value="">Selecciona...</option>
+              <option value="puntual">Puntual</option>
+              <option value="recurrent">Recurrent</option>
+            </select>
+          </div>
+          <div className="acord-field">
+            <label className="acord-label">Duració del contracte</label>
+            <select className="acord-select" value={acordFields.contract_duration} onChange={setAcordField('contract_duration')}>
+              <option value="">Selecciona...</option>
+              <option value="durant l'esdeveniment">Durant l&apos;esdeveniment</option>
+              <option value="anual">Anual</option>
+              <option value="mensual">Mensual</option>
+              <option value="personalitzable">Personalitzable</option>
+            </select>
+          </div>
+          <div className="acord-field">
+            <label className="acord-label">Gestor de compte</label>
+            <select className="acord-select" value={acordFields.account_manager_id} onChange={setAcordField('account_manager_id')}>
+              <option value="">Sense assignar</option>
+              {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+            </select>
+          </div>
+          <div className="acord-field acord-field--full">
+            <button type="button" className="services-toggle" onClick={() => setServicesOpen(v => !v)}>
+              <div className="services-toggle-left">
+                <span className="acord-label" style={{ margin: 0 }}>Serveis contractats</span>
+                {selectedServices.length === 0 && !servicesOpen && (
+                  <span className="services-hint">Clica per seleccionar els serveis inclosos</span>
+                )}
+              </div>
+              <span className="services-toggle-meta">
+                {selectedServices.length > 0 && (
+                  <span className="services-count">{selectedServices.length} de {CONTRACTED_SERVICES.length}</span>
+                )}
+                <ChevronDown size={13} style={{ transform: servicesOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: '#9A9A9A' }} />
+              </span>
+            </button>
+            {servicesOpen && (
+              <div className="services-list">
+                <div className="services-list-header">
+                  <span className="services-list-hint">Selecciona els serveis inclosos en el contracte</span>
+                  <button
+                    type="button"
+                    className="services-selectall"
+                    onClick={() => {
+                      const allSelected = CONTRACTED_SERVICES.every(s => selectedServices.includes(s))
+                      setSelectedServices(allSelected ? [] : [...CONTRACTED_SERVICES])
+                      setAcordDirty(true)
+                    }}
+                  >
+                    {CONTRACTED_SERVICES.every(s => selectedServices.includes(s)) ? 'Cap' : 'Tots'}
+                  </button>
+                </div>
+                {CONTRACTED_SERVICES.map((svc, i) => {
+                  const checked = selectedServices.includes(svc)
+                  return (
+                    <button
+                      key={svc}
+                      type="button"
+                      onClick={() => {
+                        const next = checked
+                          ? selectedServices.filter(s => s !== svc)
+                          : [...selectedServices, svc]
+                        setSelectedServices(next)
+                        setAcordDirty(true)
+                      }}
+                      className={`svc-row${checked ? ' svc-row--on' : ''}`}
+                    >
+                      <span className="svc-check">
+                        {checked ? (
+                          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                            <path d="M2.5 6.5L5.5 9.5L10.5 4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        ) : null}
+                      </span>
+                      <span className="svc-num">{String(i + 1).padStart(2, '0')}</span>
+                      <span className="svc-name">{svc}</span>
+                      {checked && <span className="svc-badge">✓ Inclòs</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
       </div>
 
       {/* Tabs */}
@@ -336,7 +475,7 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
               <div className="resum-stats">
                 <div className="resum-stat">
                   <div className="resum-stat-value">{projects.filter(p => p.status === 'active').length}</div>
-                  <div className="resum-stat-label">Campanyes actius</div>
+                  <div className="resum-stat-label">Projectes actius</div>
                 </div>
                 <div className="resum-stat">
                   <div className="resum-stat-value">{tasks.length}</div>
@@ -349,72 +488,11 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
               </div>
             </div>
 
-            {/* Agreement section */}
-            <div className="tab-section">
-              <div className="section-header">
-                <h3 className="section-title">Acord</h3>
-                {acordDirty && (
-                  <button className="btn-save" onClick={handleAcordSave} disabled={acordSaving}>
-                    {acordSaving ? <Loader2 size={13} className="spin" /> : <Save size={13} />}
-                    Desar acord
-                  </button>
-                )}
-              </div>
-              <div className="acord-grid">
-                <div className="acord-field">
-                  <label className="acord-label">Sessions contractades</label>
-                  <input
-                    className="acord-input"
-                    type="number"
-                    min="0"
-                    value={acordFields.sessions_count}
-                    onChange={setAcordField('sessions_count')}
-                    placeholder="Ex: 4"
-                  />
-                </div>
-                <div className="acord-field">
-                  <label className="acord-label">Tipus de client</label>
-                  <select className="acord-select" value={acordFields.agreement_type} onChange={setAcordField('agreement_type')}>
-                    <option value="">Selecciona...</option>
-                    <option value="puntual">Puntual</option>
-                    <option value="recurrent">Recurrent</option>
-                  </select>
-                </div>
-                <div className="acord-field">
-                  <label className="acord-label">Duració del contracte</label>
-                  <input
-                    className="acord-input"
-                    type="text"
-                    value={acordFields.contract_duration}
-                    onChange={setAcordField('contract_duration')}
-                    placeholder="Ex: 6 mesos, 1 any..."
-                  />
-                </div>
-                <div className="acord-field">
-                  <label className="acord-label">Gestor de compte</label>
-                  <select className="acord-select" value={acordFields.account_manager_id} onChange={setAcordField('account_manager_id')}>
-                    <option value="">Sense assignar</option>
-                    {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
-                  </select>
-                </div>
-                <div className="acord-field acord-field--full">
-                  <label className="acord-label">Serveis contractats</label>
-                  <textarea
-                    className="acord-textarea"
-                    rows={2}
-                    value={acordFields.contracted_services}
-                    onChange={setAcordField('contracted_services')}
-                    placeholder="Ex: Social Media, Shooting mensual, Reels, Estratègia..."
-                  />
-                </div>
-              </div>
-            </div>
-
             {/* Recent projects */}
             {projects.length > 0 && (
               <div className="tab-section">
                 <div className="section-header">
-                  <h3 className="section-title">Campanyes recents</h3>
+                  <h3 className="section-title">Projectes recents</h3>
                   <button onClick={() => setTab('campanyes')} className="section-link">Veure tots</button>
                 </div>
                 <div className="mini-project-list">
@@ -451,10 +529,10 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
         {tab === 'campanyes' && (
           <div className="tab-full">
             <div className="section-header" style={{ marginBottom: showNewProject ? '0' : '16px' }}>
-              <h3 className="section-title">Campanyes</h3>
+              <h3 className="section-title">Projectes</h3>
               <button className="btn-primary" onClick={() => setShowNewProject(v => !v)}>
                 {showNewProject ? <X size={13} /> : <Plus size={13} />}
-                {showNewProject ? 'Cancel·lar' : 'Nova campanya'}
+                {showNewProject ? 'Cancel·lar' : 'Nou projecte'}
               </button>
             </div>
 
@@ -505,14 +583,14 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
                   </div>
                   <button type="submit" className="btn-primary" disabled={savingProject} style={{ alignSelf: 'flex-end', marginBottom: '0', height: '38px' }}>
                     {savingProject ? <Loader2 size={13} className="spin" /> : <Plus size={13} />}
-                    Crear campanya
+                    Crear projecte
                   </button>
                 </div>
               </form>
             )}
 
             {localProjects.length === 0 && !showNewProject ? (
-              <EmptyState icon={<FolderKanban size={28} />} text="Sense campanyes." action="Crear campanya" onAction={() => setShowNewProject(true)} />
+              <EmptyState icon={<FolderKanban size={28} />} text="Sense projectes." action="Nou projecte" onAction={() => setShowNewProject(true)} />
             ) : (
               <div className="project-table" style={{ marginTop: showNewProject ? '16px' : '0' }}>
                 {localProjects.map((p) => {
@@ -540,6 +618,15 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {tab === 'pla' && (
+          <div className="tab-full">
+            <div className="section-header" style={{ marginBottom: '20px' }}>
+              <h3 className="section-title">Pla de contingut anual</h3>
+            </div>
+            <AnnualPlan clientId={client.id} projects={localProjects as any} />
           </div>
         )}
 
@@ -888,6 +975,98 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
           font-size: 12px;
           color: #9A9A9A;
           margin-top: 2px;
+        }
+
+        /* Acord panel — inside white card, below contact */
+        .acord-panel {
+          border-top: 1px solid #F0F0F0;
+          padding: 16px 0 0;
+          margin-top: 14px;
+        }
+        .acord-panel-header {
+          display: flex; align-items: center; justify-content: space-between;
+          margin-bottom: 12px;
+        }
+        .acord-panel-label {
+          font-size: 10px; font-weight: 700; color: #C0C0C0;
+          text-transform: uppercase; letter-spacing: 0.07em;
+        }
+
+        /* Services toggle */
+        .services-toggle {
+          display: flex; align-items: center; justify-content: space-between;
+          width: 100%; background: none; border: none; cursor: pointer;
+          padding: 0; font-family: inherit; text-align: left;
+          margin-bottom: 0;
+        }
+        .services-toggle-left { display: flex; flex-direction: column; gap: 2px; }
+        .services-hint { font-size: 11px; color: #C0C0C0; }
+        .services-toggle:hover .acord-label { color: #1B2B4B; }
+        .services-toggle-meta {
+          display: flex; align-items: center; gap: 8px;
+        }
+        .services-count {
+          font-size: 10px; font-weight: 700; color: white;
+          background: #1B2B4B; padding: 2px 7px; border-radius: 20px;
+        }
+
+        /* Services premium list */
+        .services-list {
+          display: flex; flex-direction: column; gap: 0;
+          margin-top: 10px; border-radius: 12px; overflow: hidden;
+          border: 1.5px solid #EEEFF2;
+        }
+        .services-list-header {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 9px 14px; background: #FAFBFC;
+          border-bottom: 1px solid #EEEFF2;
+        }
+        .services-list-hint {
+          font-size: 11px; color: #A0A0B0;
+        }
+        .services-selectall {
+          font-size: 11px; font-weight: 700; color: #1B2B4B;
+          background: none; border: 1.5px solid #1B2B4B20; border-radius: 6px;
+          padding: 2px 8px; cursor: pointer; font-family: inherit;
+          transition: all 0.12s;
+        }
+        .services-selectall:hover { background: #1B2B4B10; }
+        .svc-row {
+          display: flex; align-items: center; gap: 12px;
+          width: 100%; padding: 11px 14px;
+          background: white; border: none; border-bottom: 1px solid #F2F3F5;
+          cursor: pointer; font-family: inherit; text-align: left;
+          transition: background 0.15s;
+          position: relative;
+        }
+        .svc-row:last-child { border-bottom: none; }
+        .svc-row:hover { background: #F8F9FF; }
+        .svc-row--on { background: #F0F4FF; }
+        .svc-row--on:hover { background: #E8EFFF; }
+        .svc-check {
+          width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0;
+          border: 1.5px solid #D8DCE6; background: white;
+          display: flex; align-items: center; justify-content: center;
+          transition: all 0.15s;
+        }
+        .svc-row--on .svc-check {
+          background: #1B2B4B; border-color: #1B2B4B;
+        }
+        .svc-num {
+          font-size: 10px; font-weight: 700; color: #C8CDD8;
+          font-variant-numeric: tabular-nums; letter-spacing: 0.04em;
+          flex-shrink: 0; min-width: 20px;
+        }
+        .svc-row--on .svc-num { color: #8FA3CC; }
+        .svc-name {
+          flex: 1; font-size: 13px; font-weight: 500; color: #4A5068;
+          line-height: 1.3;
+        }
+        .svc-row--on .svc-name { color: #1B2B4B; font-weight: 600; }
+        .svc-badge {
+          font-size: 10px; font-weight: 700; color: #4A7FCF;
+          background: #E8F0FF; padding: 2px 7px; border-radius: 5px;
+          flex-shrink: 0;
         }
 
         /* Acord section */

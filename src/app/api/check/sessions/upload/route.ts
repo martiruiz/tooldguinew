@@ -6,50 +6,40 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 )
 
-const BUCKET = 'task-photos'
+const BUCKET = 'session-files'
 
 export async function POST(req: NextRequest) {
   try {
     const form = await req.formData()
     const file = form.get('file') as File | null
-    const taskId = form.get('taskId') as string | null
+    const sessionId = form.get('sessionId') as string | null
+    const phase = form.get('phase') as string | null
 
-    if (!file || !taskId) {
-      return NextResponse.json({ error: 'Falta fitxer o taskId' }, { status: 400 })
+    if (!file || !sessionId || !phase) {
+      return NextResponse.json({ error: 'Falta fitxer, sessionId o phase' }, { status: 400 })
     }
 
-    const isImage = file.type.startsWith('image/')
-    const isVideo = file.type.startsWith('video/')
-
-    if (!isImage && !isVideo) {
-      return NextResponse.json({ error: 'Només s\'accepten imatges o vídeos' }, { status: 400 })
-    }
-
-    const maxSize = isVideo ? 200 * 1024 * 1024 : 10 * 1024 * 1024
+    const maxSize = 50 * 1024 * 1024
     if (file.size > maxSize) {
-      return NextResponse.json({ error: isVideo ? 'El vídeo no pot superar 200 MB' : 'La imatge no pot superar 10 MB' }, { status: 400 })
+      return NextResponse.json({ error: 'El fitxer no pot superar 50 MB' }, { status: 400 })
     }
 
-    // Ensure bucket exists
     const { data: buckets } = await supabaseAdmin.storage.listBuckets()
     if (!buckets?.find(b => b.name === BUCKET)) {
       await supabaseAdmin.storage.createBucket(BUCKET, { public: true })
     }
 
-    const path = `tasks/${taskId}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`
+    const path = `sessions/${sessionId}/${phase}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`
     const bytes = await file.arrayBuffer()
 
     const { error } = await supabaseAdmin.storage
       .from(BUCKET)
-      .upload(path, bytes, { contentType: file.type, upsert: false })
+      .upload(path, bytes, { contentType: file.type, upsert: true })
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     const { data } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path)
-
-    return NextResponse.json({ url: data.publicUrl, path, type: isVideo ? 'video' : 'image' })
+    return NextResponse.json({ url: data.publicUrl, path, name: file.name })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
@@ -59,10 +49,8 @@ export async function DELETE(req: NextRequest) {
   try {
     const { path } = await req.json()
     if (!path) return NextResponse.json({ error: 'Falta path' }, { status: 400 })
-
     const { error } = await supabaseAdmin.storage.from(BUCKET).remove([path])
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
     return NextResponse.json({ ok: true })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })

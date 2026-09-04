@@ -97,6 +97,7 @@ export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
   const [linkName, setLinkName] = useState('')
   const [uploading, setUploading] = useState(false)
   const [typingUsers, setTypingUsers] = useState<{ id: string; name: string }[]>([])
+  const [sendError, setSendError] = useState<string | null>(null)
   const feedRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const attachMenuRef = useRef<HTMLDivElement>(null)
@@ -192,9 +193,11 @@ export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
     if (!text && !attachment) return
     if (sending || uploading) return
     setSending(true)
+    setSendError(null)
     const supabase = createClient()
+    const optimisticId = crypto.randomUUID()
     const optimistic: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: optimisticId,
       user_id: currentUserId,
       content: text,
       attachment: attachment || null,
@@ -209,7 +212,12 @@ export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
       content: text,
       attachment: attachment || null,
     })
-    if (error) console.error('[TeamChat] send error:', error.message)
+    if (error) {
+      console.error('[TeamChat] send error:', error.message)
+      setMessages(prev => prev.filter(m => m.id !== optimisticId))
+      setInput(text)
+      setSendError('No s\'ha pogut enviar el missatge. Verifica la connexió.')
+    }
     setSending(false)
   }
 
@@ -356,6 +364,14 @@ export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
             </div>
           )}
         </div>
+
+        {/* Send error */}
+        {sendError && (
+          <div style={{ padding: '6px 14px', background: '#7f1d1d', color: '#FCA5A5', fontSize: 11.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+            <span>{sendError}</span>
+            <button onClick={() => setSendError(null)} style={{ background: 'none', border: 'none', color: '#FCA5A5', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}>×</button>
+          </div>
+        )}
 
         {/* Input area */}
         <div style={{ padding: '10px 14px', borderTop: '1px solid #1F2937', flexShrink: 0 }}>
