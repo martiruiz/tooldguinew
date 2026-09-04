@@ -1008,7 +1008,7 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
         .kcol-editor {
           position: absolute; top: calc(100% + 8px); left: 0; z-index: 200;
           background: white; border: 1px solid #E8E8E8; border-radius: 14px;
-          padding: 16px; width: 220px; box-shadow: 0 12px 32px rgba(0,0,0,0.14);
+          padding: 16px; width: 280px; box-shadow: 0 12px 32px rgba(0,0,0,0.14);
           display: flex; flex-direction: column; gap: 14px;
         }
         .kcol-editor-hdr {
@@ -1021,18 +1021,18 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
         }
         .kcol-editor-close:hover { background: #E0E0E0; }
 
-        .kcol-icon-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; max-height: 180px; overflow-y: auto; }
+        .kcol-icon-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; max-height: 200px; overflow-y: auto; }
         .kcol-icon-opt {
-          width: 36px; height: 36px; border: 1.5px solid #ECECEC; border-radius: 8px;
+          width: 100%; aspect-ratio: 1; border: 1.5px solid #ECECEC; border-radius: 8px;
           background: white; cursor: pointer; display: flex;
           align-items: center; justify-content: center; transition: all 0.1s; color: #5C5C5C;
         }
         .kcol-icon-opt:hover { background: #F4F4F4; border-color: #D0D0D0; color: #0a0a0a; }
         .kcol-icon-opt--on { background: #EEF4FF; border-color: #4A82C6; color: #4A82C6; }
 
-        .kcol-color-row { display: flex; flex-wrap: wrap; gap: 6px; }
+        .kcol-color-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
         .kcol-circle {
-          width: 26px; height: 26px; border-radius: 50%; border: 2.5px solid transparent;
+          width: 100%; aspect-ratio: 1; border-radius: 50%; border: 2.5px solid transparent;
           cursor: pointer; transition: transform 0.1s; position: relative; flex-shrink: 0;
         }
         .kcol-circle:hover { transform: scale(1.15); }
