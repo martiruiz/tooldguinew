@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   CheckSquare, Square, Plus, Loader2, ChevronRight,
-  Clock, User, AlertCircle, CheckCircle2, Circle, PlayCircle, Eye, Pencil
+  Clock, User, AlertCircle, CheckCircle2, Circle, PlayCircle, Eye
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Project, Task, Profile } from '@/types'
@@ -196,12 +196,9 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
             onKeyDown={e => { if (e.key === 'Enter') saveProjectName(); if (e.key === 'Escape') { setEditingName(false); setNameValue(project.name) } }}
           />
         ) : (
-          <div className="pd-title-row">
-            <h1 className="pd-title">{nameValue}</h1>
-            <button className="pd-title-edit-btn" onClick={() => { setEditingName(true); setTimeout(() => nameInputRef.current?.focus(), 30) }} title="Editar nom">
-              <Pencil size={14} />
-            </button>
-          </div>
+          <h1 className="pd-title pd-title--editable" onClick={() => { setEditingName(true); setTimeout(() => nameInputRef.current?.focus(), 30) }} title="Clica per editar">
+            {nameValue}
+          </h1>
         )}
         {project.description && <p className="pd-desc">{project.description}</p>}
       </div>
@@ -329,15 +326,9 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
         .pd-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
         .pd-type { font-size: 11px; font-weight: 700; color: #4A82C6; text-transform: uppercase; letter-spacing: 0.06em; background: #EFF6FF; padding: 3px 8px; border-radius: 5px; }
         .pd-client { font-size: 12px; color: #9A9A9A; }
-        .pd-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-        .pd-title { font-size: 22px; font-weight: 700; color: #0a0a0a; margin-bottom: 0; }
-        .pd-title-edit-btn {
-          opacity: 0; background: none; border: none; cursor: pointer;
-          color: #9CA3AF; display: flex; align-items: center; justify-content: center;
-          padding: 4px; border-radius: 6px; transition: opacity 0.15s, color 0.12s;
-        }
-        .pd-title-row:hover .pd-title-edit-btn { opacity: 1; }
-        .pd-title-edit-btn:hover { color: #2563EB; }
+        .pd-title { font-size: 22px; font-weight: 700; color: #0a0a0a; margin-bottom: 6px; }
+        .pd-title--editable { cursor: text; border-radius: 6px; transition: background 0.12s; }
+        .pd-title--editable:hover { background: rgba(0,0,0,0.04); }
         .pd-title-input {
           font-size: 22px; font-weight: 700; color: #0a0a0a;
           border: none; border-bottom: 2px solid #2563EB; background: transparent;
