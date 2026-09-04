@@ -669,13 +669,12 @@ function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete }: CardP
           <span><CheckSquare size={12} />{taskCount} tasques</span>
         </div>
         {isSuperadmin && (
-          <Link
-            href={`/finances?s=cartera`}
-            onClick={e => e.stopPropagation()}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, padding: '3px 10px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 6, fontSize: 11.5, fontWeight: 600, color: '#2563EB', textDecoration: 'none', width: 'fit-content', transition: 'background 0.12s' }}
+          <button
+            onClick={e => { e.preventDefault(); e.stopPropagation(); window.location.href = '/finances?s=cartera' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, padding: '3px 10px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 6, fontSize: 11.5, fontWeight: 600, color: '#2563EB', cursor: 'pointer', fontFamily: 'inherit', width: 'fit-content', transition: 'background 0.12s' }}
           >
             <BarChart2 size={11} /> Finances
-          </Link>
+          </button>
         )}
       </Link>
 

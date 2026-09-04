@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
 import { Topbar } from '@/components/layout/Topbar'
 import { FinancesContent } from '@/components/finances/FinancesContent'
 import type { Profile } from '@/types'
@@ -20,7 +21,9 @@ export default async function FinancesPage() {
   return (
     <>
       <Topbar user={profile as Profile} title="Finances" />
-      <FinancesContent clients={clients || []} profiles={profiles || []} />
+      <Suspense fallback={<div style={{ padding: 40, color: '#999', fontSize: 14 }}>Carregant...</div>}>
+        <FinancesContent clients={clients || []} profiles={profiles || []} />
+      </Suspense>
     </>
   )
 }
