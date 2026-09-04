@@ -373,7 +373,7 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
             <label className="acord-label">Duració del contracte</label>
             <select className="acord-select" value={acordFields.contract_duration} onChange={setAcordField('contract_duration')}>
               <option value="">Selecciona...</option>
-              <option value="durant l'esdeveniment">Durant l&apos;esdeveniment</option>
+              <option value={"durant l'esdeveniment"}>{"Durant l'esdeveniment"}</option>
               <option value="anual">Anual</option>
               <option value="mensual">Mensual</option>
               <option value="personalitzable">Personalitzable</option>
