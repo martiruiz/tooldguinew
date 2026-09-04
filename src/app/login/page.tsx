@@ -166,9 +166,9 @@ export default function LoginPage() {
         .submit:disabled { opacity: 0.7; cursor: not-allowed; }
         .forgot {
           display: flex; align-items: center; justify-content: center; gap: 5px;
-          text-align: center; font-size: 12.5px; font-weight: 500;
+          text-align: center; font-size: 11px; font-weight: 500;
           color: #1B2B4B; text-decoration: none; transition: color 0.15s;
-          padding: 6px 0;
+          padding: 4px 0;
         }
         .forgot::before {
           content: ''; display: inline-block;

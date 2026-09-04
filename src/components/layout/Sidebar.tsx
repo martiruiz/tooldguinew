@@ -36,6 +36,7 @@ const navDefs = [
 
 const serviceLinks = [
   { label: 'Google Drive', href: 'https://drive.google.com', abbr: 'G', color: '#1A73E8', bg: '#E8F0FE' },
+  { label: 'Gmail',        href: '',                         abbr: 'GM', color: '#EA4335', bg: '#FDECEA', gmail: true },
   { label: 'Dropbox',      href: 'https://www.dropbox.com',  abbr: 'D', color: '#0061FF', bg: '#E5EDFF' },
   { label: 'Metricool',    href: 'https://metricool.com/es/',    abbr: 'M', color: '#FF6B35', bg: '#FFF0EB', fixed: true },
 ]
@@ -57,6 +58,19 @@ function DropboxIcon({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
       <path fill="#1E90FF" d="M12 6L0 14l12 8 12-8zM36 6l-12 8 12 8 12-8zM0 30l12 8 12-8-12-8zM36 22l-12 8 12 8 12-8zM12 38.5L24 46.5l12-8-12-8z"/>
+    </svg>
+  )
+}
+
+function GmailIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#EA4335" d="M6 40h6V22.5L4 16v20c0 2.2 1.8 4 4 4h-2z"/>
+      <path fill="#FBBC05" d="M36 40h6c2.2 0 4-1.8 4-4V16l-8 6.5V40z"/>
+      <path fill="#34A853" d="M36 8l-12 9-12-9H6c-2.2 0-4 1.8-4 4v4l20 15.4L42 16v-4c0-2.2-1.8-4-4-4h-2z"/>
+      <path fill="#4285F4" d="M4 16l8 6.5V40h20V22.5L40 16 24 27.4 4 16z"/>
+      <path fill="#C5221F" d="M12 22.5V40H6c-2.2 0-4-1.8-4-4V16l10 6.5z"/>
+      <path fill="#FBBC05" d="M36 22.5L42 16v20c0 2.2-1.8 4-4 4h-2V22.5z"/>
     </svg>
   )
 }
@@ -101,6 +115,9 @@ export function Sidebar({ user }: Props) {
   const [editingService, setEditingService] = useState<'drive' | 'dropbox' | null>(null)
   const [editingUrl, setEditingUrl] = useState('')
   const editInputRef = useRef<HTMLInputElement>(null)
+  const [showGmailPicker, setShowGmailPicker] = useState(false)
+  const [gmailProfiles, setGmailProfiles] = useState<{ id: string; full_name: string; email: string; avatar_url?: string }[]>([])
+  const gmailRef = useRef<HTMLDivElement>(null)
 
   const inFinances = pathname.startsWith('/finances')
   const activeFinanceSection = searchParams.get('s') || 'resum'
@@ -125,6 +142,31 @@ export function Sidebar({ user }: Props) {
     if (d) setDriveUrl(d)
     if (db) setDropboxUrl(db)
   }, [user.id])
+
+  const openGmailPicker = async () => {
+    if (gmailProfiles.length === 0) {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, avatar_url')
+        .eq('is_active', true)
+        .neq('id', user.id)
+        .order('full_name')
+      setGmailProfiles(data ?? [])
+    }
+    setShowGmailPicker(v => !v)
+  }
+
+  useEffect(() => {
+    if (!showGmailPicker) return
+    const handler = (e: MouseEvent) => {
+      if (gmailRef.current && !gmailRef.current.contains(e.target as Node)) {
+        setShowGmailPicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showGmailPicker])
 
   const toggle = () => {
     setCollapsed(v => {
@@ -248,25 +290,79 @@ export function Sidebar({ user }: Props) {
         {c ? (
           <div className="sb-services-icons">
             {serviceLinks.map(s => {
-              const href = (s as any).fixed ? s.href : (s.abbr === 'G' ? driveUrl : dropboxUrl)
+              const sa = s as any
+              const href = sa.fixed ? s.href : (s.abbr === 'G' ? driveUrl : s.abbr === 'D' ? dropboxUrl : s.href)
+              const ServiceIcon = s.abbr === 'G' ? GoogleDriveIcon : s.abbr === 'GM' ? GmailIcon : s.abbr === 'M' ? MetricoolIcon : DropboxIcon
+              if (sa.gmail) {
+                return (
+                  <a key={s.abbr} href="https://mail.google.com" target="_blank" rel="noopener noreferrer"
+                    className="sb-service-icon-btn" title={s.label}
+                  >
+                    <div className="sb-service-badge" style={{ background: s.bg }}>
+                      <GmailIcon size={16} />
+                    </div>
+                  </a>
+                )
+              }
               return (
                 <a key={s.abbr} href={href} target="_blank" rel="noopener noreferrer"
                   className="sb-service-icon-btn" title={s.label}
                 >
                   <div className="sb-service-badge" style={{ background: s.bg }}>
-                    {s.abbr === 'G' ? <GoogleDriveIcon size={16} /> : s.abbr === 'M' ? <MetricoolIcon size={16} /> : <DropboxIcon size={16} />}
+                    <ServiceIcon size={16} />
                   </div>
                 </a>
               )
             })}
           </div>
         ) : (
-          <div className="sb-services-card">
+          <div className="sb-services-card" ref={gmailRef}>
             {serviceLinks.map(s => {
+              const sa = s as any
               const key = s.abbr === 'G' ? 'drive' : 'dropbox'
-              const href = (s as any).fixed ? s.href : (s.abbr === 'G' ? driveUrl : dropboxUrl)
-              const isEditing = editingService === key && !(s as any).fixed
-              const ServiceIcon = s.abbr === 'G' ? GoogleDriveIcon : s.abbr === 'M' ? MetricoolIcon : DropboxIcon
+              const href = sa.fixed ? s.href : (s.abbr === 'G' ? driveUrl : s.abbr === 'D' ? dropboxUrl : s.href)
+              const isEditing = editingService === key && !sa.fixed && !sa.gmail
+              const ServiceIcon = s.abbr === 'G' ? GoogleDriveIcon : s.abbr === 'GM' ? GmailIcon : s.abbr === 'M' ? MetricoolIcon : DropboxIcon
+
+              if (sa.gmail) {
+                return (
+                  <div key={s.abbr} className="sb-service-wrap">
+                    <div className="sb-service-row-wrap">
+                      <button className="sb-service-row sb-service-gmail-btn" onClick={openGmailPicker}>
+                        <div className="sb-service-badge" style={{ background: s.bg }}>
+                          <GmailIcon size={16} />
+                        </div>
+                        <span className="sb-service-label">{s.label}</span>
+                      </button>
+                    </div>
+                    {showGmailPicker && (
+                      <div className="sb-gmail-picker">
+                        <div className="sb-gmail-picker-title">Envia un mail a:</div>
+                        {gmailProfiles.length === 0 && <div className="sb-gmail-picker-empty">Carregant...</div>}
+                        {gmailProfiles.map(p => (
+                          <a
+                            key={p.id}
+                            href={`mailto:${p.email}`}
+                            className="sb-gmail-picker-row"
+                            onClick={() => setShowGmailPicker(false)}
+                          >
+                            <div className="sb-gmail-avatar" style={{ background: getAvatarColor(p.full_name) }}>
+                              {p.avatar_url
+                                ? <img src={p.avatar_url} alt="" className="sb-gmail-avatar-img" />
+                                : getInitials(p.full_name)}
+                            </div>
+                            <div className="sb-gmail-info">
+                              <div className="sb-gmail-name">{p.full_name}</div>
+                              <div className="sb-gmail-email">{p.email}</div>
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+
               return (
                 <div key={s.abbr} className="sb-service-wrap">
                   {isEditing ? (
@@ -294,7 +390,7 @@ export function Sidebar({ user }: Props) {
                         </div>
                         <span className="sb-service-label">{s.label}</span>
                       </a>
-                      {!(s as any).fixed && (
+                      {!sa.fixed && !sa.gmail && (
                         <button className="sb-service-edit-btn" onClick={() => openServiceEdit(key)} title={`Configura ${s.label}`}>
                           <Pencil size={11} />
                         </button>
@@ -523,6 +619,38 @@ export function Sidebar({ user }: Props) {
           display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
         .sb-service-save:hover { background: #1D4ED8; }
+
+        /* Gmail picker */
+        :global(.sb-service-gmail-btn) {
+          background: none; border: none; cursor: pointer; font-family: inherit;
+          width: 100%; text-align: left;
+        }
+        .sb-gmail-picker {
+          background: white; border: 1px solid #E5E7EB; border-radius: 10px;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.1); overflow: hidden;
+          margin: 4px 0; position: relative; z-index: 200;
+        }
+        .sb-gmail-picker-title {
+          padding: 8px 10px 4px; font-size: 10px; font-weight: 700;
+          color: #9CA3AF; letter-spacing: 0.06em; text-transform: uppercase;
+        }
+        .sb-gmail-picker-empty { padding: 8px 10px; font-size: 12px; color: #9CA3AF; }
+        .sb-gmail-picker-row {
+          display: flex; align-items: center; gap: 9px;
+          padding: 7px 10px; text-decoration: none;
+          transition: background 0.1s;
+        }
+        .sb-gmail-picker-row:hover { background: #F5F7FF; }
+        .sb-gmail-avatar {
+          width: 28px; height: 28px; border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 11px; font-weight: 700; color: white;
+          flex-shrink: 0; overflow: hidden;
+        }
+        .sb-gmail-avatar-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .sb-gmail-info { min-width: 0; flex: 1; }
+        .sb-gmail-name { font-size: 12.5px; font-weight: 600; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sb-gmail-email { font-size: 10.5px; color: #9CA3AF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         /* ── New task card ── */
         .sb-newtask-wrap { padding: 6px 10px 4px; flex-shrink: 0; }

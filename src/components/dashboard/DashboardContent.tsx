@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   CheckSquare, Clock, FolderKanban, Users, Plus,
@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { cn, formatTime, formatRelative, taskPriorityLabels, getInitials } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { useLanguage } from '@/contexts/LanguageContext'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
 import { NewTaskModal } from '@/components/tasks/NewTaskModal'
 import { NewClientModal } from '@/components/clients/NewClientModal'
@@ -37,11 +38,11 @@ interface Props {
   inboxNotifs: Notification[]
 }
 
-function getGreeting() {
+function getGreetingKey(): 'greetMorning' | 'greetAfternoon' | 'greetEvening' {
   const h = new Date().getHours()
-  if (h < 12) return 'Bon dia'
-  if (h < 19) return 'Bona tarda'
-  return 'Bona nit'
+  if (h < 12) return 'greetMorning'
+  if (h < 19) return 'greetAfternoon'
+  return 'greetEvening'
 }
 
 const priorityColor: Record<string, string> = {
@@ -52,6 +53,7 @@ const priorityColor: Record<string, string> = {
 }
 
 export function DashboardContent({ user, tasks, projects, activity, meetings, stats, profiles, clients, allProjects, currentUserId, blockedTasks, inboxNotifs }: Props) {
+  const { t: tr } = useLanguage()
   const [completingTask, setCompletingTask] = useState<string | null>(null)
   const [localTasks, setLocalTasks] = useState(tasks)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
@@ -103,8 +105,8 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
       attentionItems.push({
         id: `overdue-${t.id}`,
         level: 'red',
-        title: `${t.client?.name ?? 'Sense client'} — ${t.title}`,
-        subtitle: `Endarrerit ${daysAgo} ${daysAgo === 1 ? 'dia' : 'dies'}${t.responsible ? ` · Responsable: ${t.responsible.full_name}` : ''}`,
+        title: `${t.client?.name ?? tr('noClient')} — ${t.title}`,
+        subtitle: `${tr('overdueBy')} ${daysAgo} ${tr('overdueDays')}${t.responsible ? ` · ${tr('responsible')}: ${t.responsible.full_name}` : ''}`,
         taskId: t.id,
       })
     }
@@ -171,6 +173,29 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
 
   const [localBlockedTasks, setLocalBlockedTasks] = useState(blockedTasks)
 
+  useEffect(() => {
+    if (!('Notification' in window)) return
+    const fireNotifs = () => {
+      const items: { title: string; body: string }[] = []
+      overdueTasks.slice(0, 3).forEach(t => {
+        const daysAgo = Math.ceil((now.getTime() - new Date(t.deadline!).getTime()) / 86400000)
+        items.push({ title: `Tasca endarrerida: ${t.title}`, body: `${t.client?.name ?? ''} · fa ${daysAgo} dia${daysAgo !== 1 ? 's' : ''}` })
+      })
+      localTasks.filter(t => t.priority === 'urgent' && !overdueTasks.includes(t)).slice(0, 2).forEach(t => {
+        items.push({ title: `Tasca urgent: ${t.title}`, body: t.client?.name ?? 'Sense client' })
+      })
+      items.forEach((n, i) => {
+        setTimeout(() => new Notification(n.title, { body: n.body, icon: '/favicon.png' }), i * 600)
+      })
+    }
+    if (Notification.permission === 'granted') {
+      fireNotifs()
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(perm => { if (perm === 'granted') fireNotifs() })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Build rich activity text
   const activityText = (log: ActivityLog) => {
     const who = log.user?.full_name ?? 'Algú'
@@ -191,11 +216,11 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
       {/* Header */}
       <div className="dash-header">
         <div>
-          <h1 className="dash-greeting">{getGreeting()}, {firstName}.</h1>
+          <h1 className="dash-greeting">{tr(getGreetingKey())}, {firstName}.</h1>
           <p className="dash-subtitle">
             {localTasks.length === 0
-              ? 'Tot sota control. Cap tasca pendent.'
-              : `${localTasks.length} ${localTasks.length === 1 ? 'tasca pendent' : 'tasques pendents'} · ${overdueTasks.length > 0 ? `${overdueTasks.length} endarrerides` : 'Cap endarreriment'}`
+              ? tr('allUnderControl')
+              : `${localTasks.length} ${localTasks.length === 1 ? tr('todo') : tr('pendingTasks')} · ${overdueTasks.length > 0 ? `${overdueTasks.length} ${tr('overdueDays')}` : tr('noDelays')}`
             }
           </p>
         </div>
@@ -203,15 +228,15 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
         <div className="dash-quick-actions">
           <button className="quick-btn quick-btn--primary" onClick={() => setShowNewTask(true)}>
             <Plus size={14} strokeWidth={2.5} />
-            Nova tasca
+            {tr('newTask')}
           </button>
           <button className="quick-btn" onClick={() => setShowNewClient(true)}>
             <Users size={14} strokeWidth={1.8} />
-            Nou client
+            {tr('newClient')}
           </button>
           <button className="quick-btn" onClick={() => setShowNewProject(true)}>
             <FolderKanban size={14} strokeWidth={1.8} />
-            Nou projecte
+            {tr('newProject')}
           </button>
         </div>
       </div>
@@ -222,14 +247,14 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           <div className="stat-icon stat-icon--blue"><Users size={16} strokeWidth={2} /></div>
           <div>
             <div className="stat-value">{stats.activeClients}</div>
-            <div className="stat-label">Clients actius</div>
+            <div className="stat-label">{tr('activeClients')}</div>
           </div>
         </div>
         <div className="stat-card">
           <div className="stat-icon stat-icon--indigo"><FolderKanban size={16} strokeWidth={2} /></div>
           <div>
             <div className="stat-value">{stats.activeProjects}</div>
-            <div className="stat-label">Projectes actius</div>
+            <div className="stat-label">{tr('activeProjects')}</div>
           </div>
         </div>
         <div className="stat-card">
@@ -238,7 +263,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           </div>
           <div>
             <div className="stat-value">{stats.pendingTasks}</div>
-            <div className="stat-label">Tasques pendents</div>
+            <div className="stat-label">{tr('pendingTasks')}</div>
           </div>
         </div>
         {meetings.length > 0 && (
@@ -246,7 +271,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
             <div className="stat-icon stat-icon--blue"><Calendar size={16} strokeWidth={2} /></div>
             <div>
               <div className="stat-value">{meetings.length}</div>
-              <div className="stat-label">{meetings.length === 1 ? 'Reunió avui' : 'Reunions avui'}</div>
+              <div className="stat-label">{meetings.length === 1 ? tr('meetingsToday') : tr('meetingsTodayPl')}</div>
             </div>
           </div>
         )}
@@ -257,7 +282,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
         <div className="attention-block">
           <div className="attention-header">
             <AlertCircle size={15} strokeWidth={2} color="#DC2626" />
-            <h2 className="attention-title">Requereix la teva atenció</h2>
+            <h2 className="attention-title">{tr('needsAttention')}</h2>
             <span className="attention-count">{attentionItems.length}</span>
           </div>
           <div className="attention-list">
@@ -277,7 +302,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
                         if (t) setSelectedTask(t)
                       }}
                     >
-                      Obrir
+                      {tr('open')}
                     </button>
                   )}
                   {item.taskId && (
@@ -285,7 +310,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
                       className="attn-btn attn-btn--resolve"
                       onClick={() => item.taskId && handleCompleteTask(item.taskId)}
                     >
-                      Marcar resolt
+                      {tr('markResolved')}
                     </button>
                   )}
                   <button
@@ -308,13 +333,13 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           <div className="dash-widget">
             <div className="widget-header">
               <CheckSquare size={14} strokeWidth={2} color="#1B2B4B" />
-              <h2 className="widget-title">Tasques d&apos;avui</h2>
-              <Link href="/tasks" className="widget-link">Veure totes <ArrowRight size={12} /></Link>
+              <h2 className="widget-title">{tr('tasksToday')}</h2>
+              <Link href="/tasks" className="widget-link">{tr('seeAll')} <ArrowRight size={12} /></Link>
             </div>
             {todayTasks.length === 0 ? (
               <div className="widget-empty">
                 <CheckCircle2 size={24} color="#16A34A" />
-                <p>Cap tasca específica per avui.</p>
+                <p>{tr('noTasksToday')}</p>
               </div>
             ) : (
               <div className="task-list">
@@ -329,7 +354,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
             <div className="dash-widget">
               <div className="widget-header">
                 <Clock size={14} strokeWidth={2} color="#5C5C5C" />
-                <h2 className="widget-title">Pròximament</h2>
+                <h2 className="widget-title">{tr('upcoming')}</h2>
               </div>
               <div className="task-list">
                 {upcomingTasks.slice(0, 4).map((task) => (
@@ -343,8 +368,8 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           <div className="dash-widget">
             <div className="widget-header">
               <FolderKanban size={14} strokeWidth={2} color="#1B2B4B" />
-              <h2 className="widget-title">Projectes actius</h2>
-              <Link href="/projects" className="widget-link">Veure tots <ArrowRight size={12} /></Link>
+              <h2 className="widget-title">{tr('activeProjects')}</h2>
+              <Link href="/projects" className="widget-link">{tr('seeAllM')} <ArrowRight size={12} /></Link>
             </div>
             {projects.length === 0 ? (
               <div className="widget-empty"><p>Cap projecte assignat.</p></div>
@@ -371,14 +396,14 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           <div className="dash-widget">
             <div className="widget-header">
               <Calendar size={14} strokeWidth={2} color="#1B2B4B" />
-              <h2 className="widget-title">Avui a Guinew</h2>
-              <Link href="/calendar" className="widget-link">Calendari <ArrowRight size={12} /></Link>
+              <h2 className="widget-title">{tr('todayAtGuinew')}</h2>
+              <Link href="/calendar" className="widget-link">{tr('calendar')} <ArrowRight size={12} /></Link>
             </div>
 
             {/* Meetings timeline */}
             {meetings.length > 0 && (
               <div className="today-section">
-                <div className="today-section-label">Agenda</div>
+                <div className="today-section-label">{tr('agenda')}</div>
                 <div className="meeting-list">
                   {meetings.map((meeting) => (
                     <div key={meeting.id} className="meeting-item">
@@ -400,19 +425,19 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
 
             {meetings.length === 0 && (
               <div className="today-section">
-                <div className="today-section-label">Agenda</div>
+                <div className="today-section-label">{tr('agenda')}</div>
                 <div className="widget-empty" style={{ padding: '14px 16px' }}>
-                  <p>Sense reunions avui.</p>
+                  <p>{tr('noMeetingsToday')}</p>
                 </div>
               </div>
             )}
 
             {/* Priority tasks */}
             <div className="today-section today-section--border">
-              <div className="today-section-label">Tasques prioritàries</div>
+              <div className="today-section-label">{tr('priorityTasks')}</div>
               {priorityTasks.length === 0 ? (
                 <div className="widget-empty" style={{ padding: '14px 16px' }}>
-                  <p>Cap tasca urgent o alta prioritat.</p>
+                  <p>{tr('noPriorityTasks')}</p>
                 </div>
               ) : (
                 <div className="priority-task-list">
@@ -486,7 +511,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
             <div className="dash-widget dash-widget--blocked">
               <div className="widget-header">
                 <AlertCircle size={14} strokeWidth={2} color="#D97706" />
-                <h2 className="widget-title" style={{ color: '#D97706' }}>Bloquejos ({localBlockedTasks.length})</h2>
+                <h2 className="widget-title" style={{ color: '#D97706' }}>{tr('blockers')} ({localBlockedTasks.length})</h2>
               </div>
               <div className="blocked-list">
                 {localBlockedTasks.map(task => (
@@ -503,7 +528,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
                       className="unblock-btn"
                       onClick={() => handleUnblock(task.id)}
                     >
-                      Desbloquejar
+                      {tr('unblock')}
                     </button>
                   </div>
                 ))}
@@ -515,7 +540,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           <div className="dash-widget">
             <div className="widget-header">
               <TrendingUp size={14} strokeWidth={2} color="#5C5C5C" />
-              <h2 className="widget-title">Activitat recent</h2>
+              <h2 className="widget-title">{tr('recentActivity')}</h2>
             </div>
             {activity.length === 0 ? (
               <div className="widget-empty"><p>Cap activitat recent.</p></div>
