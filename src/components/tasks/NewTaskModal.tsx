@@ -100,8 +100,9 @@ export function NewTaskModal({ clients, projects, profiles, currentUserId, defau
             <input
               type="text"
               value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              onChange={(e) => setForm({ ...form, title: e.target.value.toUpperCase() })}
               placeholder="Títol de la tasca"
+              style={{ textTransform: 'uppercase' }}
               required
               autoFocus
             />

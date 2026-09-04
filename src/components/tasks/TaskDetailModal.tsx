@@ -535,8 +535,8 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
           <div className="modal-body">
 
             {/* Title */}
-            <textarea className="title-inp" value={form.title}
-              onChange={e => dirty('title', e.target.value)} rows={1}
+            <textarea className="title-inp" value={form.title.toUpperCase()}
+              onChange={e => dirty('title', e.target.value.toUpperCase())} rows={1}
               onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
             />
 
@@ -952,6 +952,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         .title-inp {
           font-size: 18px; font-weight: 700; color: #0a0a0a; border: none; outline: none;
           resize: none; width: 100%; font-family: inherit; line-height: 1.3; background: transparent; padding: 0;
+          text-transform: uppercase; letter-spacing: 0.01em;
         }
 
         /* Meta row */
