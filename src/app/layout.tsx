@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'GUINEW TOOLS · Agència Guinew',
+  title: 'Tools · Agència Guinew',
   description: 'Plataforma interna de l\'Agència Guinew',
   icons: {
     icon: '/favicon.png',
