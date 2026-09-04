@@ -75,13 +75,23 @@ export default function LoginPage() {
 
       <style jsx>{`
         .page {
-          min-height: 100vh; background: #000;
+          min-height: 100vh;
+          background: linear-gradient(135deg, #0a1628 0%, #0f2147 40%, #1a3a6e 70%, #0d2050 100%);
           display: flex; align-items: center; justify-content: center; padding: 24px;
+          position: relative; overflow: hidden;
+        }
+        .page::before {
+          content: '';
+          position: absolute; inset: 0;
+          background: radial-gradient(ellipse at 20% 50%, rgba(74,127,193,0.15) 0%, transparent 60%),
+                      radial-gradient(ellipse at 80% 20%, rgba(26,56,110,0.3) 0%, transparent 50%);
+          pointer-events: none;
         }
         .card {
           display: flex; width: 100%; max-width: 720px; min-height: 430px;
           border-radius: 18px; overflow: hidden;
-          box-shadow: 0 32px 80px rgba(0,0,0,0.7);
+          box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06);
+          position: relative; z-index: 1;
         }
         /* LEFT */
         .left {
