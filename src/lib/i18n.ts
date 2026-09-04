@@ -11,7 +11,7 @@ export const TRANSLATIONS: TranslationMap = {
   // Nav
   dashboard:   { ca: 'Dashboard',   es: 'Dashboard',   en: 'Dashboard' },
   clients:     { ca: 'Clients',     es: 'Clientes',    en: 'Clients' },
-  campaigns:   { ca: 'Campanyes',   es: 'Campañas',    en: 'Campaigns' },
+  campaigns:   { ca: 'Projectes',   es: 'Proyectos',   en: 'Projects' },
   tasks:       { ca: 'Tasques',     es: 'Tareas',      en: 'Tasks' },
   sessions:    { ca: 'Sessions',    es: 'Sesiones',    en: 'Sessions' },
   calendar:    { ca: 'Calendari',   es: 'Calendario',  en: 'Calendar' },
