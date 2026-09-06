@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, Shield, User, Users, Edit2, Power, KeyRound, X, Eye, EyeOff } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Plus, Shield, User, Users, Edit2, Power, KeyRound, X, Eye, EyeOff, Camera } from 'lucide-react'
 import { cn, roleLabels, getInitials } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
@@ -18,6 +18,31 @@ export function AdminContent({ members, currentUserId }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
+  // Avatar upload
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
+
+  const handleAvatarClick = (memberId: string) => {
+    setUploadingId(memberId)
+    fileInputRef.current?.click()
+  }
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !uploadingId) return
+    e.target.value = ''
+    const supabase = createClient()
+    const ext = file.name.split('.').pop()
+    const path = `avatars/${uploadingId}.${ext}`
+    const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+    if (upErr) { alert('Error pujant la foto.'); setUploadingId(null); return }
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+    const url = `${publicUrl}?t=${Date.now()}`
+    await supabase.from('profiles').update({ avatar_url: url }).eq('id', uploadingId)
+    setLocalMembers(prev => prev.map(m => m.id === uploadingId ? { ...m, avatar_url: url } : m))
+    setUploadingId(null)
+  }
 
   // Change password modal
   const [pwdMember, setPwdMember] = useState<Profile | null>(null)
@@ -204,12 +229,19 @@ export function AdminContent({ members, currentUserId }: Props) {
           {localMembers.map((member) => (
             <div key={member.id} className={cn('member-row', !member.is_active && 'member-row--inactive')}>
               <div className="member-info">
-                <div className="member-avatar">
-                  {member.avatar_url ? (
-                    <img src={member.avatar_url} alt={member.full_name} />
-                  ) : (
-                    getInitials(member.full_name)
-                  )}
+                <div className="member-avatar-wrap" onClick={() => handleAvatarClick(member.id)} title="Canviar foto">
+                  <div className="member-avatar">
+                    {uploadingId === member.id ? (
+                      <div className="avatar-uploading">…</div>
+                    ) : member.avatar_url ? (
+                      <img src={member.avatar_url} alt={member.full_name} />
+                    ) : (
+                      getInitials(member.full_name)
+                    )}
+                  </div>
+                  <div className="avatar-camera-overlay">
+                    <Camera size={12} strokeWidth={2} color="white" />
+                  </div>
                 </div>
                 <div>
                   <div className="member-name">{member.full_name}</div>
@@ -249,6 +281,15 @@ export function AdminContent({ members, currentUserId }: Props) {
           ))}
         </div>
       </div>
+
+      {/* Hidden file input for avatar upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleAvatarChange}
+      />
 
       <style jsx>{`
         .admin-page {
@@ -466,6 +507,16 @@ export function AdminContent({ members, currentUserId }: Props) {
 
         .member-info { display: flex; align-items: center; gap: 12px; }
 
+        .member-avatar-wrap {
+          position: relative; flex-shrink: 0; cursor: pointer;
+          width: 36px; height: 36px; border-radius: 50%;
+        }
+        .member-avatar-wrap:hover .avatar-camera-overlay { opacity: 1; }
+        .avatar-camera-overlay {
+          position: absolute; inset: 0; border-radius: 50%;
+          background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center;
+          opacity: 0; transition: opacity 0.15s;
+        }
         .member-avatar {
           width: 36px;
           height: 36px;
@@ -480,6 +531,7 @@ export function AdminContent({ members, currentUserId }: Props) {
           flex-shrink: 0;
           overflow: hidden;
         }
+        .avatar-uploading { font-size: 10px; color: #9A9A9A; }
 
         .member-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
