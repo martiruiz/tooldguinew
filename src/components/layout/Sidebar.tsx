@@ -22,8 +22,8 @@ const financeNavDefs = [
   { id: 'cartera',     labelKey: 'finCartera'    as keyof typeof TRANSLATIONS, icon: Users      },
   { id: 'proveidors',  labelKey: 'finProveidors' as keyof typeof TRANSLATIONS, icon: Truck      },
   { id: 'estructura',  labelKey: 'finEstructura' as keyof typeof TRANSLATIONS, icon: Building2  },
-  { id: 'grafics',     labelKey: 'finGrafics'    as keyof typeof TRANSLATIONS, icon: PieChart   },
   { id: 'fiscalitat', labelKey: 'finFiscalitat' as keyof typeof TRANSLATIONS, icon: Scale      },
+  { id: 'grafics',     labelKey: 'finGrafics'    as keyof typeof TRANSLATIONS, icon: PieChart   },
 ]
 
 const navDefs = [

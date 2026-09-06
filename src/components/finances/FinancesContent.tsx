@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, Trash2, Save, ArrowUpRight, ArrowDownRight, Pencil, Download, ChevronUp, ChevronDown, ArrowLeft } from 'lucide-react'
+import { Plus, Trash2, Save, ArrowUpRight, ArrowDownRight, Pencil, Download, ChevronUp, ChevronDown, ArrowLeft, Landmark } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { FiscalitatSection, computeFiscalKpis, DEFAULT_FISCAL_DATA } from './FiscalitatSection'
 import type { FiscalData } from './FiscalitatSection'
@@ -353,7 +353,7 @@ function ResumSection({ kpis, adequate, belowObj, deficit, marginObjective, fisc
       {fiscalKpis && (
         <div className="rs-fiscal-bar">
           <div className="rs-fiscal-label">
-            <span className="rs-fiscal-icon">🏛</span>
+            <Landmark size={14} />
             IMPOSTOS PENDENTS
             <span className="rs-fiscal-est">Estimat</span>
           </div>
