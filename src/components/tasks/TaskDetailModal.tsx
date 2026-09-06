@@ -76,6 +76,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
   const [isDirty, setIsDirty] = useState(false)
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
   const commentRef = useRef<HTMLTextAreaElement>(null)
+  const descRef = useRef<HTMLTextAreaElement>(null)
   const checkRef = useRef<HTMLInputElement>(null)
   const subtaskRef = useRef<HTMLInputElement>(null)
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -83,6 +84,13 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
   const [reactions, setReactions] = useState<Record<string, Record<string, string[]>>>({})
   const [showAllActivity, setShowAllActivity] = useState(false)
   const [openEmojiPickerId, setOpenEmojiPickerId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (descRef.current) {
+      descRef.current.style.height = 'auto'
+      descRef.current.style.height = descRef.current.scrollHeight + 'px'
+    }
+  }, [form.description])
 
   useEffect(() => {
     setMounted(true)
@@ -852,7 +860,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
             {/* DESCRIPCIÓ */}
             <div className="section">
               <div className="section-hdr"><span className="sec-label">Descripció</span></div>
-              <textarea className="desc-inp" value={form.description}
+              <textarea ref={descRef} className="desc-inp" value={form.description}
                 onChange={e => dirty('description', e.target.value)}
                 placeholder="Afegeix una descripció..."
                 rows={1}
