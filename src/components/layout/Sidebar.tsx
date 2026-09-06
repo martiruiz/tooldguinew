@@ -85,18 +85,7 @@ function BrevoIcon({ size = 18 }: { size?: number }) {
 
 function MetricoolIcon({ size = 18 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="metricool-g" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#FF8C5A"/>
-          <stop offset="100%" stopColor="#E8521A"/>
-        </linearGradient>
-      </defs>
-      <rect width="120" height="120" rx="26" fill="url(#metricool-g)"/>
-      <rect x="14" y="52" width="22" height="54" rx="5" fill="white" opacity="0.95"/>
-      <rect x="49" y="28" width="22" height="78" rx="5" fill="white" opacity="0.95"/>
-      <rect x="84" y="66" width="22" height="40" rx="5" fill="white" opacity="0.95"/>
-    </svg>
+    <img src="/metricool-logo.jpg" width={size} height={size} alt="Metricool" style={{ objectFit: 'contain', display: 'block', borderRadius: 4 }} />
   )
 }
 
