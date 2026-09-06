@@ -695,7 +695,7 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
             const respBg = row.responsible ? getAvatarColor(row.responsible) : '#9CA3AF'
             const up = (field: keyof ClientRecord, val: any) => onUpdate(row.id, field, val)
             return (
-              <div key={row.id} className="ct-card">
+              <div key={row.id} className="ct-card" onClick={() => onEdit(row)} style={{ cursor: 'pointer' }}>
                 {/* Left: avatar + nom + tipus */}
                 <div className="ct-card-left">
                   {row.photoUrl
@@ -704,7 +704,7 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
                   }
                   <div className="ct-card-inputs">
                     {row.clientId ? (
-                      <Link href={`/clients/${row.clientId}`} className="ct-name ct-name-link">{row.clientName}</Link>
+                      <Link href={`/clients/${row.clientId}`} className="ct-name ct-name-link" onClick={e => e.stopPropagation()}>{row.clientName}</Link>
                     ) : (
                       <input className="ct-inline-input ct-inline-input--name" value={row.clientName} placeholder="Nom del client..." onChange={e => up('clientName', e.target.value)} onClick={e => e.stopPropagation()} />
                     )}
@@ -762,8 +762,7 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
                     return null
                   })}
                   <div className="ct-card-actions">
-                    <button className="ct-action-btn ct-action-btn--edit" onClick={() => onEdit(row)} title="Editar detalls"><Pencil size={12}/></button>
-                    <button className="ct-action-btn ct-action-btn--del" onClick={() => onDelete(row.id)}><Trash2 size={13}/></button>
+                    <button className="ct-action-btn ct-action-btn--del" onClick={e => { e.stopPropagation(); onDelete(row.id) }}><Trash2 size={13}/></button>
                   </div>
                 </div>
               </div>
