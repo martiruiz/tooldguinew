@@ -75,6 +75,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
+  const [titleError, setTitleError] = useState(false)
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
   const commentRef = useRef<HTMLTextAreaElement>(null)
   const descRef = useRef<HTMLTextAreaElement>(null)
@@ -192,6 +193,11 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
   }
 
   const saveAll = async () => {
+    if (!form.title.trim() || form.title.trim().toUpperCase() === 'NOVA TASCA') {
+      setTitleError(true)
+      return false
+    }
+    setTitleError(false)
     setSaving(true)
     const supabase = createClient()
     const { data, error } = await supabase
@@ -645,11 +651,12 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
 
           {/* Title area — always visible, not scrollable */}
           <div className="modal-title-area">
-            <textarea className="title-inp" value={form.title.toUpperCase()}
-              onChange={e => dirty('title', e.target.value.toUpperCase())} rows={1}
+            <textarea className={`title-inp${titleError ? ' title-inp--error' : ''}`} value={form.title.toUpperCase()}
+              onChange={e => { setTitleError(false); dirty('title', e.target.value.toUpperCase()) }} rows={1}
               placeholder="TÍTOL DE LA TASCA..."
               onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
             />
+            {titleError && <span className="title-error-msg">Canvia el nom de la tasca abans de guardar</span>}
           </div>
 
           <div className="modal-body">
@@ -1089,7 +1096,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
               <button className="btn-cancel" onClick={onClose}>Tancar</button>
               <button
                 className={`btn-save${saved && !isDirty ? ' btn-save--ok' : ''}`}
-                onClick={async () => { await saveAll(); onClose() }}
+                onClick={async () => { const ok = await saveAll(); if (ok !== false) onClose() }}
                 disabled={saving}
               >
                 <Save size={13} strokeWidth={2.2} />
@@ -1172,6 +1179,11 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
           text-transform: uppercase; letter-spacing: 0.01em; overflow: hidden;
         }
         .title-inp::placeholder { color: #D0D0D0; }
+        .title-inp--error { color: #DC2626 !important; }
+        .title-error-msg {
+          display: block; font-size: 11.5px; color: #DC2626; font-weight: 500;
+          margin-top: 4px; letter-spacing: 0;
+        }
         .resp-chip {
           display: inline-flex; align-items: center; gap: 7px;
           background: none; border: 1.5px solid transparent; border-radius: 20px;
