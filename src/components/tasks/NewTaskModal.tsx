@@ -109,7 +109,7 @@ export function NewTaskModal({ clients, projects, profiles, currentUserId, defau
             />
           </div>
 
-          <div className="form-row">
+          <div className="form-row-2">
             <div className="form-field">
               <label>Client</label>
               <select value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })}>
@@ -119,7 +119,6 @@ export function NewTaskModal({ clients, projects, profiles, currentUserId, defau
                 ))}
               </select>
             </div>
-
             <div className="form-field">
               <label>Projecte</label>
               <select value={form.project_id} onChange={(e) => setForm({ ...form, project_id: e.target.value })}>
@@ -131,7 +130,7 @@ export function NewTaskModal({ clients, projects, profiles, currentUserId, defau
             </div>
           </div>
 
-          <div className="form-row">
+          <div className="form-row-4">
             <div className="form-field">
               <label>Responsable</label>
               <select value={form.responsible_id} onChange={(e) => setForm({ ...form, responsible_id: e.target.value })}>
@@ -141,7 +140,6 @@ export function NewTaskModal({ clients, projects, profiles, currentUserId, defau
                 ))}
               </select>
             </div>
-
             <div className="form-field">
               <label>Prioritat</label>
               <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value as Task['priority'] })}>
@@ -151,9 +149,6 @@ export function NewTaskModal({ clients, projects, profiles, currentUserId, defau
                 <option value="urgent">Urgent</option>
               </select>
             </div>
-          </div>
-
-          <div className="form-row">
             <div className="form-field">
               <label>Estat</label>
               <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as Task['status'] })}>
@@ -164,13 +159,12 @@ export function NewTaskModal({ clients, projects, profiles, currentUserId, defau
                 <option value="blocked">Bloquejat</option>
               </select>
             </div>
-
             <div className="form-field">
               <label>Deadline</label>
               <DateTimePicker
                 value={form.deadline}
                 onChange={(v) => setForm({ ...form, deadline: v })}
-                placeholder="Selecciona data i hora..."
+                placeholder="Data i hora..."
               />
             </div>
           </div>
@@ -212,7 +206,7 @@ export function NewTaskModal({ clients, projects, profiles, currentUserId, defau
           background: white;
           border-radius: 16px;
           width: 100%;
-          max-width: 540px;
+          max-width: 720px;
           box-shadow: 0 20px 60px rgba(0,0,0,0.2);
           max-height: 90vh;
           overflow-y: auto;
@@ -256,10 +250,16 @@ export function NewTaskModal({ clients, projects, profiles, currentUserId, defau
           gap: 14px;
         }
 
-        .form-row {
+        .form-row-2 {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 12px;
+        }
+
+        .form-row-4 {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr 1fr;
+          gap: 10px;
         }
 
         .form-field { display: flex; flex-direction: column; gap: 6px; }
