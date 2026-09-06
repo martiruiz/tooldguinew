@@ -7,10 +7,10 @@ import { cn, clientTypeLabels, getInitials } from '@/lib/utils'
 import { NewClientModal } from './NewClientModal'
 import type { Client } from '@/types'
 
-const healthConfig = {
-  healthy: { label: 'Healthy', bg: '#F0FDF4', color: '#16A34A', dot: '#16A34A' },
-  attention: { label: 'Attention', bg: '#FFFBEB', color: '#D97706', dot: '#D97706' },
-  risk: { label: 'Risk', bg: '#FEF2F2', color: '#DC2626', dot: '#DC2626' },
+const healthConfig: Record<string, { label: string; bg: string; color: string; dot: string }> = {
+  healthy: { label: 'Client', bg: '#F0FDF4', color: '#16A34A', dot: '#16A34A' },
+  attention: { label: 'Client', bg: '#F0FDF4', color: '#16A34A', dot: '#16A34A' },
+  risk: { label: 'No client', bg: '#FEF2F2', color: '#DC2626', dot: '#DC2626' },
 }
 
 const statusFilter = ['Tots', 'Actius', 'Pausats', 'Inactius']
@@ -115,6 +115,8 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
   }
 
   async function handleClientUpdate(id: string, changes: Partial<Client>) {
+    if (changes.health === 'risk') changes = { ...changes, status: 'inactive' }
+    else if (changes.health === 'healthy') changes = { ...changes, status: 'active' }
     const res = await fetch(`/api/clients/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -659,7 +661,7 @@ function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete, onUpdat
             </button>
             {healthOpen && canManage && (
               <div style={{ position: 'absolute', top: '110%', right: 0, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: 130, overflow: 'hidden', zIndex: 50 }}>
-                {(Object.entries(healthConfig) as [string, typeof healthConfig.healthy][]).map(([key, cfg]) => (
+                {(Object.entries(healthConfig).filter(([k]) => k !== 'attention') as [string, typeof healthConfig.healthy][]).map(([key, cfg]) => (
                   <button
                     key={key}
                     onClick={e => { e.preventDefault(); e.stopPropagation(); onUpdate(client.id, { health: key as Client['health'] }); setHealthOpen(false) }}
@@ -975,7 +977,7 @@ function ClientRow({ client, canManage, onEdit, onDelete, onUpdate }: CardProps)
           </button>
           {healthOpen && canManage && (
             <div style={{ position: 'absolute', top: '110%', left: 0, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: 130, overflow: 'hidden', zIndex: 50 }}>
-              {(Object.entries(healthConfig) as [string, typeof healthConfig.healthy][]).map(([key, cfg]) => (
+              {(Object.entries(healthConfig).filter(([k]) => k !== 'attention') as [string, typeof healthConfig.healthy][]).map(([key, cfg]) => (
                 <button
                   key={key}
                   onClick={e => { e.preventDefault(); e.stopPropagation(); onUpdate(client.id, { health: key as Client['health'] }); setHealthOpen(false) }}
@@ -1214,7 +1216,7 @@ function ClientTable({ clients, canManage, onEdit, onDelete, onUpdate }: {
                     </button>
                     {healthOpenId === client.id && canManage && (
                       <div style={{ position: 'absolute', top: '110%', left: 0, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: 130, overflow: 'hidden', zIndex: 50 }}>
-                        {(Object.entries(healthConfig) as [string, typeof healthConfig.healthy][]).map(([key, cfg]) => (
+                        {(Object.entries(healthConfig).filter(([k]) => k !== 'attention') as [string, typeof healthConfig.healthy][]).map(([key, cfg]) => (
                           <button
                             key={key}
                             onClick={e => { e.preventDefault(); e.stopPropagation(); onUpdate(client.id, { health: key as Client['health'] }); setHealthOpenId(null) }}
