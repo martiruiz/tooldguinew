@@ -1089,11 +1089,11 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
               <button className="btn-cancel" onClick={onClose}>Tancar</button>
               <button
                 className={`btn-save${saved && !isDirty ? ' btn-save--ok' : ''}`}
-                onClick={saveAll}
+                onClick={async () => { await saveAll(); onClose() }}
                 disabled={saving}
               >
                 <Save size={13} strokeWidth={2.2} />
-                {saving ? 'Desant...' : saved && !isDirty ? '✓ Guardat' : 'Guardar'}
+                {saving ? 'Desant...' : 'Guardar'}
               </button>
             </div>
           </div>

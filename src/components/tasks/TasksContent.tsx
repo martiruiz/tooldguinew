@@ -157,7 +157,9 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
   }
 
   const handleTaskCreated = (newTask: Task) => {
-    setLocalTasks((prev) => [newTask, ...prev])
+    setLocalTasks((prev) => prev.some(t => t.id === newTask.id)
+      ? prev.map(t => t.id === newTask.id ? newTask : t)
+      : [newTask, ...prev])
   }
 
   const handleTaskUpdated = (updated: Task) => {

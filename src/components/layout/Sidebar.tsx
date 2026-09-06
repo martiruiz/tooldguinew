@@ -63,16 +63,7 @@ function GmailIcon({ size = 18 }: { size?: number }) {
 
 function BrevoIcon({ size = 18 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="brevo-g" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#0EA5E9"/>
-          <stop offset="100%" stopColor="#0B7285"/>
-        </linearGradient>
-      </defs>
-      <rect width="120" height="120" rx="26" fill="url(#brevo-g)"/>
-      <path d="M34 28h28c12 0 20 6.5 20 16.5 0 6-3 10.5-8 13 7 2.5 11.5 8 11.5 15.5C85.5 85 76.5 92 63 92H34V28zm14 25h13c5.5 0 8.5-2.5 8.5-7s-3-7-8.5-7H48v14zm0 26h15c6 0 9.5-2.8 9.5-7.8s-3.5-7.7-9.5-7.7H48v15.5z" fill="white"/>
-    </svg>
+    <img src="/brevo-logo.png" width={size} height={size} alt="Brevo" style={{ objectFit: 'contain', display: 'block', borderRadius: 4 }} />
   )
 }
 
