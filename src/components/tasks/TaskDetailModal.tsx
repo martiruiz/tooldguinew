@@ -1120,7 +1120,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
           z-index: 1000; padding: 20px;
         }
         .modal {
-          background: white; border-radius: 16px; width: 100%; max-width: 580px;
+          background: white; border-radius: 16px; width: 100%; max-width: 520px;
           max-height: 92vh; display: flex; flex-direction: column;
           box-shadow: 0 24px 64px rgba(0,0,0,0.22); overflow: hidden;
         }
@@ -1257,7 +1257,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         .mini-av img { width: 100%; height: 100%; object-fit: cover; }
 
         /* Fields grid */
-        .grid6 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .grid6 { display: grid; grid-template-columns: 1fr; gap: 7px; }
         .field { display: flex; flex-direction: column; gap: 4px; }
         .field label { font-size: 10.5px; font-weight: 700; color: #9A9A9A; letter-spacing: 0.05em; text-transform: uppercase; }
         .field select, .field input {
