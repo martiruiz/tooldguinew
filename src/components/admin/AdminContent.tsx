@@ -250,9 +250,21 @@ export function AdminContent({ members, currentUserId }: Props) {
               </div>
               <div className="member-position">{member.position || '—'}</div>
               <div>
-                <span className={cn('role-badge', `role-badge--${member.role}`)}>
-                  {roleLabels[member.role]}
-                </span>
+                <select
+                  className={cn('role-select', `role-select--${member.role}`)}
+                  value={member.role}
+                  disabled={member.id === currentUserId}
+                  onChange={async (e) => {
+                    const newRole = e.target.value as Profile['role']
+                    setLocalMembers(prev => prev.map(m => m.id === member.id ? { ...m, role: newRole } : m))
+                    const supabase = createClient()
+                    await supabase.from('profiles').update({ role: newRole }).eq('id', member.id)
+                  }}
+                >
+                  <option value="team_member">Team Member</option>
+                  <option value="manager">Manager</option>
+                  <option value="superadmin">Superadmin</option>
+                </select>
               </div>
               <div>
                 <span className={cn('status-badge', member.is_active ? 'status-badge--active' : 'status-badge--inactive')}>
@@ -559,6 +571,28 @@ export function AdminContent({ members, currentUserId }: Props) {
         .role-badge--superadmin { background: #1B2B4B14; color: #1B2B4B; }
         .role-badge--manager { background: #25406714; color: #254067; }
         .role-badge--team_member { background: #F0F0F0; color: #5C5C5C; }
+
+        .role-select {
+          font-size: 11px;
+          font-weight: 600;
+          padding: 3px 22px 3px 8px;
+          border-radius: 5px;
+          border: none;
+          outline: none;
+          cursor: pointer;
+          font-family: inherit;
+          appearance: none;
+          -webkit-appearance: none;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235C5C5C' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right 6px center;
+          transition: opacity 0.1s;
+        }
+        .role-select:disabled { cursor: default; opacity: 0.7; background-image: none; padding-right: 8px; }
+        .role-select--superadmin { background-color: #1B2B4B14; color: #1B2B4B; }
+        .role-select--manager { background-color: #25406714; color: #254067; }
+        .role-select--team_member { background-color: #F0F0F0; color: #5C5C5C; }
+        .role-select:hover:not(:disabled) { filter: brightness(0.95); }
 
         .status-badge {
           font-size: 11px;
