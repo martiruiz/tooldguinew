@@ -86,11 +86,12 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
   const [openEmojiPickerId, setOpenEmojiPickerId] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!mounted) return
     if (descRef.current) {
       descRef.current.style.height = 'auto'
       descRef.current.style.height = descRef.current.scrollHeight + 'px'
     }
-  }, [form.description])
+  }, [form.description, mounted])
 
   useEffect(() => {
     setMounted(true)
