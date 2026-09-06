@@ -643,7 +643,7 @@ export function Sidebar({ user }: Props) {
         .sb-section-lbl {
           display: flex; align-items: center; gap: 5px;
           padding: 6px 14px 3px;
-          font-size: 10px; font-weight: 700; color: #BCBCBC;
+          font-size: 10px; font-weight: 700; color: #254067;
           letter-spacing: 0.08em; text-transform: uppercase;
           white-space: nowrap; flex-shrink: 0;
         }
@@ -655,7 +655,7 @@ export function Sidebar({ user }: Props) {
         .sb-section-toggle:hover { background: rgba(0,0,0,0.04); }
         .sb-toggle-arrow {
           margin-left: auto; font-size: 13px; font-weight: 400;
-          letter-spacing: 0; text-transform: none; color: #BCBCBC; line-height: 1;
+          letter-spacing: 0; text-transform: none; color: #254067; line-height: 1;
         }
         .sb-section-lbl--fin { color: #254067; padding-top: 8px; }
         .sb-section-lbl--fin .sb-toggle-arrow { color: #254067; }
