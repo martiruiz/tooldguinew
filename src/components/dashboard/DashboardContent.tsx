@@ -16,6 +16,7 @@ import { NewClientModal } from '@/components/clients/NewClientModal'
 import { NewProjectModal } from '@/components/projects/NewProjectModal'
 import { CommandPalette } from '@/components/layout/CommandPalette'
 import { PMControlCenter } from '@/components/dashboard/PMControlCenter'
+import { DailyChecklist } from '@/components/dashboard/DailyChecklist'
 import type { Profile, Task, Project, Meeting, ActivityLog, Notification } from '@/types'
 
 interface Stats {
@@ -430,6 +431,9 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
               </div>
             )}
           </div>
+
+          {/* Daily checklist */}
+          <DailyChecklist userId={currentUserId} />
         </div>
 
         {/* Right: Avui a Guinew + Activity */}
