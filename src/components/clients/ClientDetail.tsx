@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { cn, clientTypeLabels, projectStatusLabels, taskPriorityLabels, getInitials, formatDate } from '@/lib/utils'
 import { createClient as createSupabase } from '@/lib/supabase/client'
-import { NewTaskModal } from '@/components/tasks/NewTaskModal'
+import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
 import { AnnualPlan } from '@/components/clients/AnnualPlan'
 import { ClientMetricsTab } from '@/components/clients/ClientMetricsTab'
@@ -688,7 +688,7 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
       )}
 
       {showNewTask && (
-        <NewTaskModal
+        <CreateTaskModal
           clients={[{ id: client.id, name: client.name }]}
           projects={localProjects.map(p => ({ id: p.id, name: p.name }))}
           profiles={profiles}

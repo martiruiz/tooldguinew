@@ -11,7 +11,7 @@ import { cn, formatTime, formatRelative, taskPriorityLabels, getInitials } from 
 import { createClient } from '@/lib/supabase/client'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
-import { NewTaskModal } from '@/components/tasks/NewTaskModal'
+import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 import { NewClientModal } from '@/components/clients/NewClientModal'
 import { NewProjectModal } from '@/components/projects/NewProjectModal'
 import { CommandPalette } from '@/components/layout/CommandPalette'
@@ -608,7 +608,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
       )}
 
       {showNewTask && (
-        <NewTaskModal
+        <CreateTaskModal
           clients={clients}
           projects={allProjects}
           profiles={profiles}

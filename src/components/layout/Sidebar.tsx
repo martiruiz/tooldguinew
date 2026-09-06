@@ -15,7 +15,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { Profile, Task } from '@/types'
 import { useLanguage } from '@/contexts/LanguageContext'
 import type { TRANSLATIONS } from '@/lib/i18n'
-import { NewTaskModal } from '@/components/tasks/NewTaskModal'
+import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 
 const financeNavDefs = [
   { id: 'resum',       labelKey: 'finResum'      as keyof typeof TRANSLATIONS, icon: BarChart3  },
@@ -564,7 +564,7 @@ export function Sidebar({ user }: Props) {
 
       {/* Task modal */}
       {showTaskModal && (
-        <NewTaskModal
+        <CreateTaskModal
           clients={modalClients}
           projects={modalProjects}
           profiles={modalProfiles}

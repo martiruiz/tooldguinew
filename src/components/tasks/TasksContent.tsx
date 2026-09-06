@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { Plus, List, Columns, Search, SlidersHorizontal, X, RefreshCw, AtSign, HelpCircle, AlertTriangle, Home, Laptop, Camera, Music, Monitor, ChevronRight, Zap, Star, Flag, Clock, Bell, Bookmark, BarChart2, Settings, Users, Mail, Phone, Globe, Package, Truck, Target, Layers, CheckSquare, FileText, Inbox, ArrowRight, Pencil, Heart, Smile, Coffee, Sun, Moon, Cloud, Flame, Leaf, Eye, Lock, Unlock, Key, Shield, Award, Gift, Lightbulb, MessageCircle, MessageSquare, Send, Rss, Wifi, Battery, Cpu, Database, Server, Code, Terminal, GitBranch, GitMerge, Scissors, Crop, PenTool, Palette, Image, Video, Headphones, Radio, Tv, Printer, Scan, Download, Upload, Link, ExternalLink, Anchor, Compass, Map, Navigation, Plane, Car, Bike, Bus, Train, Ship, Umbrella, Wind, Snowflake, Thermometer, Activity, Stethoscope, Pill, Apple, ShoppingCart, ShoppingBag, CreditCard, DollarSign, TrendingUp, TrendingDown, PieChart, Calendar, Grid, Layout, Maximize, Minimize, Move, Copy, Archive, Trash2, FolderOpen, Folder, HardDrive, Paperclip, Clipboard, Toolbox, Wrench, Hammer, Sliders, ToggleLeft, ToggleRight, ChevronUp, ChevronDown, ChevronsRight, ArrowUp, ArrowDown, RotateCcw, Repeat, Shuffle, Play, Pause, Square, Circle, Triangle, Hexagon, Octagon, AlignLeft, AlignCenter, Type, Hash, Percent, PlusCircle, MinusCircle, XCircle, AlertCircle, Info, ThumbsUp, ThumbsDown, Mic, Volume2, UserCheck, UserPlus, UserMinus, Briefcase, BookOpen, Book, GraduationCap, Feather, Edit3, ClipboardList, ClipboardCheck, MoreHorizontal, Sidebar, Tag } from 'lucide-react'
 import { cn, taskStatusLabels, taskPriorityLabels, getInitials } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { NewTaskModal } from './NewTaskModal'
+import { CreateTaskModal } from './CreateTaskModal'
 import { TaskDetailModal } from './TaskDetailModal'
 import type { Task } from '@/types'
 
@@ -510,7 +510,7 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
       </div>
 
       {showNew && (
-        <NewTaskModal
+        <CreateTaskModal
           clients={clients}
           projects={projects}
           profiles={profiles}

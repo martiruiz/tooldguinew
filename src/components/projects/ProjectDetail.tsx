@@ -9,7 +9,7 @@ import {
   Pencil, Trash2, X, Check
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { NewTaskModal } from '@/components/tasks/NewTaskModal'
+import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 import type { Project, Task, Profile } from '@/types'
 
 /* ── Predefined task templates per campaign type ── */
@@ -425,7 +425,7 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
       </div>
 
       {showNewTask && (
-        <NewTaskModal
+        <CreateTaskModal
           clients={project.client ? [{ id: project.client_id, name: (project.client as any).name }] : []}
           projects={[{ id: project.id, name: project.name }]}
           profiles={profiles}
