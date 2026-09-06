@@ -636,9 +636,14 @@ function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete, onUpdat
           <div ref={healthRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 4 }} onClick={e => e.preventDefault()}>
             {canManage ? (
               <button
-                onClick={e => { e.preventDefault(); e.stopPropagation(); onUpdate(client.id, { status: client.status === 'active' ? 'paused' : 'active' }) }}
-                title={client.status === 'active' ? 'Pausar client' : 'Activar client'}
-                style={{ width: 8, height: 8, borderRadius: '50%', background: client.status === 'active' ? '#16A34A' : client.status === 'paused' ? '#D97706' : '#9CA3AF', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'background 0.15s' }}
+                onClick={e => {
+                  e.preventDefault(); e.stopPropagation()
+                  if (client.status === 'active') onUpdate(client.id, { status: 'inactive' })
+                  else if (client.status === 'inactive') onUpdate(client.id, { status: 'active' })
+                  else onDelete()
+                }}
+                title={client.status === 'active' ? 'Marcar com No client' : client.status === 'inactive' ? 'Marcar com Client' : 'Esborrar client'}
+                style={{ width: 8, height: 8, borderRadius: '50%', background: client.status === 'active' ? '#16A34A' : client.status === 'paused' ? '#D97706' : '#DC2626', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'background 0.15s' }}
               />
             ) : (
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: health.dot, display: 'inline-block', flexShrink: 0 }} />
@@ -948,9 +953,14 @@ function ClientRow({ client, canManage, onEdit, onDelete, onUpdate }: CardProps)
         <div ref={healthRef} style={{ position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }} onClick={e => e.preventDefault()}>
           {canManage ? (
             <button
-              onClick={e => { e.preventDefault(); e.stopPropagation(); onUpdate(client.id, { status: client.status === 'active' ? 'paused' : 'active' }) }}
-              title={client.status === 'active' ? 'Pausar client' : 'Activar client'}
-              style={{ width: 8, height: 8, borderRadius: '50%', background: client.status === 'active' ? '#16A34A' : client.status === 'paused' ? '#D97706' : '#9CA3AF', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'background 0.15s' }}
+              onClick={e => {
+                e.preventDefault(); e.stopPropagation()
+                if (client.status === 'active') onUpdate(client.id, { status: 'inactive' })
+                else if (client.status === 'inactive') onUpdate(client.id, { status: 'active' })
+                else onDelete()
+              }}
+              title={client.status === 'active' ? 'Marcar com No client' : client.status === 'inactive' ? 'Marcar com Client' : 'Esborrar client'}
+              style={{ width: 8, height: 8, borderRadius: '50%', background: client.status === 'active' ? '#16A34A' : client.status === 'paused' ? '#D97706' : '#DC2626', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'background 0.15s' }}
             />
           ) : (
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: health.dot, display: 'inline-block', flexShrink: 0 }} />
@@ -1182,9 +1192,14 @@ function ClientTable({ clients, canManage, onEdit, onDelete, onUpdate }: {
                   <div ref={healthOpenId === client.id ? healthRef : undefined} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 4 }}>
                     {canManage ? (
                       <button
-                        onClick={e => { e.preventDefault(); e.stopPropagation(); onUpdate(client.id, { status: client.status === 'active' ? 'paused' : 'active' }) }}
-                        title={client.status === 'active' ? 'Pausar client' : 'Activar client'}
-                        style={{ width: 7, height: 7, borderRadius: '50%', background: client.status === 'active' ? '#16A34A' : client.status === 'paused' ? '#D97706' : '#9CA3AF', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'background 0.15s' }}
+                        onClick={e => {
+                          e.preventDefault(); e.stopPropagation()
+                          if (client.status === 'active') onUpdate(client.id, { status: 'inactive' })
+                          else if (client.status === 'inactive') onUpdate(client.id, { status: 'active' })
+                          else onDelete(client)
+                        }}
+                        title={client.status === 'active' ? 'Marcar com No client' : client.status === 'inactive' ? 'Marcar com Client' : 'Esborrar client'}
+                        style={{ width: 7, height: 7, borderRadius: '50%', background: client.status === 'active' ? '#16A34A' : client.status === 'paused' ? '#D97706' : '#DC2626', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'background 0.15s' }}
                       />
                     ) : (
                       <span style={{ width: 5, height: 5, borderRadius: '50%', background: health.dot, display: 'inline-block', flexShrink: 0 }} />
