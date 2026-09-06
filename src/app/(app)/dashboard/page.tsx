@@ -68,8 +68,36 @@ export default async function DashboardPage() {
 
   // CRM summary for superadmin
   const isSuperAdmin = (profile as Profile)?.role === 'superadmin'
+  const isManager = (profile as Profile)?.role === 'manager'
+
   const { data: opportunities } = isSuperAdmin
     ? await supabase.from('opportunities').select('stage, value, close_date, created_at').order('created_at', { ascending: false })
+    : { data: null }
+
+  // PM-specific data: all tasks on projects where user is responsible
+  const { data: pmProjectIds } = isManager
+    ? await supabase.from('projects').select('id').eq('responsible_id', user.id).eq('status', 'active')
+    : { data: null }
+
+  const pmIds = (pmProjectIds ?? []).map((p: { id: string }) => p.id)
+
+  const { data: allProjectTasks } = isManager && pmIds.length > 0
+    ? await supabase
+        .from('tasks')
+        .select('*, client:clients(id,name), project:projects(id,name), responsible:profiles!tasks_responsible_id_fkey(id,full_name)')
+        .in('project_id', pmIds)
+        .neq('status', 'done')
+        .order('deadline', { ascending: true })
+        .limit(100)
+    : { data: null }
+
+  const { data: pmProjects } = isManager
+    ? await supabase
+        .from('projects')
+        .select('*, client:clients(id,name,logo_url)')
+        .eq('responsible_id', user.id)
+        .eq('status', 'active')
+        .order('name')
     : { data: null }
 
   // Inbox notifications
@@ -119,6 +147,8 @@ export default async function DashboardPage() {
           activeProjects: activeProjectsCount || 0,
           pendingTasks: pendingTasksCount || 0,
         }}
+        allProjectTasks={allProjectTasks || []}
+        pmProjects={pmProjects || []}
       />
     </>
   )

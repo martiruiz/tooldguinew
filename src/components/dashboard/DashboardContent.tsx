@@ -15,6 +15,7 @@ import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 import { NewClientModal } from '@/components/clients/NewClientModal'
 import { NewProjectModal } from '@/components/projects/NewProjectModal'
 import { CommandPalette } from '@/components/layout/CommandPalette'
+import { PMControlCenter } from '@/components/dashboard/PMControlCenter'
 import type { Profile, Task, Project, Meeting, ActivityLog, Notification } from '@/types'
 
 interface Stats {
@@ -44,6 +45,8 @@ interface Props {
   blockedTasks: Task[]
   inboxNotifs: Notification[]
   opportunities?: CRMOpportunity[]
+  allProjectTasks?: Task[]
+  pmProjects?: Project[]
 }
 
 function getGreetingKey(): 'greetMorning' | 'greetAfternoon' | 'greetEvening' {
@@ -60,9 +63,10 @@ const priorityColor: Record<string, string> = {
   low: '#9A9A9A',
 }
 
-export function DashboardContent({ user, tasks, projects, activity, meetings, stats, profiles, clients, allProjects, currentUserId, blockedTasks, inboxNotifs, opportunities = [] }: Props) {
+export function DashboardContent({ user, tasks, projects, activity, meetings, stats, profiles, clients, allProjects, currentUserId, blockedTasks, inboxNotifs, opportunities = [], allProjectTasks = [], pmProjects = [] }: Props) {
   const { t: tr } = useLanguage()
   const isSuperAdmin = user.role === 'superadmin'
+  const isManager = user.role === 'manager'
 
   const crmSummary = useMemo(() => {
     if (!isSuperAdmin || opportunities.length === 0) return null
@@ -352,6 +356,16 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
             ))}
           </div>
         </div>
+      )}
+
+      {/* PM Control Center — only for managers */}
+      {isManager && (
+        <PMControlCenter
+          allProjectTasks={allProjectTasks}
+          pmProjects={pmProjects}
+          profiles={profiles}
+          currentUserId={currentUserId}
+        />
       )}
 
       {/* Main Grid */}
