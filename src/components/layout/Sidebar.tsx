@@ -35,11 +35,13 @@ const navDefs = [
 ]
 
 const serviceLinks = [
-  { label: 'Google Drive', href: 'https://drive.google.com', abbr: 'G',  color: '#1A73E8', bg: '#F0F4FF' },
-  { label: 'Gmail',        href: '',                         abbr: 'GM', color: '#EA4335', bg: '#FEF2F2', gmail: true },
-  { label: 'Dropbox',      href: 'https://www.dropbox.com',  abbr: 'D',  color: '#0061FF', bg: '#EEF3FF' },
-  { label: 'Metricool',    href: 'https://metricool.com/es/', abbr: 'M',  color: '#E8521A', bg: '#FFF4EE', fixed: true },
-  { label: 'Brevo',        href: 'https://login.brevo.com/?target=https%3A%2F%2Fapp.brevo.com%2F', abbr: 'BR', color: '#0B7285', bg: '#EFF9FC', fixed: true },
+  { label: 'Google Drive',     href: 'https://drive.google.com',                                            abbr: 'G',   color: '#1A73E8', bg: '#F0F4FF' },
+  { label: 'Gmail',            href: '',                                                                     abbr: 'GM',  color: '#EA4335', bg: '#FEF2F2', gmail: true },
+  { label: 'Google Calendar',  href: 'https://calendar.google.com',                                         abbr: 'GC',  color: '#1A73E8', bg: '#EEF4FF', fixed: true },
+  { label: 'Google Meet',      href: 'https://meet.google.com',                                             abbr: 'GMe', color: '#00897B', bg: '#E8F5E9', fixed: true },
+  { label: 'Dropbox',          href: 'https://www.dropbox.com',                                             abbr: 'D',   color: '#0061FF', bg: '#EEF3FF' },
+  { label: 'Metricool',        href: 'https://metricool.com/es/',                                           abbr: 'M',   color: '#E8521A', bg: '#FFF4EE', fixed: true },
+  { label: 'Brevo',            href: 'https://login.brevo.com/?target=https%3A%2F%2Fapp.brevo.com%2F',      abbr: 'BR',  color: '#0B7285', bg: '#EFF9FC', fixed: true },
 ]
 
 function GoogleDriveIcon({ size = 18 }: { size?: number }) {
@@ -69,6 +71,33 @@ function BrevoIcon({ size = 18 }: { size?: number }) {
 function MetricoolIcon({ size = 18 }: { size?: number }) {
   return (
     <img src="/metricool-logo.jpg" width={size} height={size} alt="Metricool" style={{ objectFit: 'contain', display: 'block', borderRadius: 4 }} />
+  )
+}
+
+function GoogleCalendarIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="4" width="34" height="31" rx="3" fill="white"/>
+      <rect x="1" y="4" width="34" height="11" rx="3" fill="#1A73E8"/>
+      <rect x="1" y="11" width="34" height="4" fill="#1A73E8"/>
+      <rect x="1" y="4" width="34" height="31" rx="3" stroke="#DADCE0" strokeWidth="1.5"/>
+      <text x="18" y="29" textAnchor="middle" fontSize="14" fontWeight="700" fontFamily="Arial,sans-serif" fill="#3C4043">31</text>
+      <rect x="9" y="1" width="3" height="7" rx="1.5" fill="#1A73E8"/>
+      <rect x="24" y="1" width="3" height="7" rx="1.5" fill="#1A73E8"/>
+      <line x1="1" y1="20" x2="35" y2="20" stroke="#DADCE0" strokeWidth="1"/>
+      <line x1="13" y1="15" x2="13" y2="35" stroke="#DADCE0" strokeWidth="1"/>
+      <line x1="25" y1="15" x2="25" y2="35" stroke="#DADCE0" strokeWidth="1"/>
+    </svg>
+  )
+}
+
+function GoogleMeetIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="36" height="36" rx="8" fill="#00897B"/>
+      <path d="M8 13a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V13Z" fill="white"/>
+      <path d="M24 16l5-3v10l-5-3V16Z" fill="white"/>
+    </svg>
   )
 }
 
@@ -376,7 +405,7 @@ export function Sidebar({ user }: Props) {
             {serviceLinks.map(s => {
               const sa = s as any
               const href = sa.fixed ? s.href : (s.abbr === 'G' ? driveUrl : s.abbr === 'D' ? dropboxUrl : s.href)
-              const ServiceIcon = s.abbr === 'G' ? GoogleDriveIcon : s.abbr === 'GM' ? GmailIcon : s.abbr === 'M' ? MetricoolIcon : s.abbr === 'BR' ? BrevoIcon : DropboxIcon
+              const ServiceIcon = s.abbr === 'G' ? GoogleDriveIcon : s.abbr === 'GM' ? GmailIcon : s.abbr === 'GC' ? GoogleCalendarIcon : s.abbr === 'GMe' ? GoogleMeetIcon : s.abbr === 'M' ? MetricoolIcon : s.abbr === 'BR' ? BrevoIcon : DropboxIcon
               if (sa.gmail) {
                 return (
                   <a key={s.abbr} href="https://mail.google.com" target="_blank" rel="noopener noreferrer"
@@ -406,7 +435,7 @@ export function Sidebar({ user }: Props) {
               const key = s.abbr === 'G' ? 'drive' : 'dropbox'
               const href = sa.fixed ? s.href : (s.abbr === 'G' ? driveUrl : s.abbr === 'D' ? dropboxUrl : s.href)
               const isEditing = editingService === key && !sa.fixed && !sa.gmail
-              const ServiceIcon = s.abbr === 'G' ? GoogleDriveIcon : s.abbr === 'GM' ? GmailIcon : s.abbr === 'M' ? MetricoolIcon : s.abbr === 'BR' ? BrevoIcon : DropboxIcon
+              const ServiceIcon = s.abbr === 'G' ? GoogleDriveIcon : s.abbr === 'GM' ? GmailIcon : s.abbr === 'GC' ? GoogleCalendarIcon : s.abbr === 'GMe' ? GoogleMeetIcon : s.abbr === 'M' ? MetricoolIcon : s.abbr === 'BR' ? BrevoIcon : DropboxIcon
 
               if (sa.gmail) {
                 return (
