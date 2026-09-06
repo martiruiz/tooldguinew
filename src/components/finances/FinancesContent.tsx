@@ -21,6 +21,7 @@ interface ClientRecord {
   tipo: 'Recurrent' | 'Puntual'
   estado: 'Actiu' | 'Inactiu'
   fee: number
+  ivaPct?: number          // % IVA (0, 4, 10, 21)
   marginObjective: number  // 0 = use global
   startDate: string
   endDate: string
@@ -40,6 +41,7 @@ interface Supplier {
   notes: string
   monthlyFee: number      // COBRO MENSUAL TOTAL (acordat)
   structureAmount: number // DE ESTRUCTURA (equip/redes)
+  irpfPct?: number        // % retenció IRPF (7, 15, 19...)
 }
 interface StructureCost { id: string; name: string; category?: string; amount: number; supplierRef?: string }
 
@@ -136,7 +138,7 @@ function uid() {
 function newRecord(clientName = ''): ClientRecord {
   return {
     id: uid(), clientName: clientName || 'Nou client', tipo: 'Recurrent', estado: 'Actiu',
-    fee: 0, marginObjective: 0, startDate: '', endDate: '', responsible: '',
+    fee: 0, ivaPct: 21, marginObjective: 0, startDate: '', endDate: '', responsible: '',
     services: '', observations: '', collaborators: [{ id: uid(), name: '', role: '', cost: 0 }], otherCosts: [],
   }
 }
@@ -925,8 +927,9 @@ function RecordForm({ record, clients, profiles, data, kpis, marginObjective, on
   const teamCost = r.collaborators.reduce((s, c) => s + (c.cost || 0), 0)
   const otherTotal = r.otherCosts.reduce((s, c) => s + (c.amount || 0), 0)
 
+  const ivaAmt = Math.round(r.fee * ((r.ivaPct ?? 21) / 100) * 100) / 100
   const kpiCards = [
-    { label: 'Fee', value: formatEur(r.fee), accent: false },
+    { label: 'Fee (sense IVA)', value: formatEur(r.fee), sub: `IVA ${r.ivaPct ?? 21}%: +${formatEur(ivaAmt)} → ${formatEur(r.fee + ivaAmt)} total`, accent: false },
     { label: 'Cost directe', value: formatEur(dc), accent: false },
     { label: 'Marge contribució', value: formatEur(margenContr), sub: margenPct.toFixed(1) + '%', accent: true, positive: margenContr >= 0 },
     { label: 'Resultat tras estructura', value: formatEur(resultatEst), sub: `${r.fee > 0 ? ((resultatEst / r.fee) * 100).toFixed(1) : '0.0'}% · estructura assignada ${formatEur(alloc)}`, accent: true, positive: resultatEst >= 0 },
@@ -1015,6 +1018,15 @@ function RecordForm({ record, clients, profiles, data, kpis, marginObjective, on
           <div className="rf-field">
             <label>Fee {r.tipo === 'Recurrent' ? 'mensual' : 'puntual'} (sense IVA)</label>
             <input type="number" min="0" step="50" value={r.fee || ''} placeholder="0.00" onChange={e => set('fee', parseFloat(e.target.value) || 0)} />
+          </div>
+          <div className="rf-field">
+            <label>% IVA aplicable</label>
+            <select value={r.ivaPct ?? 21} onChange={e => set('ivaPct', parseFloat(e.target.value))}>
+              <option value={0}>0% (exempt / no subjecte)</option>
+              <option value={4}>4% (tipus superreduït)</option>
+              <option value={10}>10% (tipus reduït)</option>
+              <option value={21}>21% (tipus general)</option>
+            </select>
           </div>
           <div className="rf-field">
             <label>Marge objectiu % <span className="rf-label-hint">(opcional, si no s'usa el global)</span></label>
@@ -1174,7 +1186,168 @@ function RecordForm({ record, clients, profiles, data, kpis, marginObjective, on
 
 /* ─── PROVEÏDORS ─── */
 function newSupplier(): Supplier {
-  return { id: uid(), name: '', category: '', contact: '', notes: '', monthlyFee: 0, structureAmount: 0 }
+  return { id: uid(), name: '', category: '', contact: '', notes: '', monthlyFee: 0, structureAmount: 0, irpfPct: 0 }
+}
+
+function SupplierDetailView({ supplier, data, save, supplierStats, onBack }: {
+  supplier: Supplier
+  data: FinanceData
+  save: (d: FinanceData) => void
+  supplierStats: Record<string, { activeClients: number; totalInClients: number }>
+  onBack: () => void
+}) {
+  const [s, setS] = useState<Supplier>(supplier)
+
+  const set = (field: keyof Supplier, val: any) => setS(prev => ({ ...prev, [field]: val }))
+
+  const saveSupplier = () => {
+    save({ ...data, suppliers: data.suppliers.map(sup => sup.id === s.id ? s : sup) })
+    onBack()
+  }
+
+  // Clients that use this supplier as a collaborator
+  const clientsUsingSupplier = data.records.filter(r =>
+    r.estado === 'Actiu' && r.collaborators.some(c => c.name.toLowerCase() === supplier.name.toLowerCase())
+  ).map(r => {
+    const col = r.collaborators.find(c => c.name.toLowerCase() === supplier.name.toLowerCase())!
+    const irpfAmt = Math.round((col.cost || 0) * ((s.irpfPct ?? 0) / 100) * 100) / 100
+    return { clientName: r.clientName, role: col.role, cost: col.cost, irpf: irpfAmt }
+  })
+
+  const totalCost = clientsUsingSupplier.reduce((sum, c) => sum + (c.cost || 0), 0)
+  const totalIrpf = clientsUsingSupplier.reduce((sum, c) => sum + c.irpf, 0)
+  const initials = s.name ? getInitials(s.name) : '?'
+  const avatarBg = s.name ? getAvatarColor(s.name) : '#9CA3AF'
+
+  return (
+    <div className="sd-root">
+      <button className="sd-back" onClick={onBack}><ArrowLeft size={14} />Tornar a proveïdors</button>
+
+      <div className="sd-hero">
+        <div className="sd-avatar" style={{ background: avatarBg }}>{initials}</div>
+        <div>
+          <div className="sd-name">{s.name || 'Nou proveïdor'}</div>
+          <div className="sd-cat">{s.category}</div>
+        </div>
+      </div>
+
+      <div className="sd-kpis">
+        <div className="sd-kpi"><div className="sd-kpi-lbl">Clients actius</div><div className="sd-kpi-val">{supplierStats[s.id]?.activeClients ?? 0}</div></div>
+        <div className="sd-kpi"><div className="sd-kpi-lbl">Total facturado als clients</div><div className="sd-kpi-val">{formatEur(totalCost)}</div></div>
+        <div className="sd-kpi sd-kpi--purple"><div className="sd-kpi-lbl">IRPF estimat ({s.irpfPct ?? 0}%)</div><div className="sd-kpi-val">{formatEur(totalIrpf)}</div></div>
+        <div className="sd-kpi"><div className="sd-kpi-lbl">Cost estructura mensual</div><div className="sd-kpi-val">{formatEur(s.structureAmount)}</div></div>
+      </div>
+
+      <div className="sd-grid">
+        <div className="sd-card">
+          <div className="sd-card-title">Dades del proveïdor</div>
+          <div className="sd-form">
+            <div className="sd-field"><label>Nom</label><input className="sd-inp" value={s.name} onChange={e => set('name', e.target.value)} placeholder="Nom del proveïdor" /></div>
+            <div className="sd-field"><label>Categoria</label><input className="sd-inp" value={s.category} onChange={e => set('category', e.target.value)} placeholder="Fotògraf, CM..." /></div>
+            <div className="sd-field"><label>Contacte (tel / email)</label><input className="sd-inp" value={s.contact} onChange={e => set('contact', e.target.value)} placeholder="600 000 000 / email@..." /></div>
+            <div className="sd-field sd-field--wide"><label>Notes</label><input className="sd-inp" value={s.notes} onChange={e => set('notes', e.target.value)} placeholder="Notes internes..." /></div>
+          </div>
+        </div>
+
+        <div className="sd-card">
+          <div className="sd-card-title">Retribució i impostos</div>
+          <div className="sd-form">
+            <div className="sd-field">
+              <label>Fee mensual total (€)</label>
+              <input className="sd-inp" type="number" min="0" step="50" value={s.monthlyFee || ''} placeholder="0.00" onChange={e => set('monthlyFee', parseFloat(e.target.value) || 0)} />
+            </div>
+            <div className="sd-field">
+              <label>Cost d&apos;estructura mensual (€)</label>
+              <input className="sd-inp" type="number" min="0" step="50" value={s.structureAmount || ''} placeholder="0.00" onChange={e => set('structureAmount', parseFloat(e.target.value) || 0)} />
+            </div>
+            <div className="sd-field">
+              <label>% Retenció IRPF</label>
+              <select className="sd-sel" value={s.irpfPct ?? 0} onChange={e => set('irpfPct', parseFloat(e.target.value))}>
+                <option value={0}>0% (no aplica / empresa)</option>
+                <option value={7}>7% (inici activitat)</option>
+                <option value={15}>15% (general autònom)</option>
+                <option value={19}>19% (general general)</option>
+                <option value={21}>21%</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {clientsUsingSupplier.length > 0 && (
+        <div className="sd-card sd-card--wide">
+          <div className="sd-card-title">Clients on participa</div>
+          <div className="sd-clients-table">
+            <div className="sd-clients-head">
+              <span>Client</span><span>Rol</span><span className="sd-r">Cost assignat</span><span className="sd-r">IRPF retingut ({s.irpfPct ?? 0}%)</span>
+            </div>
+            {clientsUsingSupplier.map((c, i) => (
+              <div key={i} className="sd-clients-row">
+                <span className="sd-client-name">{c.clientName}</span>
+                <span className="sd-client-role">{c.role}</span>
+                <span className="sd-r sd-amt">{formatEur(c.cost)}</span>
+                <span className="sd-r sd-irpf">{formatEur(c.irpf)}</span>
+              </div>
+            ))}
+            <div className="sd-clients-foot">
+              <span>TOTAL</span><span></span>
+              <span className="sd-r sd-amt">{formatEur(totalCost)}</span>
+              <span className="sd-r sd-irpf">{formatEur(totalIrpf)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="sd-actions">
+        <button className="sd-btn-cancel" onClick={onBack}>Cancel·lar</button>
+        <button className="sd-btn-save" onClick={saveSupplier}><Save size={15} />Guardar canvis</button>
+      </div>
+
+      <style jsx>{`
+        .sd-root { }
+        .sd-back { display: flex; align-items: center; gap: 6px; background: none; border: none; font-size: 13px; font-weight: 500; color: #6B7280; cursor: pointer; padding: 0; margin-bottom: 20px; transition: color 0.12s; }
+        .sd-back:hover { color: #111827; }
+        .sd-hero { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+        .sd-avatar { width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; color: white; flex-shrink: 0; }
+        .sd-name { font-size: 22px; font-weight: 700; color: #0F1B2D; letter-spacing: -0.02em; }
+        .sd-cat { font-size: 13px; color: #9CA3AF; margin-top: 2px; }
+        .sd-kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
+        @media (max-width: 767px) { .sd-kpis { grid-template-columns: 1fr 1fr; } }
+        .sd-kpi { background: white; border-radius: 14px; border: 1px solid #E8ECF2; padding: 16px 18px; }
+        .sd-kpi--purple { border-top: 3px solid #7C3AED; }
+        .sd-kpi-lbl { font-size: 11px; font-weight: 700; color: #A0A9BB; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
+        .sd-kpi-val { font-size: 20px; font-weight: 800; color: #0F1B2D; font-variant-numeric: tabular-nums; }
+        .sd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        @media (max-width: 767px) { .sd-grid { grid-template-columns: 1fr; } }
+        .sd-card { background: white; border-radius: 16px; border: 1px solid rgba(0,0,0,0.06); box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 22px; }
+        .sd-card--wide { margin-bottom: 16px; }
+        .sd-card-title { font-size: 14px; font-weight: 700; color: #0F1B2D; margin-bottom: 16px; }
+        .sd-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .sd-field { display: flex; flex-direction: column; gap: 5px; }
+        .sd-field--wide { grid-column: 1 / -1; }
+        .sd-field label { font-size: 11px; font-weight: 600; color: #6B7280; text-transform: uppercase; letter-spacing: 0.04em; }
+        .sd-inp { height: 38px; padding: 0 10px; border: 1.5px solid #E8ECF2; border-radius: 8px; font-size: 13.5px; color: #0F1B2D; background: #FAFAFA; outline: none; font-family: inherit; transition: border-color 0.15s; }
+        .sd-inp:focus { border-color: #254067; background: white; }
+        .sd-sel { height: 38px; padding: 0 10px; border: 1.5px solid #E8ECF2; border-radius: 8px; font-size: 13.5px; color: #0F1B2D; background: #FAFAFA; outline: none; font-family: inherit; cursor: pointer; }
+        .sd-sel:focus { border-color: #254067; background: white; }
+        .sd-clients-table { border: 1px solid #E8ECF2; border-radius: 10px; overflow: hidden; }
+        .sd-clients-head { display: grid; grid-template-columns: 1fr 1fr 130px 160px; padding: 10px 16px; background: #FAFAFA; border-bottom: 1px solid #F3F4F6; font-size: 10px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.06em; }
+        .sd-clients-row { display: grid; grid-template-columns: 1fr 1fr 130px 160px; padding: 10px 16px; border-bottom: 1px solid #F9FAFB; align-items: center; }
+        .sd-clients-row:hover { background: #FAFBFF; }
+        .sd-clients-row:last-child { border-bottom: none; }
+        .sd-clients-foot { display: grid; grid-template-columns: 1fr 1fr 130px 160px; padding: 12px 16px; background: #F8F9FB; border-top: 1px solid #E8ECF2; font-size: 12px; font-weight: 700; color: #374151; }
+        .sd-client-name { font-size: 13px; font-weight: 600; color: #111827; }
+        .sd-client-role { font-size: 12.5px; color: #6B7280; }
+        .sd-r { text-align: right; }
+        .sd-amt { font-size: 13px; font-weight: 600; color: #374151; font-variant-numeric: tabular-nums; }
+        .sd-irpf { font-size: 13px; font-weight: 700; color: #7C3AED; font-variant-numeric: tabular-nums; }
+        .sd-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+        .sd-btn-cancel { height: 38px; padding: 0 18px; border: 1px solid #E5E7EB; border-radius: 9px; font-size: 13.5px; font-weight: 500; color: #6B7280; background: white; cursor: pointer; }
+        .sd-btn-save { height: 38px; padding: 0 20px; background: linear-gradient(135deg,#1B2B4B,#254067); color: white; border: none; border-radius: 9px; font-size: 13.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; box-shadow: 0 2px 8px rgba(37,64,103,0.25); }
+        .sd-btn-save:hover { opacity: 0.9; }
+      `}</style>
+    </div>
+  )
 }
 
 const PV_COLS = [
@@ -1193,6 +1366,7 @@ function ProveidorsSection({ data, save }: { data: FinanceData; save: (d: Financ
   const [showColMenu, setShowColMenu] = useState(false)
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
+  const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null)
 
   const togglePvCol = (id: string) => setHiddenCols(prev => {
     const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next
@@ -1264,6 +1438,19 @@ function ProveidorsSection({ data, save }: { data: FinanceData; save: (d: Financ
   const totalMonthly = data.suppliers.reduce((s, sup) => s + (sup.monthlyFee || 0), 0)
   const totalStructure = data.suppliers.reduce((s, sup) => s + (sup.structureAmount || 0), 0)
   const totalInClients = Object.values(supplierStats).reduce((s, v) => s + v.totalInClients, 0)
+
+  if (selectedSupplierId) {
+    const sup = data.suppliers.find(s => s.id === selectedSupplierId)
+    if (sup) {
+      return <SupplierDetailView
+        supplier={sup}
+        data={data}
+        save={save}
+        supplierStats={supplierStats}
+        onBack={() => setSelectedSupplierId(null)}
+      />
+    }
+  }
 
   return (
     <div>
@@ -1379,6 +1566,7 @@ function ProveidorsSection({ data, save }: { data: FinanceData; save: (d: Financ
                     )
                     return null
                   })}
+                  <button className="pv-detail-btn" onClick={() => setSelectedSupplierId(row.id)} title="Veure detall">→</button>
                   <button className="pv-del-btn" onClick={() => removeSupplier(row.id)}><Trash2 size={14}/></button>
                 </div>
               </div>
@@ -1473,6 +1661,8 @@ function ProveidorsSection({ data, save }: { data: FinanceData; save: (d: Financ
         .pv-contact-group { display: flex; flex-direction: column; gap: 4px; min-width: 150px; flex: 1; max-width: 260px; }
 
         /* Delete */
+        .pv-detail-btn { width: 30px; height: 30px; border: 1px solid #E5E7EB; background: white; border-radius: 8px; cursor: pointer; color: #6B7280; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.12s; flex-shrink: 0; }
+        .pv-detail-btn:hover { border-color: #254067; color: #254067; background: #F0F4F9; }
         .pv-del-btn { width: 30px; height: 30px; border: 1px solid #FEE2E2; background: #FFF5F5; border-radius: 8px; cursor: pointer; color: #FCA5A5; display: flex; align-items: center; justify-content: center; transition: all 0.12s; flex-shrink: 0; }
         .pv-del-btn:hover { background: #FEE2E2; border-color: #EF4444; color: #EF4444; }
 
