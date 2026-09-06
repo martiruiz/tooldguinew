@@ -84,12 +84,25 @@ interface Props {
   fiscalData: FiscalData
   saveFiscal: (d: FiscalData) => void
   operativeResult: number
+  totalFees: number
+  directCosts: number
 }
 
-export function computeFiscalKpis(fiscalData: FiscalData, operativeResult: number) {
+interface BaseKpis { totalFees: number; directCosts: number }
+
+export function computeFiscalKpis(fiscalData: FiscalData, operativeResult: number, baseKpis?: BaseKpis) {
   const { ingressos, gastos, liquidacions, config } = fiscalData
-  const ivaRepercutit = ingressos.reduce((s, r) => s + (r.iva || 0), 0)
-  const ivaDeduible = gastos.reduce((s, g) => s + (g.ivaDeduible || 0), 0)
+  const ivaPct = (config?.ivaGeneral ?? 21) / 100
+
+  // Use manual entries if available; otherwise auto-estimate from cartera
+  const autoIng = ingressos.length === 0 && !!baseKpis
+  const autoGas = gastos.length === 0 && !!baseKpis
+  const ivaRepercutit = autoIng
+    ? Math.round((baseKpis!.totalFees * ivaPct) * 100) / 100
+    : ingressos.reduce((s, r) => s + (r.iva || 0), 0)
+  const ivaDeduible = autoGas
+    ? Math.round((baseKpis!.directCosts * ivaPct) * 100) / 100
+    : gastos.reduce((s, g) => s + (g.ivaDeduible || 0), 0)
   const ivaNet = ivaRepercutit - ivaDeduible
   const irpfAcumulat = gastos.reduce((s, g) => s + (g.irpf || 0), 0)
   const isEstimat = Math.max(0, operativeResult) * ((config?.isTax ?? 25) / 100)
@@ -100,13 +113,13 @@ export function computeFiscalKpis(fiscalData: FiscalData, operativeResult: numbe
   const irpfPendent = Math.max(0, irpfAcumulat - irpfPagat)
   const isPendent = Math.max(0, isEstimat - isPagat)
   const totalImpostos = ivaPendent + irpfPendent + isPendent
-  return { ivaRepercutit, ivaDeduible, ivaNet, irpfAcumulat, isEstimat, ivaPagat, irpfPagat, isPagat, ivaPendent, irpfPendent, isPendent, totalImpostos }
+  return { ivaRepercutit, ivaDeduible, ivaNet, irpfAcumulat, isEstimat, ivaPagat, irpfPagat, isPagat, ivaPendent, irpfPendent, isPendent, totalImpostos, autoIng, autoGas }
 }
 
-export function FiscalitatSection({ fiscalData, saveFiscal, operativeResult }: Props) {
+export function FiscalitatSection({ fiscalData, saveFiscal, operativeResult, totalFees, directCosts }: Props) {
   const [tab, setTab] = useState<FiscTab>('resum')
 
-  const fkpis = useMemo(() => computeFiscalKpis(fiscalData, operativeResult), [fiscalData, operativeResult])
+  const fkpis = useMemo(() => computeFiscalKpis(fiscalData, operativeResult, { totalFees, directCosts }), [fiscalData, operativeResult, totalFees, directCosts])
 
   return (
     <div className="fsc-root">
@@ -148,9 +161,9 @@ export function FiscalitatSection({ fiscalData, saveFiscal, operativeResult }: P
 /* ─── RESUM FISCAL ─── */
 function FiscResumTab({ fkpis, fiscalData }: { fkpis: ReturnType<typeof computeFiscalKpis>; fiscalData: FiscalData }) {
   const kpiCards = [
-    { label: 'IVA repercutit', value: fkpis.ivaRepercutit, sub: `(Ingressos emesos: ${fiscalData.ingressos.length} factures)`, color: '#254067' },
-    { label: 'IVA deduïble', value: fkpis.ivaDeduible, sub: `Gastos deduïbles: ${fiscalData.gastos.length} registres`, color: '#059669' },
-    { label: 'IRPF retingut', value: fkpis.irpfAcumulat, sub: 'Retencions acumulades', color: '#7C3AED' },
+    { label: 'IVA repercutit', value: fkpis.ivaRepercutit, sub: fkpis.autoIng ? `Auto-estimat des de Cartera (${fiscalData.config?.ivaGeneral ?? 21}% × fees)` : `${fiscalData.ingressos.length} factures registrades`, color: '#254067', estimat: fkpis.autoIng },
+    { label: 'IVA deduïble', value: fkpis.ivaDeduible, sub: fkpis.autoGas ? `Auto-estimat des de Cartera (${fiscalData.config?.ivaGeneral ?? 21}% × costos directes)` : `${fiscalData.gastos.length} gastos registrats`, color: '#059669', estimat: fkpis.autoGas },
+    { label: 'IRPF retingut', value: fkpis.irpfAcumulat, sub: fiscalData.gastos.length === 0 ? 'Afegeix gastos per calcular' : 'Retencions acumulades', color: '#7C3AED' },
     { label: 'IS estimat', value: fkpis.isEstimat, sub: `${fiscalData.config?.isTax ?? 25}% sobre resultat operatiu`, color: '#D97706', estimat: true },
   ]
 
@@ -161,14 +174,14 @@ function FiscResumTab({ fkpis, fiscalData }: { fkpis: ReturnType<typeof computeF
     { label: 'TOTAL IMPOSTOS PENDENTS', value: fkpis.totalImpostos, sub: 'IVA + IRPF + IS estimat', total: true },
   ]
 
-  const noData = fiscalData.ingressos.length === 0 && fiscalData.gastos.length === 0
+  const isAutoMode = fkpis.autoIng || fkpis.autoGas
 
   return (
     <div>
-      {noData && (
-        <div className="fsc-notice">
+      {isAutoMode && (
+        <div className="fsc-notice fsc-notice--auto">
           <AlertTriangle size={16} />
-          <span>Encara no hi ha dades fiscals. Afegeix ingressos i gastos a les pestanyes corresponents per calcular els impostos automàticament.</span>
+          <span>L&apos;IVA s&apos;ha <strong>auto-estimat des de les dades de Cartera</strong> ({fiscalData.config?.ivaGeneral ?? 21}% sobre fees i costos). Per valors exactes, afegeix les factures reals a les pestanyes <strong>Ingressos</strong> i <strong>Gastos</strong>.</span>
         </div>
       )}
 
@@ -201,6 +214,7 @@ function FiscResumTab({ fkpis, fiscalData }: { fkpis: ReturnType<typeof computeF
 
       <style jsx>{`
         .fsc-notice { display: flex; align-items: flex-start; gap: 10px; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; font-size: 13px; color: #92400E; }
+        .fsc-notice--auto { background: #EFF6FF; border-color: #BFDBFE; color: #1E40AF; }
         .fsc-section-label { font-size: 11px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; }
         .fsc-grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
         @media (max-width: 1023px) { .fsc-grid4 { grid-template-columns: repeat(2, 1fr); } }

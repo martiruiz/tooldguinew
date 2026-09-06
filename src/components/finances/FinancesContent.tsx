@@ -226,7 +226,7 @@ export function FinancesContent({ clients, profiles }: { clients: ClientBasic[];
     return { totalRecurrent, totalProjects, totalFees, directCosts, structureCosts, contributionMargin, operativeResult, globalMarginPct, annualForecast }
   }, [data])
 
-  const fiscalKpis = useMemo(() => computeFiscalKpis(fiscalData, kpis.operativeResult), [fiscalData, kpis.operativeResult])
+  const fiscalKpis = useMemo(() => computeFiscalKpis(fiscalData, kpis.operativeResult, { totalFees: kpis.totalFees, directCosts: kpis.directCosts }), [fiscalData, kpis])
 
   const clientProfitability = useMemo(() => {
     const grouped: Record<string, { fee: number; recurrentFee: number; directCost: number; marginObjective: number; clientId?: string }> = {}
@@ -273,7 +273,7 @@ export function FinancesContent({ clients, profiles }: { clients: ClientBasic[];
         <ConfiguracioSection data={data} save={save} />
       )}
       {section === 'fiscalitat' && (
-        <FiscalitatSection fiscalData={fiscalData} saveFiscal={saveFiscal} operativeResult={kpis.operativeResult} />
+        <FiscalitatSection fiscalData={fiscalData} saveFiscal={saveFiscal} operativeResult={kpis.operativeResult} totalFees={kpis.totalFees} directCosts={kpis.directCosts} />
       )}
 
       <style jsx>{`
