@@ -81,6 +81,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [mounted, setMounted] = useState(false)
   const [reactions, setReactions] = useState<Record<string, Record<string, string[]>>>({})
+  const [showAllActivity, setShowAllActivity] = useState(false)
   const [openEmojiPickerId, setOpenEmojiPickerId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -620,7 +621,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
       <div className="overlay" onClick={async e => { if (e.target === e.currentTarget) { if (isDirty) await saveAll(); onClose() } }}>
         <div className="modal">
 
-          {/* Header */}
+          {/* Header: status + close */}
           <div className="modal-hdr">
             <div className="status-badge" style={{ color: col.color, background: `${col.color}15` }}>
               <span className="dot" style={{ background: col.color }} />{col.label}
@@ -632,63 +633,61 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
             </div>
           </div>
 
-          <div className="modal-body">
-
-            {/* Title */}
+          {/* Title area — always visible, not scrollable */}
+          <div className="modal-title-area">
             <textarea className="title-inp" value={form.title.toUpperCase()}
               onChange={e => dirty('title', e.target.value.toUpperCase())} rows={1}
               placeholder="TÍTOL DE LA TASCA..."
               onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
             />
-
-            {/* Responsible below title */}
             {(() => {
               const rp = profiles.find(p => p.id === form.responsible_id) as any
               return (
-                <div className="title-resp-row">
-                  <div className="rel-wrap">
-                    <button className="resp-chip" onClick={() => setShowResponsiblePicker(v => !v)}>
-                      {rp ? (
-                        <>
-                          <div className="resp-av">
-                            {rp.avatar_url ? <img src={rp.avatar_url} alt="" /> : getInitials(rp.full_name)}
-                          </div>
-                          <span className="resp-chip-name">{rp.full_name}</span>
-                        </>
-                      ) : (
-                        <>
-                          <div className="resp-av resp-av--empty">
-                            <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="3.5" r="2" stroke="currentColor" strokeWidth="1.5"/><path d="M1 10c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                          </div>
-                          <span className="resp-chip-name resp-chip-name--empty">Assignar responsable</span>
-                        </>
-                      )}
-                    </button>
-                    {showResponsiblePicker && (
-                      <div className="resp-picker" onClick={e => e.stopPropagation()}>
-                        <button className="resp-picker-opt" onClick={() => { saveDropdown('responsible_id', ''); setShowResponsiblePicker(false) }}>
-                          <div className="resp-av resp-av--empty" style={{ fontSize: 14 }}>—</div>
-                          <span>Sense assignar</span>
-                        </button>
-                        {profiles.map(p => {
-                          const pa = p as any
-                          return (
-                            <button key={p.id}
-                              className={`resp-picker-opt${form.responsible_id === p.id ? ' resp-picker-opt--on' : ''}`}
-                              onClick={() => { saveDropdown('responsible_id', p.id); setShowResponsiblePicker(false) }}>
-                              <div className="resp-av">
-                                {pa.avatar_url ? <img src={pa.avatar_url} alt="" /> : getInitials(p.full_name)}
-                              </div>
-                              <span>{p.full_name}</span>
-                            </button>
-                          )
-                        })}
-                      </div>
+                <div className="rel-wrap">
+                  <button className="resp-chip" onClick={() => setShowResponsiblePicker(v => !v)}>
+                    {rp ? (
+                      <>
+                        <div className="resp-av">
+                          {rp.avatar_url ? <img src={rp.avatar_url} alt="" /> : getInitials(rp.full_name)}
+                        </div>
+                        <span className="resp-chip-name">{rp.full_name}</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="resp-av resp-av--empty">
+                          <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="3.5" r="2" stroke="currentColor" strokeWidth="1.5"/><path d="M1 10c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                        </div>
+                        <span className="resp-chip-name resp-chip-name--empty">Assignar responsable</span>
+                      </>
                     )}
-                  </div>
+                  </button>
+                  {showResponsiblePicker && (
+                    <div className="resp-picker" onClick={e => e.stopPropagation()}>
+                      <button className="resp-picker-opt" onClick={() => { saveDropdown('responsible_id', ''); setShowResponsiblePicker(false) }}>
+                        <div className="resp-av resp-av--empty" style={{ fontSize: 14 }}>—</div>
+                        <span>Sense assignar</span>
+                      </button>
+                      {profiles.map(p => {
+                        const pa = p as any
+                        return (
+                          <button key={p.id}
+                            className={`resp-picker-opt${form.responsible_id === p.id ? ' resp-picker-opt--on' : ''}`}
+                            onClick={() => { saveDropdown('responsible_id', p.id); setShowResponsiblePicker(false) }}>
+                            <div className="resp-av">
+                              {pa.avatar_url ? <img src={pa.avatar_url} alt="" /> : getInitials(p.full_name)}
+                            </div>
+                            <span>{p.full_name}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               )
             })()}
+          </div>
+
+          <div className="modal-body">
 
             {/* Labels + Watchers */}
             <div className="meta-row">
@@ -855,7 +854,10 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
               <div className="section-hdr"><span className="sec-label">Descripció</span></div>
               <textarea className="desc-inp" value={form.description}
                 onChange={e => dirty('description', e.target.value)}
-                placeholder="Afegeix una descripció..." rows={3} />
+                placeholder="Afegeix una descripció..."
+                rows={1}
+                onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
+              />
             </div>
 
             {/* DOCUMENTS DRIVE */}
@@ -945,7 +947,18 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
 
                   if (items.length === 0) return <div className="tl-empty">Sense activitat encara</div>
 
-                  return items.map(item => {
+                  const LIMIT = 6
+                  const displayedItems = showAllActivity ? items : items.slice(-LIMIT)
+                  const hiddenCount = items.length - LIMIT
+
+                  return (
+                    <>
+                      {!showAllActivity && hiddenCount > 0 && (
+                        <button className="tl-show-more" onClick={() => setShowAllActivity(true)}>
+                          Veure {hiddenCount} {hiddenCount === 1 ? 'entrada anterior' : 'entrades anteriors'}
+                        </button>
+                      )}
+                      {displayedItems.map(item => {
                     if (item.type === 'comment') {
                       const c = item.data as Comment
                       const p = c.profile as any
@@ -1016,7 +1029,9 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
                         </div>
                       )
                     }
-                  })
+                  })}
+                    </>
+                  )
                 })()}
               </div>
 
@@ -1105,7 +1120,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
           z-index: 1000; padding: 20px;
         }
         .modal {
-          background: white; border-radius: 16px; width: 100%; max-width: 820px;
+          background: white; border-radius: 16px; width: 100%; max-width: 580px;
           max-height: 92vh; display: flex; flex-direction: column;
           box-shadow: 0 24px 64px rgba(0,0,0,0.22); overflow: hidden;
         }
@@ -1130,19 +1145,22 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         }
         .close-btn:hover { background: #E8E8E8; color: #0a0a0a; }
 
+        /* Title area — fixed, always visible */
+        .modal-title-area {
+          padding: 14px 20px 12px; border-bottom: 1px solid #F0F0F0; flex-shrink: 0;
+          display: flex; flex-direction: column; gap: 6px;
+        }
+
         /* Body */
-        .modal-body { padding: 18px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; flex: 1; }
+        .modal-body { padding: 16px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; flex: 1; }
 
         /* Title */
         .title-inp {
-          font-size: 18px; font-weight: 700; color: #0a0a0a; border: none; outline: none;
+          font-size: 17px; font-weight: 700; color: #0a0a0a; border: none; outline: none;
           resize: none; width: 100%; font-family: inherit; line-height: 1.3; background: transparent; padding: 0;
-          text-transform: uppercase; letter-spacing: 0.01em;
+          text-transform: uppercase; letter-spacing: 0.01em; overflow: hidden;
         }
         .title-inp::placeholder { color: #D0D0D0; }
-
-        /* Responsible below title */
-        .title-resp-row { margin-top: -6px; }
         .resp-chip {
           display: inline-flex; align-items: center; gap: 7px;
           background: none; border: 1.5px solid transparent; border-radius: 20px;
@@ -1239,7 +1257,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         .mini-av img { width: 100%; height: 100%; object-fit: cover; }
 
         /* Fields grid */
-        .grid6 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        .grid6 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .field { display: flex; flex-direction: column; gap: 4px; }
         .field label { font-size: 10.5px; font-weight: 700; color: #9A9A9A; letter-spacing: 0.05em; text-transform: uppercase; }
         .field select, .field input {
@@ -1328,8 +1346,9 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         /* Description */
         .desc-inp {
           border: 1.5px solid #E8E8E8; border-radius: 8px; padding: 9px 10px;
-          font-size: 13.5px; color: #0a0a0a; font-family: inherit; resize: vertical;
+          font-size: 13.5px; color: #0a0a0a; font-family: inherit; resize: none;
           outline: none; background: #FAFAFA; transition: border-color 0.15s; line-height: 1.5;
+          min-height: 48px; overflow: hidden;
         }
         .desc-inp:focus { border-color: #1B2B4B; background: white; }
         .desc-inp::placeholder { color: #C0C0C0; }
@@ -1348,6 +1367,12 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         /* Timeline */
         .timeline { display: flex; flex-direction: column; gap: 0; }
         .tl-empty { font-size: 12.5px; color: #C0C0C0; text-align: center; padding: 16px; }
+        .tl-show-more {
+          width: 100%; padding: 9px 12px; background: #F8F9FF; border: 1px dashed #D0D8F0;
+          border-radius: 8px; font-size: 12.5px; color: #254067; font-weight: 600;
+          cursor: pointer; font-family: inherit; transition: all 0.15s; margin-bottom: 6px;
+        }
+        .tl-show-more:hover { background: #EEF3FA; border-color: #254067; }
 
         /* Shared avatar */
         .tl-av {
