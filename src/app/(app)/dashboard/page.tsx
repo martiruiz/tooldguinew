@@ -114,6 +114,7 @@ export default async function DashboardPage() {
     .from('clients')
     .select('*', { count: 'exact', head: true })
     .eq('status', 'active')
+    .neq('health', 'risk')
 
   const { count: activeProjectsCount } = await supabase
     .from('projects')
