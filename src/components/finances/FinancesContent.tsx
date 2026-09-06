@@ -43,7 +43,7 @@ interface Supplier {
   structureAmount: number // DE ESTRUCTURA (equip/redes)
   irpfPct?: number        // % retenció IRPF (7, 15, 19...)
 }
-interface StructureCost { id: string; name: string; category?: string; amount: number; supplierRef?: string }
+interface StructureCost { id: string; name: string; category?: string; amount: number; supplierRef?: string; ivaPct?: number; ivaDeduiblePct?: number; irpfPct?: number }
 
 interface FinanceData {
   records: ClientRecord[]
@@ -2036,7 +2036,7 @@ function EstructuraSection({ data, save }: { data: FinanceData; save: (d: Financ
   const update = (id: string, field: keyof StructureCost, value: any) =>
     save({ ...data, structureCosts: data.structureCosts.map(sc => sc.id === id ? { ...sc, [field]: value } : sc) })
   const addCost = () =>
-    save({ ...data, structureCosts: [...data.structureCosts, { id: uid(), name: '', category: '', amount: 0, supplierRef: '' }] })
+    save({ ...data, structureCosts: [...data.structureCosts, { id: uid(), name: '', category: '', amount: 0, supplierRef: '', ivaPct: 21, ivaDeduiblePct: 100, irpfPct: 0 }] })
   const remove = (id: string) =>
     save({ ...data, structureCosts: data.structureCosts.filter(sc => sc.id !== id) })
   const total = data.structureCosts.reduce((s, sc) => s + (sc.amount || 0), 0)
@@ -2089,37 +2089,80 @@ function EstructuraSection({ data, save }: { data: FinanceData; save: (d: Financ
         <div className="es-empty">Cap gasto d'estructura. Fes clic a «Afegir gasto» per afegir-ne un.</div>
       ) : (
         <div className="es-table-wrap">
-          <div className="es-thead">
-            <div className="es-th es-th--desc">Descripció</div>
-            <div className="es-th es-th--cat">Categoria</div>
-            <div className="es-th es-th--amount">Importe mensual</div>
-            <div className="es-th es-th--sup">Proveïdor associat</div>
+          <div className="es-thead es-cols">
+            <div className="es-th">Descripció</div>
+            <div className="es-th">Categoria</div>
+            <div className="es-th es-th--amount">Base mensual (€)</div>
+            <div className="es-th es-th--amount">IVA factura %</div>
+            <div className="es-th es-th--amount">IVA deduïble %</div>
+            <div className="es-th es-th--amount">IRPF %</div>
+            <div className="es-th es-th--amount">IVA deduïble (€)</div>
+            <div className="es-th es-th--amount">IRPF (€)</div>
+            <div className="es-th">Proveïdor associat</div>
             <div className="es-th es-th--del"></div>
           </div>
-          {data.structureCosts.map(sc => (
-            <div key={sc.id} className="es-row">
-              <div className="es-cell es-cell--desc">
-                <input className="es-inp" value={sc.name} placeholder="Descripció del gasto..." onChange={e => update(sc.id, 'name', e.target.value)} />
+          {data.structureCosts.map(sc => {
+            const ivaPct = sc.ivaPct ?? 21
+            const ivaDeduiblePct = sc.ivaDeduiblePct ?? 100
+            const irpfPct = sc.irpfPct ?? 0
+            const ivaTotal = Math.round(sc.amount * ivaPct / 100 * 100) / 100
+            const ivaDeduible = Math.round(ivaTotal * ivaDeduiblePct / 100 * 100) / 100
+            const irpfAmt = Math.round(sc.amount * irpfPct / 100 * 100) / 100
+            return (
+              <div key={sc.id} className="es-row es-cols">
+                <div className="es-cell">
+                  <input className="es-inp" value={sc.name} placeholder="Descripció del gasto..." onChange={e => update(sc.id, 'name', e.target.value)} />
+                </div>
+                <div className="es-cell">
+                  <input className="es-inp" value={sc.category || ''} placeholder="Categoria..." onChange={e => update(sc.id, 'category', e.target.value)} />
+                </div>
+                <div className="es-cell es-cell--amount">
+                  <input className="es-inp es-inp--num" type="number" min="0" value={sc.amount || ''} placeholder="0" onChange={e => update(sc.id, 'amount', parseFloat(e.target.value) || 0)} />
+                </div>
+                <div className="es-cell es-cell--amount">
+                  <select className="es-inp es-sel" value={ivaPct} onChange={e => update(sc.id, 'ivaPct', parseFloat(e.target.value))}>
+                    <option value={0}>0%</option>
+                    <option value={4}>4%</option>
+                    <option value={10}>10%</option>
+                    <option value={21}>21%</option>
+                  </select>
+                </div>
+                <div className="es-cell es-cell--amount">
+                  <input className="es-inp es-inp--num" type="number" min="0" max="100" step="1" value={ivaDeduiblePct} placeholder="100" onChange={e => update(sc.id, 'ivaDeduiblePct', parseFloat(e.target.value) ?? 100)} />
+                </div>
+                <div className="es-cell es-cell--amount">
+                  <select className="es-inp es-sel" value={irpfPct} onChange={e => update(sc.id, 'irpfPct', parseFloat(e.target.value))}>
+                    <option value={0}>0%</option>
+                    <option value={7}>7%</option>
+                    <option value={15}>15%</option>
+                    <option value={19}>19%</option>
+                    <option value={21}>21%</option>
+                  </select>
+                </div>
+                <div className="es-cell es-cell--amount">
+                  <span className="es-computed es-computed--green">{formatEur(ivaDeduible)}</span>
+                </div>
+                <div className="es-cell es-cell--amount">
+                  <span className="es-computed es-computed--purple">{formatEur(irpfAmt)}</span>
+                </div>
+                <div className="es-cell">
+                  <select className="es-inp es-sel" value={sc.supplierRef || ''} onChange={e => update(sc.id, 'supplierRef', e.target.value)}>
+                    <option value="">— Sense proveïdor —</option>
+                    {data.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+                <div className="es-cell es-cell--del">
+                  <button className="es-del-btn" onClick={() => remove(sc.id)}><Trash2 size={14}/></button>
+                </div>
               </div>
-              <div className="es-cell es-cell--cat">
-                <input className="es-inp" value={sc.category || ''} placeholder="Categoria..." onChange={e => update(sc.id, 'category', e.target.value)} />
-              </div>
-              <div className="es-cell es-cell--amount">
-                <input className="es-inp es-inp--num" type="number" min="0" value={sc.amount || ''} placeholder="0" onChange={e => update(sc.id, 'amount', parseFloat(e.target.value) || 0)} />
-              </div>
-              <div className="es-cell es-cell--sup">
-                <select className="es-inp es-sel" value={sc.supplierRef || ''} onChange={e => update(sc.id, 'supplierRef', e.target.value)}>
-                  <option value="">— Gasto general (sense proveïdor) —</option>
-                  {data.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-              <div className="es-cell es-cell--del">
-                <button className="es-del-btn" onClick={() => remove(sc.id)}><Trash2 size={14}/></button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
           <div className="es-tfoot">
-            <span className="es-tfoot-lbl">Total gastos d'estructura</span>
+            <span className="es-tfoot-lbl">Total base d'estructura</span>
+            <div className="es-tfoot-extra">
+              <span className="es-tfoot-item"><span className="es-tfoot-item-lbl">IVA deduïble:</span><span className="es-tfoot-item-val es-tfoot-item-val--green">{formatEur(data.structureCosts.reduce((s, sc) => { const iva = sc.amount * (sc.ivaPct ?? 21) / 100; return s + iva * (sc.ivaDeduiblePct ?? 100) / 100 }, 0))}</span></span>
+              <span className="es-tfoot-item"><span className="es-tfoot-item-lbl">IRPF:</span><span className="es-tfoot-item-val es-tfoot-item-val--purple">{formatEur(data.structureCosts.reduce((s, sc) => s + sc.amount * (sc.irpfPct ?? 0) / 100, 0))}</span></span>
+            </div>
             <span className="es-tfoot-val">{formatEur(total)}</span>
           </div>
         </div>
@@ -2145,14 +2188,18 @@ function EstructuraSection({ data, save }: { data: FinanceData; save: (d: Financ
         .es-alloc-opt input[type="radio"] { accent-color: #254067; width: 15px; height: 15px; cursor: pointer; }
 
         /* Table */
-        .es-table-wrap { background: white; border: 1px solid #E8ECF2; border-radius: 12px; overflow: hidden; }
-        .es-thead { display: grid; grid-template-columns: 1fr 18% 14% 24% 44px; padding: 11px 20px; border-bottom: 1px solid #F3F4F6; background: #FAFAFA; gap: 8px; }
-        .es-th { font-size: 10.5px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.07em; display: flex; align-items: center; padding: 0 4px; }
+        .es-table-wrap { background: white; border: 1px solid #E8ECF2; border-radius: 12px; overflow: auto; }
+        .es-cols { display: grid; grid-template-columns: 1fr 14% 110px 70px 70px 70px 110px 90px 18% 44px; gap: 6px; min-width: 1060px; }
+        .es-thead { padding: 11px 16px; border-bottom: 1px solid #F3F4F6; background: #FAFAFA; align-items: center; }
+        .es-th { font-size: 10px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.07em; display: flex; align-items: center; padding: 0 4px; }
         .es-th--amount { justify-content: flex-end; }
         .es-th--del { justify-content: flex-end; }
-        .es-row { display: grid; grid-template-columns: 1fr 18% 14% 24% 44px; padding: 0 20px; border-bottom: 1px solid #F3F4F6; align-items: center; transition: background 0.1s; gap: 8px; }
+        .es-row { padding: 4px 16px; border-bottom: 1px solid #F3F4F6; align-items: center; transition: background 0.1s; }
         .es-row:last-child { border-bottom: none; }
         .es-row:hover { background: #FAFBFF; }
+        .es-computed { font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; padding: 0 4px; white-space: nowrap; }
+        .es-computed--green { color: #059669; }
+        .es-computed--purple { color: #7C3AED; }
         .es-cell { padding: 8px 4px; display: flex; align-items: center; }
         .es-cell--amount { justify-content: flex-end; }
         .es-cell--del { justify-content: flex-end; }
@@ -2166,9 +2213,15 @@ function EstructuraSection({ data, save }: { data: FinanceData; save: (d: Financ
         .es-sel:focus { border-color: #254067; background: white; box-shadow: 0 0 0 3px rgba(37,64,103,0.08); }
         .es-del-btn { width: 28px; height: 28px; border: 1px solid #FEE2E2; background: #FFF5F5; border-radius: 7px; cursor: pointer; color: #FCA5A5; display: flex; align-items: center; justify-content: center; transition: all 0.12s; flex-shrink: 0; }
         .es-del-btn:hover { background: #FEE2E2; border-color: #EF4444; color: #EF4444; }
-        .es-tfoot { display: flex; align-items: center; justify-content: space-between; padding: 14px 22px; background: #F8F9FB; border-top: 1px solid #E8ECF2; }
-        .es-tfoot-lbl { font-size: 12px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: 0.05em; }
+        .es-tfoot { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; background: #F8F9FB; border-top: 1px solid #E8ECF2; gap: 12px; flex-wrap: wrap; }
+        .es-tfoot-lbl { font-size: 11px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: 0.05em; }
         .es-tfoot-val { font-size: 16px; font-weight: 800; color: #111827; font-variant-numeric: tabular-nums; }
+        .es-tfoot-extra { display: flex; gap: 16px; }
+        .es-tfoot-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+        .es-tfoot-item-lbl { font-weight: 600; color: #6B7280; }
+        .es-tfoot-item-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+        .es-tfoot-item-val--green { color: #059669; }
+        .es-tfoot-item-val--purple { color: #7C3AED; }
         .es-empty { padding: 52px; text-align: center; font-size: 14px; color: #D1D5DB; background: white; border-radius: 12px; border: 1px solid #E8ECF2; }
       `}</style>
     </div>
