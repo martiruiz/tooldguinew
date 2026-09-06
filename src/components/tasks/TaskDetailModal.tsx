@@ -716,7 +716,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
                     <div className="picker-dd">
                       {allLabels.length === 0 && <div className="picker-empty">Crea etiquetes primer</div>}
                       {allLabels.map(l => (
-                        <button key={l.id} className={`picker-opt${labelIds.includes(l.id) ? ' picker-opt--on' : ''}`} onClick={() => toggleLabel(l.id)}>
+                        <button key={l.id} className={`picker-opt${labelIds.includes(l.id) ? ' picker-opt--on' : ''}`} onClick={() => { toggleLabel(l.id); setShowLabelPicker(false) }}>
                           <span className="dot" style={{ background: l.color }} />
                           <span style={{ color: l.color, fontWeight: labelIds.includes(l.id) ? 700 : 500 }}>{l.name}</span>
                           {labelIds.includes(l.id) && <Check size={10} style={{ marginLeft: 'auto' }} />}
@@ -745,7 +745,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
                     <div className="picker-dd picker-dd--right">
                       <div className="picker-label">Assignar seguiment</div>
                       {profiles.map(p => (
-                        <button key={p.id} className={`picker-opt${watcherIds.includes(p.id) ? ' picker-opt--on' : ''}`} onClick={() => toggleWatcher(p.id)}>
+                        <button key={p.id} className={`picker-opt${watcherIds.includes(p.id) ? ' picker-opt--on' : ''}`} onClick={() => { toggleWatcher(p.id); setShowWatcherPicker(false) }}>
                           <div className="mini-av">{p.avatar_url ? <img src={p.avatar_url} /> : getInitials(p.full_name)}</div>
                           <span>{p.full_name}</span>
                           {watcherIds.includes(p.id) && <Check size={10} style={{ marginLeft: 'auto', color: '#1B2B4B' }} />}
