@@ -79,7 +79,7 @@ export const taskPriorityLabels: Record<string, string> = {
 
 export const roleLabels: Record<string, string> = {
   superadmin: 'Superadmin',
-  manager: 'Manager',
+  manager: 'Project Manager',
   team_member: 'Team Member',
 }
 

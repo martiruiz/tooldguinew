@@ -200,7 +200,7 @@ export function AdminContent({ members, currentUserId }: Props) {
                   onChange={(e) => setNewForm({ ...newForm, role: e.target.value })}
                 >
                   <option value="team_member">Team Member</option>
-                  <option value="manager">Manager</option>
+                  <option value="manager">Project Manager</option>
                   <option value="superadmin">Superadmin</option>
                 </select>
               </div>
@@ -262,7 +262,7 @@ export function AdminContent({ members, currentUserId }: Props) {
                   }}
                 >
                   <option value="team_member">Team Member</option>
-                  <option value="manager">Manager</option>
+                  <option value="manager">Project Manager</option>
                   <option value="superadmin">Superadmin</option>
                 </select>
               </div>
