@@ -120,7 +120,6 @@ export function ProjectsContent({ projects, clients, profiles, userRole }: Props
               key={project.id}
               project={project}
               onDelete={async (id) => {
-                if (!confirm('Segur que vols eliminar aquest projecte?')) return
                 const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' })
                 if (res.ok) setLocalProjects(prev => prev.filter(p => p.id !== id))
               }}
@@ -282,6 +281,15 @@ function ProjectRow({ project, onDelete }: { project: Project; onDelete: (id: st
   const typeColor = typeColors[project.type] || '#9A9A9A'
   const client = project.client as any
   const responsible = project.responsible as any
+  const [confirming, setConfirming] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation()
+    if (!confirming) { setConfirming(true); setTimeout(() => setConfirming(false), 3000); return }
+    setDeleting(true)
+    onDelete(project.id)
+  }
 
   return (
     <div className="project-row-wrap">
@@ -346,7 +354,7 @@ function ProjectRow({ project, onDelete }: { project: Project; onDelete: (id: st
         :global(.project-del-btn) {
           width: 44px;
           height: 100%;
-          min-height: 52px;
+          min-height: 54px;
           flex-shrink: 0;
           border: none;
           border-left: 1px solid rgba(0,0,0,0.06);
@@ -355,12 +363,38 @@ function ProjectRow({ project, onDelete }: { project: Project; onDelete: (id: st
           display: flex;
           align-items: center;
           justify-content: center;
-          color: #D0D0D0;
-          transition: background 0.15s, color 0.15s;
+          color: #C8C8C8;
+          transition: background 0.18s, color 0.18s, width 0.22s ease;
+          font-family: inherit;
         }
         :global(.project-del-btn:hover) {
-          background: #FEE2E2;
+          background: #FFF0F0;
           color: #DC2626;
+        }
+        :global(.project-del-btn--confirm) {
+          width: 96px;
+          background: linear-gradient(135deg, #DC2626, #B91C1C);
+          color: white;
+          border-left-color: transparent;
+        }
+        :global(.project-del-btn--confirm:hover) {
+          background: linear-gradient(135deg, #B91C1C, #991B1B);
+          color: white;
+        }
+        :global(.del-confirm-inner) {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          white-space: nowrap;
+        }
+        :global(.del-confirm-txt) {
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+        }
+        :global(.project-del-btn--deleting) {
+          opacity: 0.5;
+          pointer-events: none;
         }
         :global(.project-row) {
           display: flex;
@@ -469,11 +503,18 @@ function ProjectRow({ project, onDelete }: { project: Project; onDelete: (id: st
       `}</style>
     </Link>
     <button
-      className="project-del-btn"
-      title="Eliminar projecte"
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(project.id) }}
+      className={`project-del-btn${confirming ? ' project-del-btn--confirm' : ''}${deleting ? ' project-del-btn--deleting' : ''}`}
+      title={confirming ? 'Fes clic per confirmar' : 'Eliminar projecte'}
+      onClick={handleDeleteClick}
     >
-      <Trash2 size={13} />
+      {confirming ? (
+        <span className="del-confirm-inner">
+          <Trash2 size={12} strokeWidth={2.5} />
+          <span className="del-confirm-txt">Eliminar?</span>
+        </span>
+      ) : (
+        <Trash2 size={14} strokeWidth={1.8} />
+      )}
     </button>
     </div>
   )
