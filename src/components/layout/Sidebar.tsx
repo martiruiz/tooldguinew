@@ -32,7 +32,6 @@ const navDefs = [
   { href: '/projects',  icon: FolderKanban,    labelKey: 'campaigns' as keyof typeof TRANSLATIONS },
   { href: '/tasks',     icon: CheckSquare,     labelKey: 'tasks'     as keyof typeof TRANSLATIONS },
   { href: '/check',     icon: ClipboardList,   labelKey: 'sessions'  as keyof typeof TRANSLATIONS },
-  { href: '/calendar',  icon: Calendar,        labelKey: 'calendar'  as keyof typeof TRANSLATIONS },
 ]
 
 const serviceLinks = [
