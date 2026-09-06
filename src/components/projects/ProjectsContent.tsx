@@ -337,27 +337,23 @@ function ProjectRow({ project, onDelete }: { project: Project; onDelete: (id: st
           opacity: 1;
         }
         :global(.project-del-btn) {
-          position: absolute;
-          right: 14px;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 30px;
-          height: 30px;
-          border: none;
-          background: transparent;
+          width: 34px;
+          height: 34px;
+          flex-shrink: 0;
+          border: 1px solid #E8E8E8;
+          background: white;
           border-radius: 8px;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
           color: #C0C0C0;
-          opacity: 1;
-          transition: background 0.15s, color 0.15s;
-          z-index: 2;
+          transition: background 0.15s, color 0.15s, border-color 0.15s;
         }
         :global(.project-del-btn:hover) {
           background: #FEE2E2;
           color: #DC2626;
+          border-color: #FECACA;
         }
         :global(.project-row) {
           display: flex;
