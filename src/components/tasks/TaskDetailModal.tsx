@@ -9,6 +9,7 @@ import type { Task } from '@/types'
 import { LabelsManagerModal, type Label } from './LabelsManagerModal'
 import { DrivePickerModal } from './DrivePickerModal'
 import { DateTimePicker } from '@/components/ui/DateTimePicker'
+import { RichTextEditor } from '@/components/ui/RichTextEditor'
 
 const STATUS_COLS = [
   { status: 'inbox', label: 'Inbox', color: '#9A9A9A' },
@@ -863,11 +864,10 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
             {/* DESCRIPCIÓ */}
             <div className="section">
               <div className="section-hdr"><span className="sec-label">Descripció</span></div>
-              <textarea ref={descRef} className="desc-inp" value={form.description}
-                onChange={e => dirty('description', e.target.value)}
+              <RichTextEditor
+                value={form.description}
+                onChange={v => dirty('description', v)}
                 placeholder="Afegeix una descripció..."
-                rows={1}
-                onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
               />
             </div>
 

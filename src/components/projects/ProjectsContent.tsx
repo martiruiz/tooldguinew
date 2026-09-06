@@ -331,6 +331,7 @@ function ProjectRow({ project, onDelete }: { project: Project; onDelete: (id: st
           position: relative;
           display: flex;
           align-items: center;
+          width: 100%;
         }
         :global(.project-row-wrap:hover .project-del-btn) {
           opacity: 1;
@@ -370,6 +371,8 @@ function ProjectRow({ project, onDelete }: { project: Project; onDelete: (id: st
           transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
           flex-wrap: wrap;
           box-shadow: 0 2px 8px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+          flex: 1;
+          min-width: 0;
         }
 
         :global(.project-row:hover) {
