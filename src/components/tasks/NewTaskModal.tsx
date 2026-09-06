@@ -212,6 +212,11 @@ export function NewTaskModal({ clients, projects, profiles, currentUserId, defau
           overflow-y: auto;
         }
 
+        @media (max-width: 639px) {
+          .modal-overlay { padding: 0; align-items: flex-end; }
+          .modal { border-radius: 20px 20px 0 0; max-height: 95vh; }
+        }
+
         .modal-header {
           display: flex;
           align-items: center;
@@ -260,6 +265,11 @@ export function NewTaskModal({ clients, projects, profiles, currentUserId, defau
           display: grid;
           grid-template-columns: 1fr 1fr 1fr 1fr;
           gap: 10px;
+        }
+
+        @media (max-width: 639px) {
+          .form-row-2 { grid-template-columns: 1fr; }
+          .form-row-4 { grid-template-columns: 1fr 1fr; }
         }
 
         .form-field { display: flex; flex-direction: column; gap: 6px; }

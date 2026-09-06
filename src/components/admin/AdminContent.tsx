@@ -511,9 +511,8 @@ export function AdminContent({ members, currentUserId }: Props) {
 
         @media (max-width: 768px) {
           .admin-page { padding: 12px 12px 80px; }
-          .member-row { grid-template-columns: 1fr auto; }
+          .member-row { grid-template-columns: 1fr auto auto; gap: 8px; }
           .member-position { display: none; }
-          .member-row > div:nth-child(3),
           .member-row > div:nth-child(4) { display: none; }
         }
 

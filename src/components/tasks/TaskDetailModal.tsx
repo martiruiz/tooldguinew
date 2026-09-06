@@ -1142,6 +1142,13 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
           max-height: 92vh; display: flex; flex-direction: column;
           box-shadow: 0 24px 64px rgba(0,0,0,0.22); overflow: hidden;
         }
+        @media (max-width: 639px) {
+          .overlay { padding: 0; align-items: flex-end; }
+          .modal {
+            max-width: 100%; border-radius: 20px 20px 0 0;
+            max-height: 96vh; border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+          }
+        }
 
         /* Header */
         .modal-hdr {

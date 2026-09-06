@@ -4,7 +4,7 @@ import { NavigationLink as Link } from '@/components/ui/NavigationLink'
 import { usePathname, useSearchParams } from 'next/navigation'
 import {
   LayoutDashboard, Users, FolderKanban, CheckSquare,
-  Calendar, BarChart2, Shield, LogOut, ChevronLeft, ChevronRight, ClipboardList,
+  Calendar, Shield, LogOut, ChevronLeft, ChevronRight, ClipboardList,
   TrendingUp, BarChart3, Truck, Building2, PieChart, Plus, X, Pencil, Check,
   Target, FileText, LineChart,
 } from 'lucide-react'
@@ -32,7 +32,6 @@ const navDefs = [
   { href: '/tasks',     icon: CheckSquare,     labelKey: 'tasks'     as keyof typeof TRANSLATIONS },
   { href: '/check',     icon: ClipboardList,   labelKey: 'sessions'  as keyof typeof TRANSLATIONS },
   { href: '/calendar',  icon: Calendar,        labelKey: 'calendar'  as keyof typeof TRANSLATIONS },
-  { href: '/metrics',   icon: BarChart2,       labelKey: 'metrics'   as keyof typeof TRANSLATIONS },
 ]
 
 const serviceLinks = [

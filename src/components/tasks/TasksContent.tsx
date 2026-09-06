@@ -1005,7 +1005,11 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
           scrollbar-width: thin;
         }
 
-        @media (max-width: 1023px) { .kanban { padding: 4px 16px 80px; } }
+        @media (max-width: 1023px) { .kanban { padding: 4px 12px 80px; gap: 8px; } }
+        @media (max-width: 639px) {
+          .kanban { padding: 4px 10px 80px; gap: 8px; }
+          .kanban-col { width: 230px; min-width: 230px; }
+        }
 
         .kanban-col {
           width: 260px;

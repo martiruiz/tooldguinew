@@ -207,19 +207,20 @@ export function FinancesContent({ clients, profiles }: { clients: ClientBasic[];
   }, [data])
 
   const clientProfitability = useMemo(() => {
-    const grouped: Record<string, { fee: number; directCost: number; marginObjective: number; clientId?: string }> = {}
+    const grouped: Record<string, { fee: number; recurrentFee: number; directCost: number; marginObjective: number; clientId?: string }> = {}
     for (const r of data.records.filter(r => r.estado === 'Actiu')) {
       const key = r.clientName
-      if (!grouped[key]) grouped[key] = { fee: 0, directCost: 0, marginObjective: r.marginObjective || data.marginObjective, clientId: r.clientId }
+      if (!grouped[key]) grouped[key] = { fee: 0, recurrentFee: 0, directCost: 0, marginObjective: r.marginObjective || data.marginObjective, clientId: r.clientId }
       grouped[key].fee += r.fee
       grouped[key].directCost += recordDirectCost(r)
+      if (r.tipo === 'Recurrent') grouped[key].recurrentFee += r.fee
     }
-    const totalFees = kpis.totalFees
+    const totalRecurrentFees = Object.values(grouped).reduce((s, g) => s + g.recurrentFee, 0)
     return Object.entries(grouped).map(([name, g]) => {
-      const alloc = totalFees > 0 ? kpis.structureCosts * (g.fee / totalFees) : 0
+      const alloc = totalRecurrentFees > 0 ? kpis.structureCosts * (g.recurrentFee / totalRecurrentFees) : 0
       const marginEur = g.fee - g.directCost - alloc
       const margin = g.fee > 0 ? (marginEur / g.fee) * 100 : 0
-      return { name, fee: g.fee, marginEur, margin, marginObjective: g.marginObjective, clientId: g.clientId }
+      return { name, fee: g.fee, recurrentFee: g.recurrentFee, marginEur, margin, marginObjective: g.marginObjective, clientId: g.clientId }
     })
   }, [data, kpis])
 
