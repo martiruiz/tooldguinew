@@ -115,6 +115,18 @@ export function Sidebar({ user }: Props) {
   const router = useRouter()
   const { t } = useLanguage()
   const [collapsed, setCollapsed] = useState(false)
+  const [hiddenSections, setHiddenSections] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set()
+    try { return new Set(JSON.parse(localStorage.getItem('guinew-sidebar-hidden') || '[]')) } catch { return new Set() }
+  })
+  const toggleSection = (key: string) => {
+    setHiddenSections(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key); else next.add(key)
+      localStorage.setItem('guinew-sidebar-hidden', JSON.stringify([...next]))
+      return next
+    })
+  }
   const [confirmLogout, setConfirmLogout] = useState(false)
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [modalClients, setModalClients] = useState<{ id: string; name: string }[]>([])
@@ -251,51 +263,65 @@ export function Sidebar({ user }: Props) {
       {/* Body */}
       <div className="sb-body">
         {/* Main nav */}
-        {!c && <div className="sb-section-lbl">{t('sectionMenu')} · {navDefs.length}</div>}
-        <nav className="sb-nav">
-          {navDefs.map(item => {
-            const label = t(item.labelKey)
-            const active = pathname === item.href || pathname.startsWith(item.href + '/')
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn('sb-item', active && 'sb-item--active', c && 'sb-item--icon')}
-                title={c ? label : undefined}
-              >
-                <item.icon size={c ? 20 : 17} strokeWidth={active ? 2.2 : 1.8} />
-                {!c && <span>{label}</span>}
-              </Link>
-            )
-          })}
-        </nav>
+        {!c && (
+          <button className="sb-section-lbl sb-section-toggle" onClick={() => toggleSection('menu')}>
+            {t('sectionMenu')} · {navDefs.length}
+            <span className="sb-toggle-arrow">{hiddenSections.has('menu') ? '›' : '‹'}</span>
+          </button>
+        )}
+        {!hiddenSections.has('menu') && (
+          <nav className="sb-nav">
+            {navDefs.map(item => {
+              const label = t(item.labelKey)
+              const active = pathname === item.href || pathname.startsWith(item.href + '/')
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn('sb-item', active && 'sb-item--active', c && 'sb-item--icon')}
+                  title={c ? label : undefined}
+                >
+                  <item.icon size={c ? 20 : 17} strokeWidth={active ? 2.2 : 1.8} />
+                  {!c && <span>{label}</span>}
+                </Link>
+              )
+            })}
+          </nav>
+        )}
 
 
         {/* Sales section: CRM + Plantilles */}
         {user.role === 'superadmin' && (
           <>
             <div className="sb-divider" />
-            {!c && <div className="sb-section-lbl">Vendes · 3</div>}
-            <nav className="sb-nav">
-              {[
-                { href: '/crm',        icon: Target,     label: 'CRM Guinew' },
-                { href: '/analisi',    icon: LineChart,  label: 'Anàlisi'    },
-                { href: '/plantilles', icon: FileText,   label: 'Plantilles' },
-              ].map(item => {
-                const active = pathname.startsWith(item.href)
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn('sb-item', active && 'sb-item--active', c && 'sb-item--icon')}
-                    title={c ? item.label : undefined}
-                  >
-                    <item.icon size={c ? 20 : 17} strokeWidth={active ? 2.2 : 1.8} />
-                    {!c && <span>{item.label}</span>}
-                  </Link>
-                )
-              })}
-            </nav>
+            {!c && (
+              <button className="sb-section-lbl sb-section-toggle" onClick={() => toggleSection('vendes')}>
+                Vendes · 3
+                <span className="sb-toggle-arrow">{hiddenSections.has('vendes') ? '›' : '‹'}</span>
+              </button>
+            )}
+            {!hiddenSections.has('vendes') && (
+              <nav className="sb-nav">
+                {[
+                  { href: '/crm',        icon: Target,     label: 'CRM Guinew' },
+                  { href: '/analisi',    icon: LineChart,  label: 'Anàlisi'    },
+                  { href: '/plantilles', icon: FileText,   label: 'Plantilles' },
+                ].map(item => {
+                  const active = pathname.startsWith(item.href)
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn('sb-item', active && 'sb-item--active', c && 'sb-item--icon')}
+                      title={c ? item.label : undefined}
+                    >
+                      <item.icon size={c ? 20 : 17} strokeWidth={active ? 2.2 : 1.8} />
+                      {!c && <span>{item.label}</span>}
+                    </Link>
+                  )
+                })}
+              </nav>
+            )}
           </>
         )}
 
@@ -303,25 +329,32 @@ export function Sidebar({ user }: Props) {
         {user.role === 'superadmin' && (
           <>
             <div className="sb-divider" />
-            {!c && <div className="sb-section-lbl">Sports Content Playbook · 1</div>}
-            <nav className="sb-nav">
-              {[
-                { href: '/sports-crm', icon: TrendingUp, label: 'CRM SCP' },
-              ].map(item => {
-                const active = pathname.startsWith(item.href)
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn('sb-item', active && 'sb-item--active', c && 'sb-item--icon')}
-                    title={c ? item.label : undefined}
-                  >
-                    <item.icon size={c ? 20 : 17} strokeWidth={active ? 2.2 : 1.8} />
-                    {!c && <span>{item.label}</span>}
-                  </Link>
-                )
-              })}
-            </nav>
+            {!c && (
+              <button className="sb-section-lbl sb-section-toggle" onClick={() => toggleSection('scp')}>
+                Sports Content Playbook · 1
+                <span className="sb-toggle-arrow">{hiddenSections.has('scp') ? '›' : '‹'}</span>
+              </button>
+            )}
+            {!hiddenSections.has('scp') && (
+              <nav className="sb-nav">
+                {[
+                  { href: '/sports-crm', icon: TrendingUp, label: 'CRM SCP' },
+                ].map(item => {
+                  const active = pathname.startsWith(item.href)
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn('sb-item', active && 'sb-item--active', c && 'sb-item--icon')}
+                      title={c ? item.label : undefined}
+                    >
+                      <item.icon size={c ? 20 : 17} strokeWidth={active ? 2.2 : 1.8} />
+                      {!c && <span>{item.label}</span>}
+                    </Link>
+                  )
+                })}
+              </nav>
+            )}
           </>
         )}
 
@@ -330,28 +363,31 @@ export function Sidebar({ user }: Props) {
           <>
             <div className="sb-divider" />
             {!c && (
-              <div className="sb-section-lbl sb-section-lbl--fin">
+              <button className="sb-section-lbl sb-section-lbl--fin sb-section-toggle" onClick={() => toggleSection('finances')}>
                 <TrendingUp size={10} strokeWidth={2.2} />
                 Finances · {financeNavDefs.length}
-              </div>
+                <span className="sb-toggle-arrow">{hiddenSections.has('finances') ? '›' : '‹'}</span>
+              </button>
             )}
-            <nav className="sb-nav">
-              {financeNavDefs.map(item => {
-                const label = t(item.labelKey)
-                const isActive = inFinances && activeFinanceSection === item.id
-                return (
-                  <a
-                    key={item.id}
-                    href={`/finances?s=${item.id}`}
-                    className={cn('sb-item', isActive && 'sb-item--active', c && 'sb-item--icon')}
-                    title={c ? label : undefined}
-                  >
-                    <item.icon size={c ? 20 : 17} strokeWidth={isActive ? 2.2 : 1.8} />
-                    {!c && <span>{label}</span>}
-                  </a>
-                )
-              })}
-            </nav>
+            {!hiddenSections.has('finances') && (
+              <nav className="sb-nav">
+                {financeNavDefs.map(item => {
+                  const label = t(item.labelKey)
+                  const isActive = inFinances && activeFinanceSection === item.id
+                  return (
+                    <a
+                      key={item.id}
+                      href={`/finances?s=${item.id}`}
+                      className={cn('sb-item', isActive && 'sb-item--active', c && 'sb-item--icon')}
+                      title={c ? label : undefined}
+                    >
+                      <item.icon size={c ? 20 : 17} strokeWidth={isActive ? 2.2 : 1.8} />
+                      {!c && <span>{label}</span>}
+                    </a>
+                  )
+                })}
+              </nav>
+            )}
           </>
         )}
 
@@ -611,7 +647,18 @@ export function Sidebar({ user }: Props) {
           letter-spacing: 0.08em; text-transform: uppercase;
           white-space: nowrap; flex-shrink: 0;
         }
+        .sb-section-toggle {
+          width: 100%; background: none; border: none; cursor: pointer;
+          text-align: left; font-family: inherit;
+          border-radius: 6px; transition: background 0.15s;
+        }
+        .sb-section-toggle:hover { background: rgba(0,0,0,0.04); }
+        .sb-toggle-arrow {
+          margin-left: auto; font-size: 13px; font-weight: 400;
+          letter-spacing: 0; text-transform: none; color: #BCBCBC; line-height: 1;
+        }
         .sb-section-lbl--fin { color: #254067; padding-top: 8px; }
+        .sb-section-lbl--fin .sb-toggle-arrow { color: #254067; }
 
         /* Nav */
         .sb-nav { display: flex; flex-direction: column; padding: 0 8px; gap: 1px; flex-shrink: 0; }
