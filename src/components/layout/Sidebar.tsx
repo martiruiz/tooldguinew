@@ -36,11 +36,11 @@ const navDefs = [
 ]
 
 const serviceLinks = [
-  { label: 'Google Drive', href: 'https://drive.google.com', abbr: 'G', color: '#1A73E8', bg: '#E8F0FE' },
-  { label: 'Gmail',        href: '',                         abbr: 'GM', color: '#EA4335', bg: '#FDECEA', gmail: true },
-  { label: 'Dropbox',      href: 'https://www.dropbox.com',  abbr: 'D', color: '#0061FF', bg: '#E5EDFF' },
-  { label: 'Metricool',    href: 'https://metricool.com/es/',    abbr: 'M', color: '#FF6B35', bg: '#FFF0EB', fixed: true },
-  { label: 'Brevo',        href: 'https://login.brevo.com/?target=https%3A%2F%2Fapp.brevo.com%2F', abbr: 'BR', color: '#0B7285', bg: '#E0F7FA', fixed: true },
+  { label: 'Google Drive', href: 'https://drive.google.com', abbr: 'G',  color: '#1A73E8', bg: '#F0F4FF' },
+  { label: 'Gmail',        href: '',                         abbr: 'GM', color: '#EA4335', bg: '#FEF2F2', gmail: true },
+  { label: 'Dropbox',      href: 'https://www.dropbox.com',  abbr: 'D',  color: '#0061FF', bg: '#EEF3FF' },
+  { label: 'Metricool',    href: 'https://metricool.com/es/', abbr: 'M',  color: '#E8521A', bg: '#FFF4EE', fixed: true },
+  { label: 'Brevo',        href: 'https://login.brevo.com/?target=https%3A%2F%2Fapp.brevo.com%2F', abbr: 'BR', color: '#0B7285', bg: '#EFF9FC', fixed: true },
 ]
 
 function GoogleDriveIcon({ size = 18 }: { size?: number }) {
@@ -66,32 +66,40 @@ function DropboxIcon({ size = 18 }: { size?: number }) {
 
 function GmailIcon({ size = 18 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-      <path fill="#4CAF50" d="M45 16.2l-5 2.75-5 4.75V40h7s3 0 3-3V16.2z"/>
-      <path fill="#1E88E5" d="M3 16.2l3.5 2.75L13 23.7V40H6s-3 0-3-3V16.2z"/>
-      <polygon fill="#E53935" points="35,11.2 24,19.45 13,11.2 12,28 24,37.45 36,28"/>
-      <path fill="#C62828" d="M3,12.298V16.2l10,7.5V11.2L9.876,8.859C9.132,8.301,8.228,8,7.298,8h0C4.924,8,3,9.924,3,12.298z"/>
-      <path fill="#FBC02D" d="M45,12.298V16.2l-10,7.5V11.2l3.124-2.341C38.868,8.301,39.772,8,40.702,8h0 C43.076,8,45,9.924,45,12.298z"/>
+    <svg width={size} height={size} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.908 1.528-1.147C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/>
     </svg>
   )
 }
 
 function BrevoIcon({ size = 18 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <rect width="100" height="100" rx="20" fill="#0B7285"/>
-      <text x="50" y="68" textAnchor="middle" fontFamily="Arial, sans-serif" fontWeight="bold" fontSize="56" fill="white">B</text>
+    <svg width={size} height={size} viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="brevo-g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#0EA5E9"/>
+          <stop offset="100%" stopColor="#0B7285"/>
+        </linearGradient>
+      </defs>
+      <rect width="120" height="120" rx="26" fill="url(#brevo-g)"/>
+      <path d="M34 28h28c12 0 20 6.5 20 16.5 0 6-3 10.5-8 13 7 2.5 11.5 8 11.5 15.5C85.5 85 76.5 92 63 92H34V28zm14 25h13c5.5 0 8.5-2.5 8.5-7s-3-7-8.5-7H48v14zm0 26h15c6 0 9.5-2.8 9.5-7.8s-3.5-7.7-9.5-7.7H48v15.5z" fill="white"/>
     </svg>
   )
 }
 
 function MetricoolIcon({ size = 18 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <rect width="100" height="100" rx="20" fill="#FF6B35"/>
-      <rect x="12" y="40" width="18" height="48" rx="4" fill="white"/>
-      <rect x="41" y="20" width="18" height="68" rx="4" fill="white"/>
-      <rect x="70" y="55" width="18" height="33" rx="4" fill="white"/>
+    <svg width={size} height={size} viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="metricool-g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FF8C5A"/>
+          <stop offset="100%" stopColor="#E8521A"/>
+        </linearGradient>
+      </defs>
+      <rect width="120" height="120" rx="26" fill="url(#metricool-g)"/>
+      <rect x="14" y="52" width="22" height="54" rx="5" fill="white" opacity="0.95"/>
+      <rect x="49" y="28" width="22" height="78" rx="5" fill="white" opacity="0.95"/>
+      <rect x="84" y="66" width="22" height="40" rx="5" fill="white" opacity="0.95"/>
     </svg>
   )
 }
