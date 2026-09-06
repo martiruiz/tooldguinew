@@ -42,6 +42,7 @@ interface Supplier {
   monthlyFee: number      // COBRO MENSUAL TOTAL (acordat)
   structureAmount: number // DE ESTRUCTURA (equip/redes)
   irpfPct?: number        // % retenció IRPF (7, 15, 19...)
+  ivaPct?: number         // % IVA aplicable (0, 4, 10, 21)
 }
 interface StructureCost { id: string; name: string; category?: string; amount: number; supplierRef?: string; ivaPct?: number; ivaDeduiblePct?: number; irpfPct?: number }
 
@@ -1186,7 +1187,7 @@ function RecordForm({ record, clients, profiles, data, kpis, marginObjective, on
 
 /* ─── PROVEÏDORS ─── */
 function newSupplier(): Supplier {
-  return { id: uid(), name: '', category: '', contact: '', notes: '', monthlyFee: 0, structureAmount: 0, irpfPct: 0 }
+  return { id: uid(), name: '', category: '', contact: '', notes: '', monthlyFee: 0, structureAmount: 0, irpfPct: 0, ivaPct: 21 }
 }
 
 function SupplierDetailView({ supplier, data, save, supplierStats, onBack }: {
@@ -1216,6 +1217,8 @@ function SupplierDetailView({ supplier, data, save, supplierStats, onBack }: {
 
   const totalCost = clientsUsingSupplier.reduce((sum, c) => sum + (c.cost || 0), 0)
   const totalIrpf = clientsUsingSupplier.reduce((sum, c) => sum + c.irpf, 0)
+  const ivaBase = s.monthlyFee || 0
+  const totalIva = Math.round(ivaBase * ((s.ivaPct ?? 21) / 100) * 100) / 100
   const initials = s.name ? getInitials(s.name) : '?'
   const avatarBg = s.name ? getAvatarColor(s.name) : '#9CA3AF'
 
@@ -1235,6 +1238,7 @@ function SupplierDetailView({ supplier, data, save, supplierStats, onBack }: {
         <div className="sd-kpi"><div className="sd-kpi-lbl">Clients actius</div><div className="sd-kpi-val">{supplierStats[s.id]?.activeClients ?? 0}</div></div>
         <div className="sd-kpi"><div className="sd-kpi-lbl">Total facturado als clients</div><div className="sd-kpi-val">{formatEur(totalCost)}</div></div>
         <div className="sd-kpi sd-kpi--purple"><div className="sd-kpi-lbl">IRPF estimat ({s.irpfPct ?? 0}%)</div><div className="sd-kpi-val">{formatEur(totalIrpf)}</div></div>
+        <div className="sd-kpi sd-kpi--blue"><div className="sd-kpi-lbl">IVA mensual ({s.ivaPct ?? 21}%)</div><div className="sd-kpi-val">{formatEur(totalIva)}</div></div>
         <div className="sd-kpi"><div className="sd-kpi-lbl">Cost estructura mensual</div><div className="sd-kpi-val">{formatEur(s.structureAmount)}</div></div>
       </div>
 
@@ -1270,6 +1274,25 @@ function SupplierDetailView({ supplier, data, save, supplierStats, onBack }: {
                 <option value={21}>21%</option>
               </select>
             </div>
+            <div className="sd-field">
+              <label>% IVA aplicable</label>
+              <select className="sd-sel" value={s.ivaPct ?? 21} onChange={e => set('ivaPct', parseFloat(e.target.value))}>
+                <option value={0}>0% (exempt)</option>
+                <option value={4}>4% (superreduït)</option>
+                <option value={10}>10% (reduït)</option>
+                <option value={21}>21% (general)</option>
+              </select>
+            </div>
+            {(s.ivaPct ?? 21) > 0 && (
+              <div className="sd-field sd-field--iva-preview">
+                <span className="sd-iva-label">Fee sense IVA</span>
+                <span className="sd-iva-val">{formatEur(ivaBase)}</span>
+                <span className="sd-iva-label">IVA {s.ivaPct ?? 21}%</span>
+                <span className="sd-iva-val sd-iva-val--accent">+{formatEur(totalIva)}</span>
+                <span className="sd-iva-label">Total amb IVA</span>
+                <span className="sd-iva-val sd-iva-val--total">{formatEur(ivaBase + totalIva)}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1311,10 +1334,16 @@ function SupplierDetailView({ supplier, data, save, supplierStats, onBack }: {
         .sd-avatar { width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; color: white; flex-shrink: 0; }
         .sd-name { font-size: 22px; font-weight: 700; color: #0F1B2D; letter-spacing: -0.02em; }
         .sd-cat { font-size: 13px; color: #9CA3AF; margin-top: 2px; }
-        .sd-kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
+        .sd-kpis { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; margin-bottom: 20px; }
         @media (max-width: 767px) { .sd-kpis { grid-template-columns: 1fr 1fr; } }
         .sd-kpi { background: white; border-radius: 14px; border: 1px solid #E8ECF2; padding: 16px 18px; }
         .sd-kpi--purple { border-top: 3px solid #7C3AED; }
+        .sd-kpi--blue { border-top: 3px solid #2563EB; }
+        .sd-field--iva-preview { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr auto 1fr auto 1fr; align-items: center; gap: 8px; background: #F0F6FF; border-radius: 10px; padding: 10px 14px; margin-top: 4px; }
+        .sd-iva-label { font-size: 11px; font-weight: 600; color: #6B7280; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+        .sd-iva-val { font-size: 14px; font-weight: 700; color: #374151; font-variant-numeric: tabular-nums; text-align: right; }
+        .sd-iva-val--accent { color: #2563EB; }
+        .sd-iva-val--total { color: #0F1B2D; font-size: 15px; }
         .sd-kpi-lbl { font-size: 11px; font-weight: 700; color: #A0A9BB; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
         .sd-kpi-val { font-size: 20px; font-weight: 800; color: #0F1B2D; font-variant-numeric: tabular-nums; }
         .sd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
