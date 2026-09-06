@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { Plus, Search, Users, FolderKanban, CheckSquare, MoreHorizontal, Pencil, Trash2, LayoutGrid, List, Table2, BarChart2 } from 'lucide-react'
+import { Plus, Search, Users, FolderKanban, CheckSquare, MoreHorizontal, Pencil, Trash2, LayoutGrid, List, Table2, BarChart2, Power, PowerOff, Pause, ChevronDown } from 'lucide-react'
 import { cn, clientTypeLabels, getInitials } from '@/lib/utils'
 import { NewClientModal } from './NewClientModal'
 import type { Client } from '@/types'
@@ -114,6 +114,17 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
     }
   }
 
+  async function handleClientUpdate(id: string, changes: Partial<Client>) {
+    const res = await fetch(`/api/clients/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(changes),
+    })
+    if (res.ok) {
+      setClients(prev => prev.map(c => c.id === id ? { ...c, ...changes } : c))
+    }
+  }
+
   return (
     <div className="clients-page">
       {/* Toolbar */}
@@ -206,6 +217,7 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
               isSuperadmin={userRole === 'superadmin'}
               onEdit={() => openEdit(client)}
               onDelete={() => deleteClient(client)}
+              onUpdate={handleClientUpdate}
             />
           ))}
         </div>
@@ -218,6 +230,7 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
               canManage={canManage}
               onEdit={() => openEdit(client)}
               onDelete={() => deleteClient(client)}
+              onUpdate={handleClientUpdate}
             />
           ))}
         </div>
@@ -227,6 +240,7 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
           canManage={canManage}
           onEdit={openEdit}
           onDelete={deleteClient}
+          onUpdate={handleClientUpdate}
         />
       )}
 
@@ -574,14 +588,17 @@ interface CardProps {
   isSuperadmin?: boolean
   onEdit: () => void
   onDelete: () => void
+  onUpdate: (id: string, changes: Partial<Client>) => void
 }
 
-function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete }: CardProps) {
+function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete, onUpdate }: CardProps) {
   const health = healthConfig[client.health] || healthConfig.healthy
   const projectCount = (client as any).projects?.[0]?.count || 0
   const taskCount = (client as any).tasks?.[0]?.count || 0
   const [menuOpen, setMenuOpen] = useState(false)
+  const [healthOpen, setHealthOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const healthRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!menuOpen) return
@@ -591,6 +608,15 @@ function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete }: CardP
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [menuOpen])
+
+  useEffect(() => {
+    if (!healthOpen) return
+    function handleClick(e: MouseEvent) {
+      if (!healthRef.current?.contains(e.target as Node)) setHealthOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [healthOpen])
 
   return (
     <div style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
@@ -607,9 +633,34 @@ function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete }: CardP
             <div className="client-name">{client.name}</div>
             <div className="client-type">{clientTypeLabels[client.type] || client.type}</div>
           </div>
-          <div className="client-health" style={{ background: health.bg, color: health.color }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: health.dot, display: 'inline-block', marginRight: 5 }} />
-            {health.label}
+          <div ref={healthRef} style={{ position: 'relative' }} onClick={e => e.preventDefault()}>
+            <button
+              className="client-health"
+              style={{ background: health.bg, color: health.color, cursor: canManage ? 'pointer' : 'default', border: 'none', fontFamily: 'inherit' }}
+              onClick={e => { e.preventDefault(); e.stopPropagation(); if (canManage) setHealthOpen(o => !o) }}
+              title={canManage ? 'Canviar estat de salut' : undefined}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: health.dot, display: 'inline-block', marginRight: 5 }} />
+              {health.label}
+              {canManage && <ChevronDown size={10} style={{ marginLeft: 3, opacity: 0.6 }} />}
+            </button>
+            {healthOpen && canManage && (
+              <div style={{ position: 'absolute', top: '110%', right: 0, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: 130, overflow: 'hidden', zIndex: 50 }}>
+                {(Object.entries(healthConfig) as [string, typeof healthConfig.healthy][]).map(([key, cfg]) => (
+                  <button
+                    key={key}
+                    onClick={e => { e.preventDefault(); e.stopPropagation(); onUpdate(client.id, { health: key as Client['health'] }); setHealthOpen(false) }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', padding: '8px 12px', background: client.health === key ? cfg.bg : 'none', border: 'none', fontSize: 12.5, cursor: 'pointer', color: cfg.color, fontWeight: client.health === key ? 700 : 500, fontFamily: 'inherit' }}
+                    onMouseEnter={e => { if (client.health !== key) e.currentTarget.style.background = '#F5F5F5' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = client.health === key ? cfg.bg : 'none' }}
+                  >
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
+                    {cfg.label}
+                    {client.health === key && <span style={{ marginLeft: 'auto', fontSize: 11 }}>✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -650,19 +701,50 @@ function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete }: CardP
             <MoreHorizontal size={14} />
           </button>
           {menuOpen && (
-            <div style={{ position: 'absolute', top: 32, right: 0, background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 14, boxShadow: '0 12px 32px rgba(0,0,0,0.14)', minWidth: 152, overflow: 'hidden', zIndex: 20 }}>
+            <div style={{ position: 'absolute', top: 32, right: 0, background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 14, boxShadow: '0 12px 32px rgba(0,0,0,0.14)', minWidth: 165, overflow: 'hidden', zIndex: 20 }}>
               <button
                 onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onEdit() }}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#0a0a0a', textAlign: 'left' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#0a0a0a', textAlign: 'left', fontFamily: 'inherit' }}
                 onMouseEnter={e => (e.currentTarget.style.background = '#F5F5F5')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}
               >
                 <Pencil size={13} style={{ color: '#9A9A9A' }} /> Editar nom
               </button>
               <div style={{ height: 1, background: '#F0F0F0' }} />
+              {client.status !== 'active' && (
+                <button
+                  onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onUpdate(client.id, { status: 'active' }) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#16A34A', textAlign: 'left', fontFamily: 'inherit' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#F0FDF4')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                >
+                  <Power size={13} /> Activar
+                </button>
+              )}
+              {client.status === 'active' && (
+                <button
+                  onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onUpdate(client.id, { status: 'paused' }) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#D97706', textAlign: 'left', fontFamily: 'inherit' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#FFFBEB')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                >
+                  <Pause size={13} /> Pausar
+                </button>
+              )}
+              {client.status !== 'inactive' && (
+                <button
+                  onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onUpdate(client.id, { status: 'inactive' }) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#6B7280', textAlign: 'left', fontFamily: 'inherit' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#F5F5F5')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                >
+                  <PowerOff size={13} /> Desactivar
+                </button>
+              )}
+              <div style={{ height: 1, background: '#F0F0F0' }} />
               <button
                 onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onDelete() }}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#DC2626', textAlign: 'left' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#DC2626', textAlign: 'left', fontFamily: 'inherit' }}
                 onMouseEnter={e => (e.currentTarget.style.background = '#FEF2F2')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}
               >
@@ -814,12 +896,14 @@ function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete }: CardP
 // ─────────────────────────────────────────────
 // List row view
 // ─────────────────────────────────────────────
-function ClientRow({ client, canManage, onEdit, onDelete }: CardProps) {
+function ClientRow({ client, canManage, onEdit, onDelete, onUpdate }: CardProps) {
   const health = healthConfig[client.health] || healthConfig.healthy
   const projectCount = (client as any).projects?.[0]?.count || 0
   const taskCount = (client as any).tasks?.[0]?.count || 0
   const [menuOpen, setMenuOpen] = useState(false)
+  const [healthOpen, setHealthOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const healthRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!menuOpen) return
@@ -829,6 +913,15 @@ function ClientRow({ client, canManage, onEdit, onDelete }: CardProps) {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [menuOpen])
+
+  useEffect(() => {
+    if (!healthOpen) return
+    function handleClick(e: MouseEvent) {
+      if (!healthRef.current?.contains(e.target as Node)) setHealthOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [healthOpen])
 
   return (
     <div style={{ position: 'relative' }}>
@@ -844,9 +937,33 @@ function ClientRow({ client, canManage, onEdit, onDelete }: CardProps) {
           <div className="cr-type">{clientTypeLabels[client.type] || client.type}</div>
         </div>
 
-        <div className="cr-health" style={{ background: health.bg, color: health.color }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: health.dot, display: 'inline-block', marginRight: 5 }} />
-          {health.label}
+        <div ref={healthRef} style={{ position: 'relative', flexShrink: 0 }} onClick={e => e.preventDefault()}>
+          <button
+            className="cr-health"
+            style={{ background: health.bg, color: health.color, cursor: canManage ? 'pointer' : 'default', border: 'none', fontFamily: 'inherit' }}
+            onClick={e => { e.preventDefault(); e.stopPropagation(); if (canManage) setHealthOpen(o => !o) }}
+          >
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: health.dot, display: 'inline-block', marginRight: 5 }} />
+            {health.label}
+            {canManage && <ChevronDown size={10} style={{ marginLeft: 3, opacity: 0.6 }} />}
+          </button>
+          {healthOpen && canManage && (
+            <div style={{ position: 'absolute', top: '110%', left: 0, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: 130, overflow: 'hidden', zIndex: 50 }}>
+              {(Object.entries(healthConfig) as [string, typeof healthConfig.healthy][]).map(([key, cfg]) => (
+                <button
+                  key={key}
+                  onClick={e => { e.preventDefault(); e.stopPropagation(); onUpdate(client.id, { health: key as Client['health'] }); setHealthOpen(false) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', padding: '8px 12px', background: client.health === key ? cfg.bg : 'none', border: 'none', fontSize: 12.5, cursor: 'pointer', color: cfg.color, fontWeight: client.health === key ? 700 : 500, fontFamily: 'inherit' }}
+                  onMouseEnter={e => { if (client.health !== key) e.currentTarget.style.background = '#F5F5F5' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = client.health === key ? cfg.bg : 'none' }}
+                >
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
+                  {cfg.label}
+                  {client.health === key && <span style={{ marginLeft: 'auto', fontSize: 11 }}>✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="cr-resp">
@@ -878,16 +995,41 @@ function ClientRow({ client, canManage, onEdit, onDelete }: CardProps) {
             <MoreHorizontal size={14} />
           </button>
           {menuOpen && (
-            <div style={{ position: 'absolute', top: 32, right: 0, background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 14, boxShadow: '0 12px 32px rgba(0,0,0,0.14)', minWidth: 152, overflow: 'hidden', zIndex: 20 }}>
+            <div style={{ position: 'absolute', top: 32, right: 0, background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 14, boxShadow: '0 12px 32px rgba(0,0,0,0.14)', minWidth: 165, overflow: 'hidden', zIndex: 20 }}>
               <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onEdit() }}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#0a0a0a', textAlign: 'left' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#0a0a0a', textAlign: 'left', fontFamily: 'inherit' }}
                 onMouseEnter={e => (e.currentTarget.style.background = '#F5F5F5')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
                 <Pencil size={13} style={{ color: '#9A9A9A' }} /> Editar nom
               </button>
               <div style={{ height: 1, background: '#F0F0F0' }} />
+              {client.status !== 'active' && (
+                <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onUpdate(client.id, { status: 'active' }) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#16A34A', textAlign: 'left', fontFamily: 'inherit' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#F0FDF4')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                  <Power size={13} /> Activar
+                </button>
+              )}
+              {client.status === 'active' && (
+                <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onUpdate(client.id, { status: 'paused' }) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#D97706', textAlign: 'left', fontFamily: 'inherit' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#FFFBEB')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                  <Pause size={13} /> Pausar
+                </button>
+              )}
+              {client.status !== 'inactive' && (
+                <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onUpdate(client.id, { status: 'inactive' }) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#6B7280', textAlign: 'left', fontFamily: 'inherit' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#F5F5F5')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                  <PowerOff size={13} /> Desactivar
+                </button>
+              )}
+              <div style={{ height: 1, background: '#F0F0F0' }} />
               <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onDelete() }}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#DC2626', textAlign: 'left' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#DC2626', textAlign: 'left', fontFamily: 'inherit' }}
                 onMouseEnter={e => (e.currentTarget.style.background = '#FEF2F2')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
                 <Trash2 size={13} /> Esborrar
@@ -955,14 +1097,17 @@ function ClientRow({ client, canManage, onEdit, onDelete }: CardProps) {
 // ─────────────────────────────────────────────
 // Table view
 // ─────────────────────────────────────────────
-function ClientTable({ clients, canManage, onEdit, onDelete }: {
+function ClientTable({ clients, canManage, onEdit, onDelete, onUpdate }: {
   clients: Client[]
   canManage: boolean
   onEdit: (c: Client) => void
   onDelete: (c: Client) => void
+  onUpdate: (id: string, changes: Partial<Client>) => void
 }) {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
+  const [healthOpenId, setHealthOpenId] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const healthRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!menuOpenId) return
@@ -972,6 +1117,15 @@ function ClientTable({ clients, canManage, onEdit, onDelete }: {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [menuOpenId])
+
+  useEffect(() => {
+    if (!healthOpenId) return
+    function handleClick(e: MouseEvent) {
+      if (!healthRef.current?.contains(e.target as Node)) setHealthOpenId(null)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [healthOpenId])
 
   return (
     <div className="ct-wrap">
@@ -1008,11 +1162,35 @@ function ClientTable({ clients, canManage, onEdit, onDelete }: {
                 <div className="ct-td">
                   <span className="ct-type">{clientTypeLabels[client.type] || client.type}</span>
                 </div>
-                <div className="ct-td">
-                  <span className="ct-health" style={{ background: health.bg, color: health.color }}>
-                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: health.dot, display: 'inline-block', marginRight: 4 }} />
-                    {health.label}
-                  </span>
+                <div className="ct-td" onClick={e => e.preventDefault()}>
+                  <div ref={healthOpenId === client.id ? healthRef : undefined} style={{ position: 'relative' }}>
+                    <button
+                      className="ct-health"
+                      style={{ background: health.bg, color: health.color, cursor: canManage ? 'pointer' : 'default', border: 'none', fontFamily: 'inherit' }}
+                      onClick={e => { e.preventDefault(); e.stopPropagation(); if (canManage) setHealthOpenId(healthOpenId === client.id ? null : client.id) }}
+                    >
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: health.dot, display: 'inline-block', marginRight: 4 }} />
+                      {health.label}
+                      {canManage && <ChevronDown size={9} style={{ marginLeft: 3, opacity: 0.6 }} />}
+                    </button>
+                    {healthOpenId === client.id && canManage && (
+                      <div style={{ position: 'absolute', top: '110%', left: 0, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: 130, overflow: 'hidden', zIndex: 50 }}>
+                        {(Object.entries(healthConfig) as [string, typeof healthConfig.healthy][]).map(([key, cfg]) => (
+                          <button
+                            key={key}
+                            onClick={e => { e.preventDefault(); e.stopPropagation(); onUpdate(client.id, { health: key as Client['health'] }); setHealthOpenId(null) }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', padding: '8px 12px', background: client.health === key ? cfg.bg : 'none', border: 'none', fontSize: 12.5, cursor: 'pointer', color: cfg.color, fontWeight: client.health === key ? 700 : 500, fontFamily: 'inherit' }}
+                            onMouseEnter={e => { if (client.health !== key) e.currentTarget.style.background = '#F5F5F5' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = client.health === key ? cfg.bg : 'none' }}
+                          >
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
+                            {cfg.label}
+                            {client.health === key && <span style={{ marginLeft: 'auto', fontSize: 11 }}>✓</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="ct-td">
                   {client.responsible ? (
@@ -1043,16 +1221,41 @@ function ClientTable({ clients, canManage, onEdit, onDelete }: {
                     <MoreHorizontal size={14} />
                   </button>
                   {isOpen && (
-                    <div style={{ position: 'absolute', top: 32, right: 0, background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 14, boxShadow: '0 12px 32px rgba(0,0,0,0.14)', minWidth: 152, overflow: 'hidden', zIndex: 20 }}>
+                    <div style={{ position: 'absolute', top: 32, right: 0, background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 14, boxShadow: '0 12px 32px rgba(0,0,0,0.14)', minWidth: 165, overflow: 'hidden', zIndex: 20 }}>
                       <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpenId(null); onEdit(client) }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#0a0a0a', textAlign: 'left' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#0a0a0a', textAlign: 'left', fontFamily: 'inherit' }}
                         onMouseEnter={e => (e.currentTarget.style.background = '#F5F5F5')}
                         onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
                         <Pencil size={13} style={{ color: '#9A9A9A' }} /> Editar nom
                       </button>
                       <div style={{ height: 1, background: '#F0F0F0' }} />
+                      {client.status !== 'active' && (
+                        <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpenId(null); onUpdate(client.id, { status: 'active' }) }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#16A34A', textAlign: 'left', fontFamily: 'inherit' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = '#F0FDF4')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                          <Power size={13} /> Activar
+                        </button>
+                      )}
+                      {client.status === 'active' && (
+                        <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpenId(null); onUpdate(client.id, { status: 'paused' }) }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#D97706', textAlign: 'left', fontFamily: 'inherit' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = '#FFFBEB')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                          <Pause size={13} /> Pausar
+                        </button>
+                      )}
+                      {client.status !== 'inactive' && (
+                        <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpenId(null); onUpdate(client.id, { status: 'inactive' }) }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#6B7280', textAlign: 'left', fontFamily: 'inherit' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = '#F5F5F5')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                          <PowerOff size={13} /> Desactivar
+                        </button>
+                      )}
+                      <div style={{ height: 1, background: '#F0F0F0' }} />
                       <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpenId(null); onDelete(client) }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#DC2626', textAlign: 'left' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#DC2626', textAlign: 'left', fontFamily: 'inherit' }}
                         onMouseEnter={e => (e.currentTarget.style.background = '#FEF2F2')}
                         onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
                         <Trash2 size={13} /> Esborrar
