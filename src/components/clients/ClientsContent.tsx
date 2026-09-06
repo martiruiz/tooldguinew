@@ -633,14 +633,22 @@ function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete, onUpdat
             <div className="client-name">{client.name}</div>
             <div className="client-type">{clientTypeLabels[client.type] || client.type}</div>
           </div>
-          <div ref={healthRef} style={{ position: 'relative' }} onClick={e => e.preventDefault()}>
+          <div ref={healthRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 4 }} onClick={e => e.preventDefault()}>
+            {canManage ? (
+              <button
+                onClick={e => { e.preventDefault(); e.stopPropagation(); onUpdate(client.id, { status: client.status === 'active' ? 'paused' : 'active' }) }}
+                title={client.status === 'active' ? 'Pausar client' : 'Activar client'}
+                style={{ width: 8, height: 8, borderRadius: '50%', background: client.status === 'active' ? '#16A34A' : client.status === 'paused' ? '#D97706' : '#9CA3AF', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'background 0.15s' }}
+              />
+            ) : (
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: health.dot, display: 'inline-block', flexShrink: 0 }} />
+            )}
             <button
               className="client-health"
               style={{ background: health.bg, color: health.color, cursor: canManage ? 'pointer' : 'default', border: 'none', fontFamily: 'inherit' }}
               onClick={e => { e.preventDefault(); e.stopPropagation(); if (canManage) setHealthOpen(o => !o) }}
               title={canManage ? 'Canviar estat de salut' : undefined}
             >
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: health.dot, display: 'inline-block', marginRight: 5 }} />
               {health.label}
               {canManage && <ChevronDown size={10} style={{ marginLeft: 3, opacity: 0.6 }} />}
             </button>
@@ -937,13 +945,21 @@ function ClientRow({ client, canManage, onEdit, onDelete, onUpdate }: CardProps)
           <div className="cr-type">{clientTypeLabels[client.type] || client.type}</div>
         </div>
 
-        <div ref={healthRef} style={{ position: 'relative', flexShrink: 0 }} onClick={e => e.preventDefault()}>
+        <div ref={healthRef} style={{ position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }} onClick={e => e.preventDefault()}>
+          {canManage ? (
+            <button
+              onClick={e => { e.preventDefault(); e.stopPropagation(); onUpdate(client.id, { status: client.status === 'active' ? 'paused' : 'active' }) }}
+              title={client.status === 'active' ? 'Pausar client' : 'Activar client'}
+              style={{ width: 8, height: 8, borderRadius: '50%', background: client.status === 'active' ? '#16A34A' : client.status === 'paused' ? '#D97706' : '#9CA3AF', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'background 0.15s' }}
+            />
+          ) : (
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: health.dot, display: 'inline-block', flexShrink: 0 }} />
+          )}
           <button
             className="cr-health"
             style={{ background: health.bg, color: health.color, cursor: canManage ? 'pointer' : 'default', border: 'none', fontFamily: 'inherit' }}
             onClick={e => { e.preventDefault(); e.stopPropagation(); if (canManage) setHealthOpen(o => !o) }}
           >
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: health.dot, display: 'inline-block', marginRight: 5 }} />
             {health.label}
             {canManage && <ChevronDown size={10} style={{ marginLeft: 3, opacity: 0.6 }} />}
           </button>
@@ -1163,13 +1179,21 @@ function ClientTable({ clients, canManage, onEdit, onDelete, onUpdate }: {
                   <span className="ct-type">{clientTypeLabels[client.type] || client.type}</span>
                 </div>
                 <div className="ct-td" onClick={e => e.preventDefault()}>
-                  <div ref={healthOpenId === client.id ? healthRef : undefined} style={{ position: 'relative' }}>
+                  <div ref={healthOpenId === client.id ? healthRef : undefined} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {canManage ? (
+                      <button
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); onUpdate(client.id, { status: client.status === 'active' ? 'paused' : 'active' }) }}
+                        title={client.status === 'active' ? 'Pausar client' : 'Activar client'}
+                        style={{ width: 7, height: 7, borderRadius: '50%', background: client.status === 'active' ? '#16A34A' : client.status === 'paused' ? '#D97706' : '#9CA3AF', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'background 0.15s' }}
+                      />
+                    ) : (
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: health.dot, display: 'inline-block', flexShrink: 0 }} />
+                    )}
                     <button
                       className="ct-health"
                       style={{ background: health.bg, color: health.color, cursor: canManage ? 'pointer' : 'default', border: 'none', fontFamily: 'inherit' }}
                       onClick={e => { e.preventDefault(); e.stopPropagation(); if (canManage) setHealthOpenId(healthOpenId === client.id ? null : client.id) }}
                     >
-                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: health.dot, display: 'inline-block', marginRight: 4 }} />
                       {health.label}
                       {canManage && <ChevronDown size={9} style={{ marginLeft: 3, opacity: 0.6 }} />}
                     </button>
