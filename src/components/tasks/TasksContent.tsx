@@ -167,6 +167,13 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
     setSelectedTask(updated)
   }
 
+  const handleTitleSave = async (taskId: string, title: string) => {
+    if (!title.trim()) return
+    setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, title } : t))
+    const supabase = createClient()
+    await supabase.from('tasks').update({ title }).eq('id', taskId)
+  }
+
   const handleDeleteTask = async (taskId: string) => {
     setLocalTasks((prev) => prev.filter((t) => t.id !== taskId))
     const supabase = createClient()
@@ -278,9 +285,10 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
           {view === 'kanban' ? (
             <KanbanView tasks={filtered} allLabels={allLabels} onStatusChange={handleStatusChange} onTaskClick={setSelectedTask}
               onDelete={handleDeleteTask}
+              onTitleSave={handleTitleSave}
               onColDoubleClick={(status) => { setNewTaskStatus(status as Task['status']); setShowNew(true) }} />
           ) : (
-            <ListView tasks={filtered} allLabels={allLabels} onStatusChange={handleStatusChange} onTaskClick={setSelectedTask} onDelete={handleDeleteTask} />
+            <ListView tasks={filtered} allLabels={allLabels} onStatusChange={handleStatusChange} onTaskClick={setSelectedTask} onDelete={handleDeleteTask} onTitleSave={handleTitleSave} />
           )}
         </div>
 
@@ -778,7 +786,7 @@ const ICON_OPTIONS: { key: string; Icon: React.ComponentType<{ size?: number; co
 const DEFAULT_COL_ICONS: Record<string, string> = { inbox: 'Inbox', todo: 'CheckSquare', in_progress: 'RefreshCw', review: 'HelpCircle', blocked: 'AlertTriangle', done: 'Star' }
 const COL_COLORS = ['#2196F3','#00BCD4','#3F51B5','#9C27B0','#E91E63','#F44336','#FF9800','#FFC107','#4CAF50','#388E3C','#616161','#9E9E9E']
 
-function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, onColDoubleClick }: { tasks: Task[]; allLabels: LabelDef[]; onStatusChange: (id: string, status: string) => void; onTaskClick: (t: Task) => void; onDelete: (id: string) => void; onColDoubleClick: (status: string) => void }) {
+function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, onTitleSave, onColDoubleClick }: { tasks: Task[]; allLabels: LabelDef[]; onStatusChange: (id: string, status: string) => void; onTaskClick: (t: Task) => void; onDelete: (id: string) => void; onTitleSave: (id: string, title: string) => void; onColDoubleClick: (status: string) => void }) {
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dragOverCol, setDragOverCol] = useState<string | null>(null)
   const [editingCol, setEditingCol] = useState<string | null>(null)
@@ -974,6 +982,7 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
                     onStatusChange={onStatusChange}
                     onClick={() => onTaskClick(task)}
                     onDelete={onDelete}
+                    onTitleSave={onTitleSave}
                   />
                 ))
               )}
@@ -1197,7 +1206,7 @@ function StatusBadge({ status, taskId, onStatusChange }: { status: string; taskI
   )
 }
 
-function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onStatusChange, onClick, onDelete }: {
+function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onStatusChange, onClick, onDelete, onTitleSave }: {
   task: Task
   allLabels: LabelDef[]
   isDragging: boolean
@@ -1206,7 +1215,10 @@ function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onSta
   onStatusChange: (id: string, status: string) => void
   onClick: () => void
   onDelete: (id: string) => void
+  onTitleSave: (id: string, title: string) => void
 }) {
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState(task.title)
   const client = task.client as any
   const responsible = task.responsible as any
   const taskAny = task as any
@@ -1229,7 +1241,26 @@ function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onSta
     >
       {/* Top row: title + avatar + delete */}
       <div className="kcard-top">
-        <div className="kcard-title">{task.title}</div>
+        {editingTitle ? (
+          <textarea
+            className="kcard-title-input"
+            value={titleDraft}
+            autoFocus
+            rows={2}
+            onChange={e => setTitleDraft(e.target.value)}
+            onBlur={() => { onTitleSave(task.id, titleDraft || task.title); setEditingTitle(false) }}
+            onKeyDown={e => {
+              if (e.key === 'Enter') { e.preventDefault(); onTitleSave(task.id, titleDraft || task.title); setEditingTitle(false) }
+              if (e.key === 'Escape') { setTitleDraft(task.title); setEditingTitle(false) }
+            }}
+            onClick={e => e.stopPropagation()}
+          />
+        ) : (
+          <div
+            className="kcard-title"
+            onClick={e => { e.stopPropagation(); setTitleDraft(task.title); setEditingTitle(true) }}
+          >{task.title}</div>
+        )}
         <div className="kcard-top-right">
           <button
             className="kcard-del"
@@ -1388,6 +1419,26 @@ function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onSta
           flex: 1;
           min-width: 0;
           text-transform: uppercase;
+          cursor: text;
+        }
+        .kcard-title:hover { color: #254067; }
+        .kcard-title-input {
+          flex: 1;
+          min-width: 0;
+          font-size: 14px;
+          font-weight: 700;
+          color: #0a0a0a;
+          line-height: 1.3;
+          font-family: inherit;
+          text-transform: uppercase;
+          border: 1.5px solid #3a6fa8;
+          border-radius: 5px;
+          padding: 2px 5px;
+          resize: none;
+          outline: none;
+          background: #f0f6ff;
+          width: 100%;
+          box-sizing: border-box;
         }
 
         .kcard-footer {
@@ -1434,7 +1485,9 @@ function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onSta
   )
 }
 
-function ListView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete }: { tasks: Task[]; allLabels: LabelDef[]; onStatusChange: (id: string, status: string) => void; onTaskClick: (t: Task) => void; onDelete: (id: string) => void }) {
+function ListView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, onTitleSave }: { tasks: Task[]; allLabels: LabelDef[]; onStatusChange: (id: string, status: string) => void; onTaskClick: (t: Task) => void; onDelete: (id: string) => void; onTitleSave: (id: string, title: string) => void }) {
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [titleDraft, setTitleDraft] = useState('')
   const today = new Date(); today.setHours(0,0,0,0)
 
   return (
@@ -1473,7 +1526,25 @@ function ListView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete }: {
 
               {/* Title + client/project */}
               <div className="list-title-wrap">
-                <div className="list-title">{task.title}</div>
+                {editingId === task.id ? (
+                  <input
+                    className="list-title-input"
+                    value={titleDraft}
+                    autoFocus
+                    onChange={e => setTitleDraft(e.target.value)}
+                    onBlur={() => { onTitleSave(task.id, titleDraft || task.title); setEditingId(null) }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') { onTitleSave(task.id, titleDraft || task.title); setEditingId(null) }
+                      if (e.key === 'Escape') { setEditingId(null) }
+                    }}
+                    onClick={e => e.stopPropagation()}
+                  />
+                ) : (
+                  <div
+                    className="list-title"
+                    onClick={e => { e.stopPropagation(); setTitleDraft(task.title); setEditingId(task.id) }}
+                  >{task.title}</div>
+                )}
                 <div className="list-meta">
                   {client && <span className="list-badge list-badge--client">{client.name}</span>}
                   {project && <span className="list-badge list-badge--project">{project.name}</span>}
@@ -1648,6 +1719,22 @@ function ListView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete }: {
           overflow: hidden;
           text-overflow: ellipsis;
           text-transform: uppercase;
+          cursor: text;
+        }
+        .list-title:hover { color: #254067; }
+        .list-title-input {
+          font-size: 13.5px;
+          font-weight: 500;
+          color: #0a0a0a;
+          text-transform: uppercase;
+          font-family: inherit;
+          border: 1.5px solid #3a6fa8;
+          border-radius: 5px;
+          padding: 1px 6px;
+          outline: none;
+          background: #f0f6ff;
+          width: 100%;
+          box-sizing: border-box;
         }
 
         .list-meta {
