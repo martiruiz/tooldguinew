@@ -649,57 +649,59 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
               placeholder="TÍTOL DE LA TASCA..."
               onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
             />
-            {(() => {
-              const rp = profiles.find(p => p.id === form.responsible_id) as any
-              return (
-                <div className="rel-wrap">
-                  <button className="resp-chip" onClick={() => setShowResponsiblePicker(v => !v)}>
-                    {rp ? (
-                      <>
-                        <div className="resp-av">
-                          {rp.avatar_url ? <img src={rp.avatar_url} alt="" /> : getInitials(rp.full_name)}
-                        </div>
-                        <span className="resp-chip-name">{rp.full_name}</span>
-                      </>
-                    ) : (
-                      <>
-                        <div className="resp-av resp-av--empty">
-                          <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="3.5" r="2" stroke="currentColor" strokeWidth="1.5"/><path d="M1 10c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                        </div>
-                        <span className="resp-chip-name resp-chip-name--empty">Assignar responsable</span>
-                      </>
-                    )}
-                  </button>
-                  {showResponsiblePicker && (
-                    <div className="resp-picker" onClick={e => e.stopPropagation()}>
-                      <button className="resp-picker-opt" onClick={() => { saveDropdown('responsible_id', ''); setShowResponsiblePicker(false) }}>
-                        <div className="resp-av resp-av--empty" style={{ fontSize: 14 }}>—</div>
-                        <span>Sense assignar</span>
-                      </button>
-                      {profiles.map(p => {
-                        const pa = p as any
-                        return (
-                          <button key={p.id}
-                            className={`resp-picker-opt${form.responsible_id === p.id ? ' resp-picker-opt--on' : ''}`}
-                            onClick={() => { saveDropdown('responsible_id', p.id); setShowResponsiblePicker(false) }}>
-                            <div className="resp-av">
-                              {pa.avatar_url ? <img src={pa.avatar_url} alt="" /> : getInitials(p.full_name)}
-                            </div>
-                            <span>{p.full_name}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              )
-            })()}
           </div>
 
           <div className="modal-body">
 
-            {/* Labels + Watchers */}
+            {/* Responsible + Labels + Watchers */}
             <div className="meta-row">
+              {/* Responsible chip */}
+              {(() => {
+                const rp = profiles.find(p => p.id === form.responsible_id) as any
+                return (
+                  <div className="rel-wrap">
+                    <button className="resp-chip" onClick={() => setShowResponsiblePicker(v => !v)}>
+                      {rp ? (
+                        <>
+                          <div className="resp-av">
+                            {rp.avatar_url ? <img src={rp.avatar_url} alt="" /> : getInitials(rp.full_name)}
+                          </div>
+                          <span className="resp-chip-name">{rp.full_name}</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="resp-av resp-av--empty">
+                            <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="3.5" r="2" stroke="currentColor" strokeWidth="1.5"/><path d="M1 10c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                          </div>
+                          <span className="resp-chip-name resp-chip-name--empty">Assignar</span>
+                        </>
+                      )}
+                    </button>
+                    {showResponsiblePicker && (
+                      <div className="resp-picker" onClick={e => e.stopPropagation()}>
+                        <button className="resp-picker-opt" onClick={() => { saveDropdown('responsible_id', ''); setShowResponsiblePicker(false) }}>
+                          <div className="resp-av resp-av--empty" style={{ fontSize: 14 }}>—</div>
+                          <span>Sense assignar</span>
+                        </button>
+                        {profiles.map(p => {
+                          const pa = p as any
+                          return (
+                            <button key={p.id}
+                              className={`resp-picker-opt${form.responsible_id === p.id ? ' resp-picker-opt--on' : ''}`}
+                              onClick={() => { saveDropdown('responsible_id', p.id); setShowResponsiblePicker(false) }}>
+                              <div className="resp-av">
+                                {pa.avatar_url ? <img src={pa.avatar_url} alt="" /> : getInitials(p.full_name)}
+                              </div>
+                              <span>{p.full_name}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+
               <div className="label-zone">
                 {activeLabels.map(l => (
                   <span key={l.id} className="chip" style={{ color: l.color, background: `${l.color}18`, borderColor: `${l.color}30` }}>
@@ -1273,6 +1275,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
           height: 34px; padding: 0 9px; border: 1.5px solid #E8E8E8; border-radius: 7px;
           font-size: 12.5px; color: #0a0a0a; background: #FAFAFA; outline: none;
           font-family: inherit; transition: border-color 0.15s;
+          width: 100%; box-sizing: border-box;
         }
         .field select:focus, .field input:focus { border-color: #1B2B4B; background: white; }
 
