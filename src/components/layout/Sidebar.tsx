@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, FolderKanban, CheckSquare,
   Calendar, Shield, LogOut, ChevronLeft, ChevronRight, ClipboardList,
   TrendingUp, BarChart3, Truck, Building2, PieChart, Plus, X, Pencil, Check,
-  Target, FileText, LineChart,
+  Target, FileText, LineChart, Scale,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -23,6 +23,7 @@ const financeNavDefs = [
   { id: 'proveidors',  labelKey: 'finProveidors' as keyof typeof TRANSLATIONS, icon: Truck      },
   { id: 'estructura',  labelKey: 'finEstructura' as keyof typeof TRANSLATIONS, icon: Building2  },
   { id: 'grafics',     labelKey: 'finGrafics'    as keyof typeof TRANSLATIONS, icon: PieChart   },
+  { id: 'fiscalitat', labelKey: 'finFiscalitat' as keyof typeof TRANSLATIONS, icon: Scale      },
 ]
 
 const navDefs = [

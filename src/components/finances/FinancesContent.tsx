@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Trash2, Save, ArrowUpRight, ArrowDownRight, Pencil, Download, ChevronUp, ChevronDown, ArrowLeft } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { FiscalitatSection, computeFiscalKpis, DEFAULT_FISCAL_DATA } from './FiscalitatSection'
+import type { FiscalData } from './FiscalitatSection'
 
 interface ClientBasic { id: string; name: string; type: string; status: string; logo_url?: string | null; responsible_id?: string | null }
 interface ProfileBasic { id: string; full_name: string }
@@ -121,7 +123,7 @@ const defaultData: FinanceData = {
   monthlyAccountingTotals: DEFAULT_ACCOUNTING_TOTALS,
 }
 
-type Section = 'resum' | 'cartera' | 'proveidors' | 'estructura' | 'grafics' | 'configuracio'
+type Section = 'resum' | 'cartera' | 'proveidors' | 'estructura' | 'grafics' | 'configuracio' | 'fiscalitat'
 
 function formatEur(n: number) {
   return n.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
@@ -143,11 +145,14 @@ function recordDirectCost(r: ClientRecord) {
   return r.collaborators.reduce((s, c) => s + (c.cost || 0), 0) + r.otherCosts.reduce((s, c) => s + (c.amount || 0), 0)
 }
 
+const FISCAL_KEY = 'guinew_fiscal_v1'
+
 export function FinancesContent({ clients, profiles }: { clients: ClientBasic[]; profiles: ProfileBasic[] }) {
   const searchParams = useSearchParams()
   const section = (searchParams.get('s') as Section) || 'resum'
   const [data, setData] = useState<FinanceData>(defaultData)
   const [saved, setSaved] = useState(false)
+  const [fiscalData, setFiscalData] = useState<FiscalData>(DEFAULT_FISCAL_DATA)
 
   useEffect(() => {
     try {
@@ -182,11 +187,26 @@ export function FinancesContent({ clients, profiles }: { clients: ClientBasic[];
         localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultData))
       }
     } catch {}
+    try {
+      const rawFiscal = localStorage.getItem(FISCAL_KEY)
+      if (rawFiscal) {
+        const pf = JSON.parse(rawFiscal)
+        if (!pf.config) pf.config = DEFAULT_FISCAL_DATA.config
+        setFiscalData(pf)
+      }
+    } catch {}
   }, [])
 
   const save = useCallback((next: FinanceData) => {
     setData(next)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    setSaved(true)
+    setTimeout(() => setSaved(false), 1800)
+  }, [])
+
+  const saveFiscal = useCallback((next: FiscalData) => {
+    setFiscalData(next)
+    localStorage.setItem(FISCAL_KEY, JSON.stringify(next))
     setSaved(true)
     setTimeout(() => setSaved(false), 1800)
   }, [])
@@ -205,6 +225,8 @@ export function FinancesContent({ clients, profiles }: { clients: ClientBasic[];
     const annualForecast = totalRecurrent * 12 + totalProjects
     return { totalRecurrent, totalProjects, totalFees, directCosts, structureCosts, contributionMargin, operativeResult, globalMarginPct, annualForecast }
   }, [data])
+
+  const fiscalKpis = useMemo(() => computeFiscalKpis(fiscalData, kpis.operativeResult), [fiscalData, kpis.operativeResult])
 
   const clientProfitability = useMemo(() => {
     const grouped: Record<string, { fee: number; recurrentFee: number; directCost: number; marginObjective: number; clientId?: string }> = {}
@@ -233,7 +255,7 @@ export function FinancesContent({ clients, profiles }: { clients: ClientBasic[];
       {saved && <div className="fin-saved-toast">Dades guardades</div>}
 
       {section === 'resum' && (
-        <ResumSection kpis={kpis} adequate={adequate} belowObj={belowObj} deficit={deficit} marginObjective={data.marginObjective} />
+        <ResumSection kpis={kpis} adequate={adequate} belowObj={belowObj} deficit={deficit} marginObjective={data.marginObjective} fiscalKpis={fiscalKpis} />
       )}
       {section === 'cartera' && (
         <CarteraSection data={data} save={save} clients={clients} profiles={profiles} kpis={kpis} marginObjective={data.marginObjective} />
@@ -249,6 +271,9 @@ export function FinancesContent({ clients, profiles }: { clients: ClientBasic[];
       )}
       {section === 'configuracio' && (
         <ConfiguracioSection data={data} save={save} />
+      )}
+      {section === 'fiscalitat' && (
+        <FiscalitatSection fiscalData={fiscalData} saveFiscal={saveFiscal} operativeResult={kpis.operativeResult} />
       )}
 
       <style jsx>{`
@@ -276,7 +301,7 @@ export function FinancesContent({ clients, profiles }: { clients: ClientBasic[];
 }
 
 /* ─── RESUM ─── */
-function ResumSection({ kpis, adequate, belowObj, deficit, marginObjective }: any) {
+function ResumSection({ kpis, adequate, belowObj, deficit, marginObjective, fiscalKpis }: any) {
   const [activeGroup, setActiveGroup] = useState<'adequate' | 'below' | 'deficit' | null>(null)
 
   const kpi1 = [
@@ -323,6 +348,22 @@ function ResumSection({ kpis, adequate, belowObj, deficit, marginObjective }: an
           </div>
         ))}
       </div>
+      {fiscalKpis && (
+        <div className="rs-fiscal-bar">
+          <div className="rs-fiscal-label">
+            <span className="rs-fiscal-icon">🏛</span>
+            IMPOSTOS PENDENTS
+            <span className="rs-fiscal-est">Estimat</span>
+          </div>
+          <div className="rs-fiscal-total">{formatEur(fiscalKpis.totalImpostos)}</div>
+          <div className="rs-fiscal-breakdown">
+            <span>IVA: <strong>{formatEur(fiscalKpis.ivaPendent)}</strong></span>
+            <span>IRPF: <strong>{formatEur(fiscalKpis.irpfPendent)}</strong></span>
+            <span>IS (est.): <strong>{formatEur(fiscalKpis.isPendent)}</strong></span>
+          </div>
+          <a href="?s=fiscalitat" className="rs-fiscal-link">Veure fiscalitat →</a>
+        </div>
+      )}
       <div className="rs-section-title">Clients actius per nivell de rendibilitat</div>
       <div className="rs-sub-hint">Fes clic en una targeta per veure quins clients la componen.</div>
       <div className="rs-prof-grid">
@@ -371,6 +412,15 @@ function ResumSection({ kpis, adequate, belowObj, deficit, marginObjective }: an
       )}
       <style jsx>{`
         .rs-title { font-size: 20px; font-weight: 700; color: #0F1B2D; letter-spacing: -0.02em; margin-bottom: 20px; }
+        .rs-fiscal-bar { display: flex; align-items: center; gap: 16px; background: #FEF2F2; border: 1.5px solid #FECACA; border-radius: 14px; padding: 14px 20px; margin: 12px 0 20px; flex-wrap: wrap; }
+        .rs-fiscal-label { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #991B1B; text-transform: uppercase; letter-spacing: 0.06em; flex-shrink: 0; }
+        .rs-fiscal-icon { font-size: 14px; }
+        .rs-fiscal-est { background: #FEF3C7; color: #D97706; border-radius: 4px; padding: 2px 6px; font-size: 9px; font-weight: 700; }
+        .rs-fiscal-total { font-size: 24px; font-weight: 800; color: #DC2626; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+        .rs-fiscal-breakdown { display: flex; gap: 14px; font-size: 12px; color: #6B7280; flex-wrap: wrap; flex: 1; }
+        .rs-fiscal-breakdown strong { color: #374151; }
+        .rs-fiscal-link { margin-left: auto; font-size: 12px; font-weight: 600; color: #254067; text-decoration: none; white-space: nowrap; flex-shrink: 0; }
+        .rs-fiscal-link:hover { text-decoration: underline; }
         .rs-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 14px; }
         .rs-kpi { background: white; border-radius: 18px; padding: 20px 20px 18px; border: 1px solid rgba(0,0,0,0.06); box-shadow: 0 2px 8px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03); transition: all 0.18s; }
         .rs-kpi:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,0.08); }

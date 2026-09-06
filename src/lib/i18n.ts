@@ -29,6 +29,8 @@ export const TRANSLATIONS: TranslationMap = {
   finProveidors: { ca: 'Proveïdors',           es: 'Proveedores',           en: 'Suppliers' },
   finEstructura: { ca: "Gastos d'estructura",  es: 'Gastos de estructura',  en: 'Structure costs' },
   finGrafics:    { ca: 'Gràfics',              es: 'Gráficos',              en: 'Charts' },
+  finFiscalitat: { ca: 'Fiscalitat',           es: 'Fiscalidad',            en: 'Tax control' },
+  finConfigFisc: { ca: 'Config. fiscal',       es: 'Config. fiscal',        en: 'Tax config' },
 
   // Sidebar
   sectionMenu:     { ca: 'Menu',            es: 'Menú',          en: 'Menu' },
