@@ -58,9 +58,7 @@ function GoogleDriveIcon({ size = 18 }: { size?: number }) {
 
 function DropboxIcon({ size = 18 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 43 40" xmlns="http://www.w3.org/2000/svg">
-      <path fill="#0061FF" d="M12.5 0L0 8.09l8.58 6.89L21.5 7.25 34.42 15l8.58-6.89L30.5 0 21.5 6.27zM0 22.25l12.5 8.09 9-7.21L12.5 15.36zm30.5 8.09L43 22.25l-9-7.21L21.5 23.03zM21.5 24.84l-9 7.21 3.5 2.27h11l3.5-2.27zM12.5 14.98l9 7.21 9-7.21-9-7.73z"/>
-    </svg>
+    <img src="/dropbox-logo.png" width={size} height={size} alt="Dropbox" style={{ objectFit: 'contain', display: 'block' }} />
   )
 }
 
