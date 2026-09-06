@@ -505,7 +505,7 @@ export function AdminContent({ members, currentUserId }: Props) {
         }
 
         .role-badge--superadmin { background: #1B2B4B14; color: #1B2B4B; }
-        .role-badge--manager { background: #6366F114; color: #6366F1; }
+        .role-badge--manager { background: #25406714; color: #254067; }
         .role-badge--team_member { background: #F0F0F0; color: #5C5C5C; }
 
         .status-badge {

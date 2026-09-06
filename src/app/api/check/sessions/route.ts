@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdmin } from '@supabase/supabase-js'
 import { getCalendarClientWithRefresh } from '@/lib/google'
+import { notifyUser, getProfileForNotif } from '@/lib/notifications'
 
 export async function POST(req: NextRequest) {
   try {
@@ -75,6 +76,7 @@ export async function POST(req: NextRequest) {
               description: notes || undefined,
               start: { dateTime: startDateTime, timeZone: 'Europe/Madrid' },
               end: { dateTime: endDateTime, timeZone: 'Europe/Madrid' },
+              colorId: '3', // Grape — matches Guinew's violet brand color
               extendedProperties: { private: { guinew: 'true', session_id: data.id } },
             },
           })
@@ -83,6 +85,34 @@ export async function POST(req: NextRequest) {
       } catch (calErr: any) {
         console.error('[sessions] calendar error:', calErr.message)
       }
+    }
+
+    // Auto-create a linked task for this session
+    const clientName = (data as any).client?.name || 'Client'
+    const sessionTypesStr = Array.isArray(session_types) && session_types.length > 0
+      ? ` (${(session_types as string[]).join(', ')})`
+      : ''
+    await supabase.from('tasks').insert({
+      title: `Sessió ${clientName}${sessionTypesStr} · ${session_date}`,
+      client_id: client_id || null,
+      created_by: user.id,
+      priority: 'medium',
+      status: 'todo',
+      session_id: data.id,
+    }).then(() => {})
+
+    // Notify creator about the session creation (confirmation)
+    const creatorProfile = await getProfileForNotif(user.id)
+    if (creatorProfile) {
+      await notifyUser({
+        userId: user.id,
+        email: creatorProfile.email,
+        name: creatorProfile.name,
+        type: 'session_assigned',
+        title: `Sessió creada: ${clientName}${sessionTypesStr}`,
+        body: `Sessió el ${session_date}${notes ? ` · ${notes}` : ''}.`,
+        link: `/check/${data.id}`,
+      })
     }
 
     return NextResponse.json({ session: data, calendarEventUrl })

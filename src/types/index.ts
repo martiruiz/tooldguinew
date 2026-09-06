@@ -81,6 +81,7 @@ export interface Task {
   project?: Project
   responsible_id?: string
   responsible?: Profile
+  session_id?: string | null
   status: TaskStatus
   priority: TaskPriority
   deadline?: string

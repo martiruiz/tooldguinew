@@ -84,6 +84,41 @@ function DropboxIcon() {
   )
 }
 
+// Parse @mentions from message content and return mentioned user IDs
+function parseMentions(content: string, profiles: { id: string; full_name: string }[]): string[] {
+  const mentioned: string[] = []
+  const regex = /@\[([^\]]+)\]\(([^)]+)\)/g
+  let m
+  while ((m = regex.exec(content)) !== null) {
+    const uid = m[2]
+    if (profiles.find(p => p.id === uid) && !mentioned.includes(uid)) {
+      mentioned.push(uid)
+    }
+  }
+  return mentioned
+}
+
+// Render message content with @mentions highlighted
+function renderContent(content: string, currentUserId: string) {
+  const parts = content.split(/(@\[[^\]]+\]\([^)]+\))/g)
+  return parts.map((part, i) => {
+    const m = part.match(/^@\[([^\]]+)\]\(([^)]+)\)$/)
+    if (m) {
+      const isMe = m[2] === currentUserId
+      return (
+        <span key={i} style={{
+          background: isMe ? 'rgba(52,211,153,0.2)' : 'rgba(96,165,250,0.15)',
+          color: isMe ? '#34D399' : '#60A5FA',
+          borderRadius: 4, padding: '0 3px', fontWeight: 600,
+        }}>
+          @{m[1]}
+        </span>
+      )
+    }
+    return <span key={i}>{part}</span>
+  })
+}
+
 export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -98,12 +133,24 @@ export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
   const [uploading, setUploading] = useState(false)
   const [typingUsers, setTypingUsers] = useState<{ id: string; name: string }[]>([])
   const [sendError, setSendError] = useState<string | null>(null)
+  // Mention autocomplete
+  const [mentionQuery, setMentionQuery] = useState('')
+  const [mentionOpen, setMentionOpen] = useState(false)
+  const [mentionIdx, setMentionIdx] = useState(0)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const feedRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const attachMenuRef = useRef<HTMLDivElement>(null)
   const typingTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const broadcastChannelRef = useRef<any>(null)
+
+  const mentionResults = mentionOpen
+    ? profiles.filter(p =>
+        p.id !== currentUserId &&
+        p.full_name.toLowerCase().includes(mentionQuery.toLowerCase())
+      ).slice(0, 6)
+    : []
 
   const profileMap = Object.fromEntries(profiles.map(p => [p.id, p]))
 
@@ -188,6 +235,35 @@ export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
     return () => { supabase.removeChannel(channel) }
   }, [currentUserId])
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value
+    setInput(val)
+    const pos = e.target.selectionStart
+    const textBefore = val.slice(0, pos)
+    const atMatch = textBefore.match(/@([^@\s]*)$/)
+    if (atMatch) {
+      setMentionQuery(atMatch[1])
+      setMentionOpen(true)
+      setMentionIdx(0)
+    } else {
+      setMentionOpen(false)
+    }
+  }
+
+  const insertMention = (profile: { id: string; full_name: string }) => {
+    const pos = textareaRef.current?.selectionStart ?? input.length
+    const textBefore = input.slice(0, pos)
+    const atIdx = textBefore.lastIndexOf('@')
+    const before = input.slice(0, atIdx)
+    const after = input.slice(pos)
+    const token = `@[${profile.full_name}](${profile.id})`
+    const newVal = before + token + ' ' + after
+    setInput(newVal)
+    setMentionOpen(false)
+    setMentionQuery('')
+    setTimeout(() => textareaRef.current?.focus(), 0)
+  }
+
   const sendMessage = async (attachment?: Attachment) => {
     const text = input.trim()
     if (!text && !attachment) return
@@ -206,6 +282,7 @@ export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
     }
     setMessages(prev => [...prev, optimistic])
     setInput('')
+    setMentionOpen(false)
     scrollBottom()
     const { error } = await supabase.from('team_chat').insert({
       user_id: currentUserId,
@@ -217,11 +294,29 @@ export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
       setMessages(prev => prev.filter(m => m.id !== optimisticId))
       setInput(text)
       setSendError('No s\'ha pogut enviar el missatge. Verifica la connexió.')
+    } else {
+      // Notify mentioned users
+      const mentionedIds = parseMentions(text, profiles).filter(id => id !== currentUserId)
+      if (mentionedIds.length > 0) {
+        fetch('/api/chat/mention', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mentionedIds, content: text, senderName: currentUserName }),
+        }).catch(console.warn)
+      }
     }
     setSending(false)
   }
 
   const handleKey = (e: React.KeyboardEvent) => {
+    if (mentionOpen) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIdx(i => Math.min(i + 1, mentionResults.length - 1)); return }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIdx(i => Math.max(i - 1, 0)); return }
+      if ((e.key === 'Enter' || e.key === 'Tab') && mentionResults[mentionIdx]) {
+        e.preventDefault(); insertMention(mentionResults[mentionIdx]); return
+      }
+      if (e.key === 'Escape') { setMentionOpen(false); return }
+    }
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
   }
 
@@ -340,7 +435,7 @@ export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
                       lineHeight: 1.5,
                       wordBreak: 'break-word',
                     }}>
-                      {msg.content}
+                      {renderContent(msg.content, currentUserId)}
                     </div>
                   )}
                   {/* Attachment */}
@@ -431,25 +526,59 @@ export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
               )}
             </div>
 
-            <textarea
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKey}
-              placeholder="Escriu un missatge..."
-              rows={1}
-              style={{
-                flex: 1, background: '#1F2937', border: '1px solid #374151',
-                borderRadius: 10, padding: '8px 12px', color: '#E5E7EB',
-                fontSize: 13, outline: 'none', resize: 'none',
-                fontFamily: 'inherit', lineHeight: 1.45,
-                maxHeight: 100, overflowY: 'auto',
-              }}
-              onInput={e => {
-                const t = e.target as HTMLTextAreaElement
-                t.style.height = 'auto'
-                t.style.height = Math.min(t.scrollHeight, 100) + 'px'
-              }}
-            />
+            <div style={{ flex: 1, position: 'relative' }}>
+              {/* Mention autocomplete dropdown */}
+              {mentionOpen && mentionResults.length > 0 && (
+                <div style={{
+                  position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 6,
+                  background: '#1a1f2e', border: '1px solid #374151', borderRadius: 10,
+                  overflow: 'hidden', boxShadow: '0 -4px 20px rgba(0,0,0,0.5)', zIndex: 10,
+                }}>
+                  {mentionResults.map((p, idx) => (
+                    <button
+                      key={p.id}
+                      onMouseDown={e => { e.preventDefault(); insertMention(p) }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                        padding: '8px 12px', border: 'none', background: idx === mentionIdx ? '#254067' : 'transparent',
+                        cursor: 'pointer', textAlign: 'left',
+                      }}
+                    >
+                      <div style={{
+                        width: 26, height: 26, borderRadius: '50%', background: '#374151',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 10, fontWeight: 700, color: '#D1D5DB', overflow: 'hidden', flexShrink: 0,
+                      }}>
+                        {p.avatar_url
+                          ? <img src={p.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          : getInitials(p.full_name)}
+                      </div>
+                      <span style={{ fontSize: 12.5, color: '#E5E7EB', fontWeight: 500 }}>{p.full_name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={handleInputChange}
+                onKeyDown={handleKey}
+                placeholder="Escriu un missatge... (@per mencionar)"
+                rows={1}
+                style={{
+                  width: '100%', background: '#1F2937', border: '1px solid #374151',
+                  borderRadius: 10, padding: '8px 12px', color: '#E5E7EB',
+                  fontSize: 13, outline: 'none', resize: 'none',
+                  fontFamily: 'inherit', lineHeight: 1.45,
+                  maxHeight: 100, overflowY: 'auto', boxSizing: 'border-box',
+                }}
+                onInput={e => {
+                  const t = e.target as HTMLTextAreaElement
+                  t.style.height = 'auto'
+                  t.style.height = Math.min(t.scrollHeight, 100) + 'px'
+                }}
+              />
+            </div>
             <button
               onClick={() => sendMessage()}
               disabled={!input.trim() || sending}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCalendarClientWithRefresh } from '@/lib/google'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdmin } from '@supabase/supabase-js'
+import { notifyUser, getProfileForNotif } from '@/lib/notifications'
 
 export async function POST(req: NextRequest) {
   try {
@@ -99,6 +100,40 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error) throw error
+
+    // Notify participants that have a profile (match by email)
+    const admin = createAdmin(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+    const creatorProfile = await getProfileForNotif(user.id)
+    const creatorName = creatorProfile?.name || 'Un company'
+
+    if (attendeeEmails.length > 0) {
+      const { data: matchedProfiles } = await admin
+        .from('profiles')
+        .select('id, full_name')
+        .neq('id', user.id)
+
+      if (matchedProfiles) {
+        const { data: authUsers } = await admin.auth.admin.listUsers()
+        const emailToProfile = new Map(
+          authUsers?.users.map(u => [u.email, matchedProfiles.find(p => p.id === u.id)])
+        )
+        for (const email of attendeeEmails) {
+          const profile = emailToProfile.get(email)
+          if (!profile) continue
+          const dateStr = new Date(`${date}T${startTime}`).toLocaleString('ca-ES', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+          await notifyUser({
+            userId: profile.id,
+            email,
+            name: profile.full_name,
+            type: 'meeting_created',
+            title: `Nova reunió: ${title}`,
+            body: `${creatorName} t'ha convidat a "${title}" el ${dateStr}.`,
+            link: '/calendar',
+            emailSubject: `Nova reunió: ${title}`,
+          })
+        }
+      }
+    }
 
     return NextResponse.json({ meeting, meetLink, gcalId })
   } catch (err: any) {

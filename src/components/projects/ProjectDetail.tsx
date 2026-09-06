@@ -455,7 +455,7 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
         .pd-title--editable:hover { background: rgba(0,0,0,0.04); }
         .pd-title-input {
           font-size: 22px; font-weight: 700; color: #0a0a0a;
-          border: none; border-bottom: 2px solid #2563EB; background: transparent;
+          border: none; border-bottom: 2px solid #254067; background: transparent;
           outline: none; font-family: inherit; width: 100%; margin-bottom: 6px;
           padding: 0 0 2px; letter-spacing: -0.01em;
         }

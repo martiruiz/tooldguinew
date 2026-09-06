@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Plus, Check, Trash2, Tag, Settings2, Save, UserPlus, Link2, ExternalLink, Send, AtSign, Camera, Loader2, ZoomIn } from 'lucide-react'
+import { X, Plus, Check, Trash2, Tag, Settings2, Save, UserPlus, Link2, ExternalLink, Send, AtSign, Camera, Loader2, ZoomIn, ArrowRight, Calendar, Smile } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getInitials } from '@/lib/utils'
 import type { Task } from '@/types'
@@ -15,7 +15,7 @@ const STATUS_COLS = [
   { status: 'todo', label: 'Per fer', color: '#DC2626' },
   { status: 'in_progress', label: 'En curs', color: '#1B2B4B' },
   { status: 'review', label: 'Revisió', color: '#D97706' },
-  { status: 'blocked', label: 'Bloquejat', color: '#7C3AED' },
+  { status: 'blocked', label: 'Bloquejat', color: '#254067' },
   { status: 'done', label: 'Fet', color: '#16A34A' },
 ]
 
@@ -80,6 +80,8 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
   const subtaskRef = useRef<HTMLInputElement>(null)
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [reactions, setReactions] = useState<Record<string, Record<string, string[]>>>({})
+  const [openEmojiPickerId, setOpenEmojiPickerId] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -537,6 +539,71 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
     }
   }
 
+  // Load reactions from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(`task-reactions-${task.id}`)
+      if (stored) setReactions(JSON.parse(stored))
+    } catch {}
+  }, [task.id])
+
+  const toggleReaction = (actId: string, emoji: string) => {
+    setReactions(prev => {
+      const next = { ...prev }
+      if (!next[actId]) next[actId] = {}
+      const users = next[actId][emoji] || []
+      if (users.includes(currentUserId)) {
+        next[actId][emoji] = users.filter(u => u !== currentUserId)
+        if (!next[actId][emoji].length) delete next[actId][emoji]
+      } else {
+        next[actId][emoji] = [...users, currentUserId]
+      }
+      try { localStorage.setItem(`task-reactions-${task.id}`, JSON.stringify(next)) } catch {}
+      return next
+    })
+    setOpenEmojiPickerId(null)
+  }
+
+  const EMOJI_SET = ['👍', '❤️', '😂', '🎉', '👀', '🚀', '✅', '🔥']
+
+  const getActionIcon = (action: string): { icon: any; color: string; bg: string } => {
+    switch (action) {
+      case 'checklist_added': return { icon: Plus, color: '#254067', bg: '#DBEAFE' }
+      case 'checklist_done': return { icon: Check, color: '#16A34A', bg: '#DCFCE7' }
+      case 'checklist_undone': return { icon: Check, color: '#9A9A9A', bg: '#F4F4F4' }
+      case 'checklist_removed': return { icon: Trash2, color: '#DC2626', bg: '#FEE2E2' }
+      case 'assigned': return { icon: UserPlus, color: '#254067', bg: '#DBEAFE' }
+      case 'task_created': return { icon: Plus, color: '#254067', bg: '#EEF3FA' }
+      case 'status_changed': return { icon: ArrowRight, color: '#D97706', bg: '#FEF3C7' }
+      case 'task_moved': return { icon: ArrowRight, color: '#254067', bg: '#DBEAFE' }
+      case 'label_added': return { icon: Tag, color: '#254067', bg: '#EEF3FA' }
+      case 'label_removed': return { icon: Tag, color: '#9A9A9A', bg: '#F4F4F4' }
+      case 'photo_added': return { icon: Camera, color: '#0891B2', bg: '#CFFAFE' }
+      case 'deadline_set': return { icon: Calendar, color: '#D97706', bg: '#FEF3C7' }
+      case 'subtask_added': return { icon: Plus, color: '#16A34A', bg: '#DCFCE7' }
+      case 'subtask_done': return { icon: Check, color: '#16A34A', bg: '#DCFCE7' }
+      default: return { icon: Settings2, color: '#9A9A9A', bg: '#F4F4F4' }
+    }
+  }
+
+  const getActionDetail = (action: string, details: Record<string, any>): string | null => {
+    switch (action) {
+      case 'checklist_added':
+      case 'checklist_done':
+      case 'checklist_undone':
+      case 'checklist_removed': return details.text || null
+      case 'subtask_added':
+      case 'subtask_done':
+      case 'subtask_undone':
+      case 'subtask_removed': return details.title || null
+      case 'label_added':
+      case 'label_removed': return details.label || null
+      case 'status_changed': return `${details.from || '—'} → ${details.to || '—'}`
+      case 'assigned': return details.name || null
+      default: return null
+    }
+  }
+
   const col = STATUS_COLS.find(c => c.status === form.status)!
   const doneChecks = checklist.filter(c => c.done).length
   const doneSubtasks = subtasks.filter(s => s.done).length
@@ -902,17 +969,50 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
                     } else {
                       const a = item.data as Activity
                       const p = a.profile as any
+                      const { icon: ActionIcon, color: iconColor, bg: iconBg } = getActionIcon(a.action)
+                      const detail = getActionDetail(a.action, a.details || {})
+                      const actReactions = reactions[a.id] || {}
+                      const hasReactions = Object.keys(actReactions).length > 0
                       return (
-                        <div key={`a-${a.id}`} className="tl-event">
-                          <div className="tl-av tl-av--sys">
-                            {p?.avatar_url ? <img src={p.avatar_url} alt="" /> : getInitials(p?.full_name || '?')}
+                        <div key={`a-${a.id}`} className="tl-event" onMouseLeave={() => setOpenEmojiPickerId(null)}>
+                          <div className="tl-icon-circle" style={{ background: iconBg }}>
+                            <ActionIcon size={12} color={iconColor} strokeWidth={2.5} />
                           </div>
-                          <div className="tl-event-text">
-                            <span className="tl-name">{p?.full_name || 'Sistema'}</span>
-                            {' '}
-                            <span className="tl-action">{formatActivity(a.action, a.details)}</span>
+                          <div className="tl-event-body">
+                            <div className="tl-event-time">{fmtActivityDate(a.created_at)}</div>
+                            <div className="tl-event-main">
+                              <span className="tl-name">{p?.full_name || 'Sistema'}</span>{' '}
+                              <span className="tl-action">{formatActivity(a.action, a.details || {})}</span>
+                            </div>
+                            {detail && <div className="tl-event-detail">{detail}</div>}
+                            {hasReactions && (
+                              <div className="tl-reactions">
+                                {Object.entries(actReactions).map(([emoji, users]) => (
+                                  <button
+                                    key={emoji}
+                                    className={`tl-reaction-chip${(users as string[]).includes(currentUserId) ? ' tl-reaction-chip--me' : ''}`}
+                                    onClick={() => toggleReaction(a.id, emoji)}
+                                  >
+                                    {emoji} <span>{(users as string[]).length}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                          <span className="tl-time tl-time--ev">{fmtActivityDate(a.created_at)}</span>
+                          <div className="tl-reaction-wrap">
+                            <button className="tl-react-btn" onClick={() => setOpenEmojiPickerId(openEmojiPickerId === a.id ? null : a.id)}>
+                              <Smile size={13} strokeWidth={1.8} />
+                            </button>
+                            {openEmojiPickerId === a.id && (
+                              <div className="tl-emoji-picker">
+                                {EMOJI_SET.map(emoji => (
+                                  <button key={emoji} className="tl-emoji-opt" onClick={() => toggleReaction(a.id, emoji)}>
+                                    {emoji}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )
                     }
@@ -1275,12 +1375,28 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         }
 
         /* Activity event row */
-        .tl-event { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
-        .tl-av--sys { background: #1B2B4B; width: 26px; height: 26px; font-size: 9px; }
-        .tl-event-text { flex: 1; font-size: 12.5px; color: #5C5C5C; line-height: 1.4; }
-        .tl-event-text .tl-name { font-weight: 700; color: #0a0a0a; font-size: 12.5px; }
+        .tl-event { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0; border-bottom: 1px solid #F4F4F4; position: relative; }
+        .tl-event:last-child { border-bottom: none; }
+        .tl-event:hover .tl-react-btn { opacity: 1; }
+        .tl-icon-circle { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+        .tl-event-body { flex: 1; min-width: 0; }
+        .tl-event-time { font-size: 10px; font-weight: 700; color: #254067; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 2px; }
+        .tl-event-main { font-size: 12.5px; color: #1a1a1a; line-height: 1.45; }
+        .tl-event-main .tl-name { font-weight: 700; }
         .tl-action { color: #5C5C5C; }
-        .tl-time--ev { font-size: 11px; color: #B0B0B0; white-space: nowrap; flex-shrink: 0; }
+        .tl-event-detail { font-size: 12px; color: #8A8A8A; margin-top: 2px; font-style: italic; }
+        .tl-reactions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+        .tl-reaction-chip { display: flex; align-items: center; gap: 3px; padding: 2px 7px; border: 1px solid #E8E8E8; border-radius: 100px; background: #F8F8F8; font-size: 12.5px; cursor: pointer; transition: all 0.12s; font-family: inherit; }
+        .tl-reaction-chip:hover { border-color: #C0C0C0; background: #F0F0F0; }
+        .tl-reaction-chip span { font-size: 11px; color: #6B6B6B; font-weight: 600; }
+        .tl-reaction-chip--me { border-color: #BFDBFE; background: #EFF6FF; }
+        .tl-reaction-chip--me span { color: #254067; }
+        .tl-reaction-wrap { position: relative; flex-shrink: 0; }
+        .tl-react-btn { opacity: 0; display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid #E8E8E8; border-radius: 6px; background: white; cursor: pointer; color: #9A9A9A; transition: all 0.12s; }
+        .tl-react-btn:hover { border-color: #C0C0C0; color: #555; background: #F5F5F5; }
+        .tl-emoji-picker { position: absolute; right: 0; top: calc(100% + 4px); background: white; border: 1px solid #E8E8E8; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 30; display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px; gap: 2px; }
+        .tl-emoji-opt { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; font-size: 18px; border: none; background: none; cursor: pointer; border-radius: 6px; transition: background 0.1s; }
+        .tl-emoji-opt:hover { background: #F0F0F0; }
 
         :global(.mention) { color: #1B2B4B; font-weight: 600; background: #1B2B4B0D; padding: 0 2px; border-radius: 3px; }
 
@@ -1336,7 +1452,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
           background: #1B2B4B; color: white; border: none; border-radius: 7px;
           font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s;
         }
-        .btn-save:hover:not(:disabled) { background: #2563EB; }
+        .btn-save:hover:not(:disabled) { background: #254067; }
         .btn-save:disabled { opacity: 0.45; cursor: not-allowed; }
         .btn-save--ok { background: #16A34A; }
         .btn-save--ok:hover:not(:disabled) { background: #15803D; }

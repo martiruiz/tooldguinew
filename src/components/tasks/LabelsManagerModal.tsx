@@ -16,9 +16,9 @@ const COLOR_PALETTE = [
   // Grocs / verds
   '#D97706', '#FBBF24', '#A3E635', '#65A30D', '#16A34A', '#4ADE80',
   // Cians / blaus
-  '#0891B2', '#22D3EE', '#3B82F6', '#1B2B4B', '#4A82C6', '#93C5FD',
+  '#0891B2', '#22D3EE', '#254067', '#1B2B4B', '#4A82C6', '#93C5FD',
   // Violetes / roses
-  '#6366F1', '#818CF8', '#7C3AED', '#A78BFA', '#9333EA', '#C084FC',
+  '#254067', '#818CF8', '#254067', '#3a6fa8', '#9333EA', '#C084FC',
   '#DB2777', '#F472B6', '#EC4899', '#FDA4AF',
   // Grisos / neutres
   '#64748B', '#94A3B8', '#0a0a0a', '#5C5C5C', '#9A9A9A', '#C0C0C0',

@@ -26,12 +26,14 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
     { data: briefing },
     { data: strategy },
     { data: allProfiles },
+    { data: metricReports },
   ] = await Promise.all([
     supabase.from('projects').select('id, name, type, status, start_date, end_date, responsible:profiles(id,full_name)').eq('client_id', id).order('created_at', { ascending: false }),
     supabase.from('tasks').select('id, title, status, priority, deadline, responsible:profiles!tasks_responsible_id_fkey(id,full_name)').eq('client_id', id).neq('status', 'done').order('deadline', { ascending: true }).limit(10),
     supabase.from('briefings').select('*').eq('client_id', id).maybeSingle(),
     supabase.from('strategies').select('*').eq('client_id', id).maybeSingle(),
     supabase.from('profiles').select('id, full_name').eq('is_active', true),
+    supabase.from('metric_reports').select('*').eq('client_id', id).order('created_at', { ascending: false }),
   ])
 
   if (projErr) console.error('[ClientDetail] projects error:', projErr)
@@ -49,6 +51,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         userRole={profile?.role}
         profiles={allProfiles || []}
         currentUserId={user!.id}
+        metricReports={metricReports || []}
       />
     </>
   )

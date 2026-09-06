@@ -391,7 +391,7 @@ export function SessionDetailModal({ session, onClose, onUpdate }: Props) {
           border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
           cursor: pointer; font-family: inherit; transition: background 0.15s;
         }
-        .save-btn:hover:not(:disabled) { background: #2563EB; }
+        .save-btn:hover:not(:disabled) { background: #254067; }
         .save-btn:disabled { background: #E8E8E8; color: #9A9A9A; cursor: not-allowed; }
 
         :global(.spin) { animation: spin 1s linear infinite; }

@@ -181,7 +181,7 @@ export function Topbar({ user, title }: Props) {
           <button className="topbar-profile-btn" onClick={() => setProfileOpen(v => !v)}>
             <div className="topbar-avatar">
               {user.avatar_url ? (
-                <img src={user.avatar_url} alt={user.full_name} />
+                <img src={user.avatar_url} alt={user.full_name} width={34} height={34} />
               ) : (
                 <span>{getInitials(user.full_name)}</span>
               )}
@@ -247,8 +247,9 @@ export function Topbar({ user, title }: Props) {
 
         .topbar-title {
           font-size: 15px; font-weight: 700; color: #0a0a0a;
-          letter-spacing: 0.01em; white-space: nowrap;
+          letter-spacing: 0.08em; white-space: nowrap;
           font-family: 'Bai Jamjuree', sans-serif;
+          text-transform: uppercase;
         }
 
         .topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
@@ -376,7 +377,7 @@ export function Topbar({ user, title }: Props) {
           box-shadow: 0 0 0 3px #1B2B4B10;
         }
 
-        .topbar-user-info { display: flex; flex-direction: column; line-height: 1.2; }
+        .topbar-user-info { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; }
         .topbar-user-name { font-size: 12.5px; font-weight: 600; color: #0a0a0a; white-space: nowrap; }
         .topbar-user-role { font-size: 10.5px; color: #9A9A9A; white-space: nowrap; text-transform: capitalize; }
 

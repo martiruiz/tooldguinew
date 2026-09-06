@@ -20,7 +20,7 @@ const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }
 const TASK_STATUS_COLORS: Record<string, string> = {
   inbox: '#9A9A9A',
   todo: '#6B7280',
-  in_progress: '#2563EB',
+  in_progress: '#254067',
   review: '#D97706',
   blocked: '#DC2626',
   done: '#16A34A',
@@ -330,7 +330,7 @@ export function AnnualPlan({ clientId, projects: initialProjects }: Props) {
           border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer;
           font-family: inherit; transition: background 0.15s;
         }
-        .add-confirm:hover:not(:disabled) { background: #2563EB; }
+        .add-confirm:hover:not(:disabled) { background: #254067; }
         .add-confirm:disabled { background: #E0E0E0; color: #9A9A9A; cursor: not-allowed; }
 
         .month-projects { display: flex; flex-direction: column; gap: 6px; flex: 1; }

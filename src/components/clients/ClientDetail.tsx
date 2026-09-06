@@ -13,6 +13,7 @@ import { createClient as createSupabase } from '@/lib/supabase/client'
 import { NewTaskModal } from '@/components/tasks/NewTaskModal'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
 import { AnnualPlan } from '@/components/clients/AnnualPlan'
+import { ClientMetricsTab } from '@/components/clients/ClientMetricsTab'
 import type { Client, Project, Task } from '@/types'
 
 const CONTRACTED_SERVICES = [
@@ -60,9 +61,10 @@ interface Props {
   userRole?: string
   profiles?: { id: string; full_name: string }[]
   currentUserId?: string
+  metricReports?: any[]
 }
 
-export function ClientDetail({ client, projects, tasks, briefing, strategy, userRole, profiles = [], currentUserId = '' }: Props) {
+export function ClientDetail({ client, projects, tasks, briefing, strategy, userRole, profiles = [], currentUserId = '', metricReports = [] }: Props) {
   const [tab, setTab] = useState<Tab>('resum')
   const [localTasks, setLocalTasks] = useState(tasks)
   const [localProjects, setLocalProjects] = useState(projects)
@@ -660,13 +662,12 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
 
         {tab === 'metriques' && (
           <div className="tab-full">
-            <div className="section-header">
-              <h3 className="section-title">Mètriques</h3>
-            </div>
-            <div className="empty-state" style={{ padding: '60px 24px' }}>
-              <BarChart2 size={28} color="#D0D0D0" />
-              <p>Les mètriques s&apos;afegiran aviat.</p>
-            </div>
+            <ClientMetricsTab
+              clientId={client.id}
+              clientName={client.name}
+              reports={metricReports}
+              currentUserId={currentUserId}
+            />
           </div>
         )}
       </div>
@@ -1564,13 +1565,13 @@ function BriefingTab({ briefing, clientId }: { briefing: any; clientId: string }
 
         <style jsx>{`
           .bf-upload-zone { border: 2px dashed #E5E7EB; border-radius: 14px; padding: 60px; display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; transition: border-color 0.15s; background: white; }
-          .bf-upload-zone:hover { border-color: #2563EB; }
+          .bf-upload-zone:hover { border-color: #254067; }
           .bf-upload-label { font-size: 14px; font-weight: 600; color: #374151; }
           .bf-upload-sub { font-size: 12px; color: #9CA3AF; }
           .bf-preview-wrap { display: flex; flex-direction: column; gap: 10px; }
           .bf-preview-title { font-size: 13px; font-weight: 600; color: #374151; }
           .bf-preview-textarea { width: 100%; border: 1px solid #E5E7EB; border-radius: 10px; padding: 16px; font-size: 12.5px; color: #374151; font-family: monospace; resize: vertical; outline: none; line-height: 1.6; }
-          .bf-preview-textarea:focus { border-color: #2563EB; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
+          .bf-preview-textarea:focus { border-color: #254067; box-shadow: 0 0 0 3px rgba(37,64,103,0.08); }
           .bf-upload-actions { display: flex; gap: 8px; justify-content: flex-end; }
         `}</style>
       </div>
@@ -1722,7 +1723,7 @@ function BriefingStyles() {
       .bf-btn-save:not(:disabled):hover { opacity: 0.88; }
       .bf-btn-cancel { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; background: white; color: #374151; border: 1px solid #E5E7EB; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all 0.12s; white-space: nowrap; }
       .bf-btn-cancel:hover { border-color: #374151; }
-      .bf-btn-upload { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; background: white; color: #2563EB; border: 1.5px solid #BFDBFE; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all 0.12s; white-space: nowrap; }
+      .bf-btn-upload { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; background: white; color: #254067; border: 1.5px solid #BFDBFE; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all 0.12s; white-space: nowrap; }
       .bf-btn-upload:hover { background: #EFF6FF; }
       .bf-section { background: white; border: 1px solid #ECECEC; border-radius: 12px; overflow: hidden; }
       .bf-section-hdr { display: flex; align-items: center; gap: 10px; width: 100%; padding: 14px 18px; background: none; border: none; cursor: pointer; text-align: left; transition: background 0.12s; }
@@ -1739,9 +1740,9 @@ function BriefingStyles() {
       .bf-edit-field--wide { grid-column: 1 / -1; }
       .bf-edit-lbl { font-size: 11px; font-weight: 600; color: #6B7280; }
       .bf-edit-inp { height: 36px; padding: 0 10px; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 13.5px; color: #111827; font-family: inherit; outline: none; transition: border-color 0.15s; }
-      .bf-edit-inp:focus { border-color: #2563EB; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
+      .bf-edit-inp:focus { border-color: #254067; box-shadow: 0 0 0 3px rgba(37,64,103,0.08); }
       .bf-edit-ta { padding: 8px 10px; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 13.5px; color: #111827; font-family: inherit; outline: none; resize: vertical; line-height: 1.5; transition: border-color 0.15s; }
-      .bf-edit-ta:focus { border-color: #2563EB; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
+      .bf-edit-ta:focus { border-color: #254067; box-shadow: 0 0 0 3px rgba(37,64,103,0.08); }
       .bf-save-bottom { display: flex; justify-content: flex-end; padding-top: 8px; }
     `}</style>
   )

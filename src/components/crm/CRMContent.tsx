@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import {
   Search, Plus, Building2, Globe, TrendingUp, X, Loader2,
-  Star, Trash2, Calendar,
+  Star, Trash2, Calendar, Phone, Video,
 } from 'lucide-react'
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -33,19 +33,25 @@ interface Opportunity {
 
 interface Profile { id: string; full_name: string }
 
+interface Stage {
+  key: string; label: string; color: string; bg: string
+}
+
 interface Props {
   clients: Client[]
   opportunities: Opportunity[]
   profiles: Profile[]
   currentUserId: string
+  crmSource?: string
+  stages?: Stage[]
 }
 
 // ─── Constants ───────────────────────────────────
 const STAGES = [
   { key: 'prospect',       label: 'Lead',        color: '#9A9A9A', bg: '#F5F5F5' },
-  { key: 'contactat',      label: 'Contactat',   color: '#3B82F6', bg: '#EFF6FF' },
+  { key: 'contactat',      label: 'Contactat',   color: '#254067', bg: '#EFF6FF' },
   { key: 'qualificat',     label: 'Qualificat',  color: '#06B6D4', bg: '#ECFEFF' },
-  { key: 'proposta',       label: 'Proposta',    color: '#8B5CF6', bg: '#F5F3FF' },
+  { key: 'proposta',       label: 'Proposta',    color: '#3a6fa8', bg: '#EEF3FA' },
   { key: 'negociacio',     label: 'Negociació',  color: '#F59E0B', bg: '#FFFBEB' },
   { key: 'tancant',        label: 'Tancament',   color: '#F97316', bg: '#FFF7ED' },
   { key: 'tancat_guanyat', label: 'Guanyat',     color: '#16A34A', bg: '#F0FDF4' },
@@ -142,18 +148,71 @@ const ANALYSIS_QUESTIONS = [
   },
 ]
 
-function calcAnalysisScore(answers: Record<string, number>): number {
-  return ANALYSIS_QUESTIONS.reduce((total, q) => {
+const SCP_ANALYSIS_QUESTIONS = [
+  {
+    key: 'q1',
+    question: 'Quin pla s\'aplica a aquest client?',
+    options: [
+      { label: 'Club — €39,99/mes', score: 3 },
+      { label: 'Estàndard — €9,99/mes', score: 2 },
+      { label: 'Sense definir encara', score: 1 },
+    ],
+  },
+  {
+    key: 'q2',
+    question: 'Quina és la urgència d\'adoptar el software?',
+    options: [
+      { label: 'Alta — vol activar-lo immediatament', score: 3 },
+      { label: 'Mitjana — en els propers 1–3 mesos', score: 2 },
+      { label: 'Baixa — sense data clara', score: 1 },
+    ],
+  },
+  {
+    key: 'q3',
+    question: 'Quin és el nivell d\'interès pel producte?',
+    options: [
+      { label: 'Alt — ha demanat demo i és molt receptiu', score: 3 },
+      { label: 'Mitjà — té interès però vol comparar opcions', score: 2 },
+      { label: 'Baix — contacte fred o poc engagament', score: 1 },
+    ],
+  },
+  {
+    key: 'q4',
+    question: 'Qui decideix la subscripció?',
+    options: [
+      { label: 'Un sol decisor — procés àgil', score: 3 },
+      { label: '2–3 persones — aprovació de l\'equip', score: 2 },
+      { label: 'Múltiples departaments o directius', score: 1 },
+    ],
+  },
+  {
+    key: 'q5',
+    question: 'Quin és el potencial de referència o upsell?',
+    options: [
+      { label: 'Alt — pot recomanar a altres o escalar el pla', score: 3 },
+      { label: 'Mitjà — subscripció estable però limitada', score: 2 },
+      { label: 'Baix — ús puntual o poc compromís', score: 1 },
+    ],
+  },
+]
+
+function calcAnalysisScore(answers: Record<string, number>, questions = ANALYSIS_QUESTIONS): number {
+  return questions.reduce((total, q) => {
     const selected = answers[q.key]
     if (selected === undefined) return total
     return total + (q.options[selected]?.score || 0)
   }, 0)
 }
 
-function analysisResult(score: number, answered: number): { label: string; color: string; bg: string } | null {
+function analysisResult(score: number, answered: number, isScp = false): { label: string; color: string; bg: string } | null {
   if (answered < 5) return null
-  if (score >= 13) return { label: 'Excel·lent client potencial', color: '#16A34A', bg: '#F0FDF4' }
-  if (score >= 9)  return { label: 'Client interessant', color: '#D97706', bg: '#FFFBEB' }
+  if (isScp) {
+    if (score >= 14) return { label: 'Lead molt qualificat per SCP', color: '#7C3AED', bg: '#F5F3FF' }
+    if (score >= 11) return { label: 'Potencial interessant', color: '#D97706', bg: '#FFFBEB' }
+    return { label: 'Poc encaix o necessita madurar', color: '#DC2626', bg: '#FEF2F2' }
+  }
+  if (score >= 14) return { label: 'Excel·lent client potencial', color: '#16A34A', bg: '#F0FDF4' }
+  if (score >= 11) return { label: 'Client interessant', color: '#D97706', bg: '#FFFBEB' }
   return { label: 'Client amb risc o poc encaix', color: '#DC2626', bg: '#FEF2F2' }
 }
 
@@ -171,8 +230,8 @@ function fmtEur(n: number | undefined | null) {
   return '€' + (n || 0).toLocaleString('ca-ES')
 }
 
-function stageInfo(key: string) {
-  return STAGES.find(s => s.key === key) || STAGES[0]
+function stageInfo(key: string, stages = STAGES) {
+  return stages.find(s => s.key === key) || stages[0]
 }
 
 const BLANK_FORM = {
@@ -184,9 +243,63 @@ const BLANK_FORM = {
 const BLANK_ANSWERS: Record<string, number> = {}
 
 // ─── Component ───────────────────────────────────
-export function CRMContent({ clients, opportunities: initialOps, profiles, currentUserId }: Props) {
+const STAGE_COLORS = [
+  { color: '#8B5CF6', bg: '#F5F3FF' },
+  { color: '#EC4899', bg: '#FDF2F8' },
+  { color: '#0891B2', bg: '#ECFEFF' },
+  { color: '#059669', bg: '#ECFDF5' },
+  { color: '#D97706', bg: '#FFFBEB' },
+  { color: '#6366F1', bg: '#EEF2FF' },
+]
+
+export function CRMContent({ clients, opportunities: initialOps, profiles, currentUserId, crmSource = 'guinew', stages: stagesOverride }: Props) {
+  const BASE_STAGES = stagesOverride ?? STAGES
   // tab state removed — all sections now visible on one page
   const [opportunities, setOpportunities] = useState<Opportunity[]>(initialOps)
+
+  // ─── Column management ──────────────────────────
+  const stagesKey = `guinew_crm_stages_${crmSource}`
+  const [hiddenStages, setHiddenStages] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return []
+    try { return JSON.parse(localStorage.getItem(stagesKey + '_hidden') || '[]') } catch { return [] }
+  })
+  const [extraStages, setExtraStages] = useState<Stage[]>(() => {
+    if (typeof window === 'undefined') return []
+    try { return JSON.parse(localStorage.getItem(stagesKey + '_extra') || '[]') } catch { return [] }
+  })
+  const [addingCol, setAddingCol] = useState(false)
+  const [newColName, setNewColName] = useState('')
+
+  const ACTIVE_STAGES: Stage[] = [
+    ...BASE_STAGES.filter(s => !['tancat_guanyat', 'tancat_perdut'].includes(s.key) && !hiddenStages.includes(s.key)),
+    ...extraStages.filter(s => !hiddenStages.includes(s.key)),
+  ]
+
+  const [closedSort, setClosedSort] = useState<'date' | 'value'>('date')
+  const [closedFilter, setClosedFilter] = useState<'all' | 'won' | 'lost'>('all')
+
+  const deleteStage = (key: string, opsInStage: number) => {
+    if (opsInStage > 0 && !confirm('Aquesta columna té oportunitats. Segur que la vols eliminar?')) return
+    const updated = [...hiddenStages, key]
+    setHiddenStages(updated)
+    localStorage.setItem(stagesKey + '_hidden', JSON.stringify(updated))
+  }
+
+  const addStage = () => {
+    const name = newColName.trim()
+    if (!name) return
+    const idx = extraStages.length % STAGE_COLORS.length
+    const newStage: Stage = {
+      key: `custom_${crmSource}_${Date.now()}`,
+      label: name,
+      ...STAGE_COLORS[idx],
+    }
+    const updated = [...extraStages, newStage]
+    setExtraStages(updated)
+    localStorage.setItem(stagesKey + '_extra', JSON.stringify(updated))
+    setNewColName('')
+    setAddingCol(false)
+  }
 
   // Editable stage labels
   const [stageLabels, setStageLabels] = useState<Record<string, string>>(() => {
@@ -359,12 +472,14 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
   const paginatedClients = filteredClients.slice((crmSafePage - 1) * CRM_PAGE_SIZE, crmSafePage * CRM_PAGE_SIZE)
 
   // ─── Pipeline grouped ─────────────────────────
+  const CLOSED_KEYS = new Set(['tancat_guanyat', 'tancat_perdut'])
   const byStage = useMemo(() => {
     const map: Record<string, Opportunity[]> = {}
-    STAGES.forEach(s => { map[s.key] = [] })
+    ACTIVE_STAGES.forEach(s => { map[s.key] = [] })
     opportunities.forEach(o => {
+      if (CLOSED_KEYS.has(o.stage)) return
       if (map[o.stage]) map[o.stage].push(o)
-      else map['prospect'].push(o)
+      else if (map['prospect']) map['prospect'].push(o)
     })
     return map
   }, [opportunities])
@@ -380,7 +495,7 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
         .reduce((s, o) => s + (Number(o.value) || 0), 0)
       return { mes: m, valor: val }
     })
-    const activeStages = STAGES.filter(s => !['tancat_guanyat', 'tancat_perdut'].includes(s.key))
+    const activeStages = ACTIVE_STAGES.filter(s => !['tancat_guanyat', 'tancat_perdut'].includes(s.key))
     const pipelineByStage = activeStages.map(s => ({
       etapa: s.label,
       valor: (byStage[s.key] || []).reduce((acc, o) => acc + (Number(o.value) || 0), 0),
@@ -437,7 +552,8 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
     setSaving(true); setSaveErr('')
     try {
       const answeredCount = Object.keys(analysisAnswers).length
-      const computedScore = answeredCount > 0 ? calcAnalysisScore(analysisAnswers) : null
+      const activeQuestions = crmSource === 'scp' ? SCP_ANALYSIS_QUESTIONS : ANALYSIS_QUESTIONS
+      const computedScore = answeredCount > 0 ? calcAnalysisScore(analysisAnswers, activeQuestions) : null
       const body = {
         ...form,
         value: parseFloat(form.value) || 0,
@@ -452,6 +568,7 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
         lead_source: form.lead_source || null,
         lost_reason: form.lost_reason || null,
         services: form.services || null,
+        crm_source: crmSource,
       }
       const url = editOp ? `/api/crm/opportunities/${editOp.id}` : '/api/crm/opportunities'
       const method = editOp ? 'PATCH' : 'POST'
@@ -675,13 +792,13 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
 
       {/* ── PIPELINE SECTION ── */}
       <div className="section-header">
-        <div className="section-title">Pipeline</div>
         <button className="btn-primary" onClick={() => openCreate()}><Plus size={14} />Nova oportunitat</button>
       </div>
       <div className="pipeline-wrap">
-          {STAGES.map(stage => {
+          {ACTIVE_STAGES.map(stage => {
             const ops = byStage[stage.key] || []
             const stageTotal = ops.reduce((s, o) => s + (o.value || 0), 0)
+            const isTerminal = ['tancat_guanyat', 'tancat_perdut'].includes(stage.key)
             return (
               <div key={stage.key} className="pipeline-col">
                 <div className="col-header" style={{ borderTopColor: stage.color }}>
@@ -705,7 +822,16 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
                       {getStageLabel(stage.key, stage.label)}
                     </div>
                   )}
-                  <div className="col-meta">{ops.length} · {fmtEur(stageTotal)}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div className="col-meta">{ops.length} · {fmtEur(stageTotal)}</div>
+                    {!isTerminal && (
+                      <button
+                        className="col-del-btn"
+                        title="Eliminar columna"
+                        onClick={e => { e.stopPropagation(); deleteStage(stage.key, ops.length) }}
+                      >×</button>
+                    )}
+                  </div>
                 </div>
                 <div
                   className={`col-cards${dragOverStage === stage.key && draggingId ? ' drag-over' : ''}`}
@@ -779,106 +905,111 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
               </div>
             )
           })}
+
+          {/* Add column button */}
+          {addingCol ? (
+            <div className="pipeline-col pipeline-col--new">
+              <div className="col-header" style={{ borderTopColor: '#9A9A9A' }}>
+                <input
+                  className="col-title-input"
+                  placeholder="Nom de la columna..."
+                  value={newColName}
+                  onChange={e => setNewColName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addStage(); if (e.key === 'Escape') { setAddingCol(false); setNewColName('') } }}
+                  autoFocus
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 6, padding: '8px 10px' }}>
+                <button className="btn-col-confirm" onClick={addStage}>Afegir</button>
+                <button className="btn-col-cancel" onClick={() => { setAddingCol(false); setNewColName('') }}>Cancel·lar</button>
+              </div>
+            </div>
+          ) : (
+            <button className="pipeline-add-col" onClick={() => setAddingCol(true)} title="Afegir columna">
+              <Plus size={16} strokeWidth={2} />
+            </button>
+          )}
         </div>
 
-      {/* ── CLIENTS SECTION ── */}
-      <div className="section-header">
-        <div className="section-title">Clients</div>
-        <button className="btn-primary" onClick={() => setShowNewClient(true)}><Plus size={14} />Nou client</button>
-      </div>
-      <div className="toolbar">
-            <div className="search-wrap">
-              <Search size={14} color="#9A9A9A" />
-              <input type="text" placeholder="Buscar per nom, email, contacte..." value={search}
-                onChange={e => { setSearch(e.target.value); setClientPage(1) }} className="search-input" />
-            </div>
-            <div className="filters">
-              {['Tots', 'Actiu', 'Prospecte', 'Inactiu', 'Perdut'].map(f => (
-                <button key={f} onClick={() => { setStatusFilter(f); setClientPage(1) }}
-                  className={`filter-btn${statusFilter === f ? ' active' : ''}`}>{f}</button>
-              ))}
-            </div>
-          </div>
-          <div className="count">
-            {filteredClients.length} clients
-            {crmTotalPages > 1 && <span style={{ color: '#C0C9D8', fontWeight: 400 }}> · pàgina {crmSafePage} de {crmTotalPages}</span>}
-          </div>
-          <div className="table-wrap">
-            <table className="crm-table">
-              <thead>
-                <tr>
-                  <th>Client</th><th>Tipus</th><th>Estat</th>
-                  <th>Contacte</th><th>Email</th><th>Telèfon</th><th>Campanyes</th><th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedClients.map(client => {
-                  const badge = statusColors[client.status] || statusColors.inactive
-                  const projectCount = client.projects?.[0]?.count ?? 0
-                  return (
-                    <tr key={client.id} onClick={() => openClientModal(client)} style={{ cursor: 'pointer' }}>
-                      <td>
-                        <div className="client-cell">
-                          <div className="client-avatar">
-                            {client.logo_url ? <img src={client.logo_url} alt={client.name} /> : getInitials(client.name)}
-                          </div>
-                          <div>
-                            <div className="client-name">{client.name}</div>
-                            {client.website && (
-                              <a href={client.website} target="_blank" rel="noreferrer" className="client-web">
-                                <Globe size={10} />{client.website.replace(/^https?:\/\//, '')}
-                              </a>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td><span className="type-badge">{clientTypeLabels?.[client.type] ?? client.type}</span></td>
-                      <td><span className="status-badge" style={{ background: badge.bg, color: badge.color }}>{statusLabels[client.status] ?? client.status}</span></td>
-                      <td className="text-sm">{client.contact_name || '—'}</td>
-                      <td>{client.email ? <a href={`mailto:${client.email}`} className="link">{client.email}</a> : <span className="muted">—</span>}</td>
-                      <td className="text-sm">{client.phone || '—'}</td>
-                      <td><div className="projects-count"><TrendingUp size={12} color="#9A9A9A" />{projectCount}</div></td>
-                      <td></td>
-                    </tr>
-                  )
-                })}
-                {filteredClients.length === 0 && (
-                  <tr><td colSpan={8} className="empty-row"><Building2 size={24} color="#D0D0D0" /><span>Cap client trobat</span></td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
 
-          {/* Pagination */}
-          {crmTotalPages > 1 && (
-            <div className="crm-pagination">
-              <button
-                className="crm-pag-btn"
-                onClick={() => setClientPage(p => Math.max(1, p - 1))}
-                disabled={crmSafePage === 1}
-              >‹ Anterior</button>
-              <div className="crm-pag-pages">
-                {Array.from({ length: crmTotalPages }, (_, i) => i + 1).map(p => (
-                  <button
-                    key={p}
-                    className={`crm-pag-num${p === crmSafePage ? ' crm-pag-num--active' : ''}`}
-                    onClick={() => setClientPage(p)}
-                  >{p}</button>
-                ))}
+      {/* ── CLOSED DEALS TABLE ── */}
+      {(() => {
+        const wonOps = opportunities.filter(o => o.stage === 'tancat_guanyat')
+        const lostOps = opportunities.filter(o => o.stage === 'tancat_perdut')
+        const allClosed = [...wonOps, ...lostOps]
+        if (allClosed.length === 0) return null
+
+        const filtered = closedFilter === 'won' ? wonOps : closedFilter === 'lost' ? lostOps : allClosed
+        const sorted = [...filtered].sort((a, b) => {
+          if (closedSort === 'value') return (b.value || 0) - (a.value || 0)
+          return new Date(b.close_date || b.updated_at || '').getTime() - new Date(a.close_date || a.updated_at || '').getTime()
+        })
+        const wonTotal = wonOps.reduce((s, o) => s + (o.value || 0), 0)
+
+        return (
+          <div className="closed-section">
+            <div className="closed-header">
+              <div className="closed-title">
+                <span className="closed-title-text">Deals tancats</span>
+                <span className="closed-badge closed-badge--won">{wonOps.length} guanyats · {fmtEur(wonTotal)}</span>
+                <span className="closed-badge closed-badge--lost">{lostOps.length} perduts</span>
               </div>
-              <button
-                className="crm-pag-btn"
-                onClick={() => setClientPage(p => Math.min(crmTotalPages, p + 1))}
-                disabled={crmSafePage === crmTotalPages}
-              >Següent ›</button>
+              <div className="closed-controls">
+                <div className="closed-tabs">
+                  {(['all', 'won', 'lost'] as const).map(f => (
+                    <button key={f} className={`closed-tab${closedFilter === f ? ' closed-tab--active' : ''}`} onClick={() => setClosedFilter(f)}>
+                      {f === 'all' ? 'Tots' : f === 'won' ? 'Guanyats' : 'Perduts'}
+                    </button>
+                  ))}
+                </div>
+                <div className="closed-tabs">
+                  <button className={`closed-tab${closedSort === 'date' ? ' closed-tab--active' : ''}`} onClick={() => setClosedSort('date')}>Per data</button>
+                  <button className={`closed-tab${closedSort === 'value' ? ' closed-tab--active' : ''}`} onClick={() => setClosedSort('value')}>Per valor</button>
+                </div>
+              </div>
             </div>
-          )}
+            <div className="closed-table-wrap">
+              <table className="closed-table">
+                <thead>
+                  <tr>
+                    <th>Client</th>
+                    <th>Serveis</th>
+                    <th>Valor</th>
+                    <th>Responsable</th>
+                    <th>Data</th>
+                    <th>Resultat</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.map(op => {
+                    const isWon = op.stage === 'tancat_guanyat'
+                    const responsible = profiles.find(p => p.id === op.responsible_id)
+                    const dateStr = op.close_date
+                      ? new Date(op.close_date + 'T12:00:00').toLocaleDateString('ca-ES', { day: 'numeric', month: 'short', year: '2-digit' })
+                      : '—'
+                    return (
+                      <tr key={op.id} className="closed-row" onClick={() => openEdit(op)}>
+                        <td className="closed-client">{op.client_name}</td>
+                        <td className="closed-services">{op.services || op.description || '—'}</td>
+                        <td className="closed-value">{fmtEur(op.value)}</td>
+                        <td className="closed-resp">{responsible ? getInitials(responsible.full_name) : '—'}</td>
+                        <td className="closed-date">{dateStr}</td>
+                        <td>
+                          <span className={`closed-result${isWon ? ' closed-result--won' : ' closed-result--lost'}`}>
+                            {isWon ? 'Guanyat' : 'Perdut'}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      })()}
 
-      {/* ── ANALYTICS SECTION ── */}
-      <div className="section-header">
-        <div className="section-title">Analítica</div>
-      </div>
-      <div className="analytics-wrap">
+      <div className="analytics-wrap" style={{ display: 'none' }}>
           {/* Chart 1: Annual revenue line */}
           <div className="chart-card chart-wide">
             <div className="chart-title">Ingressos tancats per mes ({new Date().getFullYear()})</div>
@@ -887,8 +1018,8 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
               <AreaChart data={analyticsData.monthlyRevenue} margin={{ top: 12, right: 20, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#2563EB" stopOpacity={0.18} />
-                    <stop offset="90%" stopColor="#2563EB" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#254067" stopOpacity={0.18} />
+                    <stop offset="90%" stopColor="#254067" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F0F4FA" vertical={false} />
@@ -899,12 +1030,12 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
                   formatter={(v) => [`€${Number(v).toLocaleString('ca-ES')}`, 'Ingressos']}
                   contentStyle={{ fontSize: 12.5, borderRadius: 12, border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '10px 14px', fontWeight: 600, color: '#1B2B4B' }}
                   labelStyle={{ fontSize: 11, color: '#A0A9BB', fontWeight: 500, marginBottom: 2 }}
-                  cursor={{ stroke: '#2563EB', strokeWidth: 1, strokeDasharray: '4 4' }}
+                  cursor={{ stroke: '#254067', strokeWidth: 1, strokeDasharray: '4 4' }}
                 />
-                <Area type="monotone" dataKey="valor" stroke="#2563EB" strokeWidth={2.5}
+                <Area type="monotone" dataKey="valor" stroke="#254067" strokeWidth={2.5}
                   fill="url(#areaFill)"
-                  dot={{ r: 3, fill: '#2563EB', strokeWidth: 2, stroke: 'white' }}
-                  activeDot={{ r: 5, fill: '#2563EB', strokeWidth: 2, stroke: 'white' }} />
+                  dot={{ r: 3, fill: '#254067', strokeWidth: 2, stroke: 'white' }}
+                  activeDot={{ r: 5, fill: '#254067', strokeWidth: 2, stroke: 'white' }} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -920,7 +1051,7 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
                 <BarChart data={analyticsData.pipelineByStage} margin={{ top: 12, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     {[
-                      ['#60A5FA','#1D4ED8'], ['#A78BFA','#6D28D9'], ['#FB923C','#C2410C'],
+                      ['#60A5FA','#1a2e4a'], ['#3a6fa8','#1a2e4a'], ['#FB923C','#C2410C'],
                       ['#34D399','#059669'], ['#F472B6','#BE185D'], ['#38BDF8','#0369A1'],
                     ].map(([top, bot], idx) => (
                       <linearGradient key={idx} id={`bg${idx}`} x1="0" y1="0" x2="0" y2="1">
@@ -1137,7 +1268,7 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
                 <div className="form-field">
                   <label>Etapa</label>
                   <select className="form-select" value={form.stage} onChange={f('stage')}>
-                    {STAGES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                    {ACTIVE_STAGES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
                   </select>
                 </div>
                 <div className="form-field">
@@ -1188,9 +1319,17 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
               {/* Lead source + Lost reason (if applicable) */}
               <div className="form-row-2">
                 <div className="form-field">
-                  <label>Origen del lead</label>
+                  <label>{crmSource === 'scp' ? 'Tipus de client' : 'Origen del lead'}</label>
                   <select className="form-select" value={form.lead_source} onChange={f('lead_source')}>
-                    {LEAD_SOURCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    {crmSource === 'scp' ? [
+                      { value: '',                  label: 'Sense especificar' },
+                      { value: 'agencia',            label: 'Agència' },
+                      { value: 'creador_contingut',  label: 'Creador de contingut' },
+                      { value: 'federacio',          label: 'Federació' },
+                      { value: 'empresa_marca',      label: 'Empresa / Marca' },
+                      { value: 'club',               label: 'Club' },
+                    ].map(o => <option key={o.value} value={o.value}>{o.label}</option>)
+                    : LEAD_SOURCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </div>
                 {form.stage === 'tancat_perdut' && (
@@ -1209,8 +1348,9 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
                   <div className="analysis-title">Anàlisi interna</div>
                   {(() => {
                     const answered = Object.keys(analysisAnswers).length
-                    const score = calcAnalysisScore(analysisAnswers)
-                    const result = analysisResult(score, answered)
+                    const qs = crmSource === 'scp' ? SCP_ANALYSIS_QUESTIONS : ANALYSIS_QUESTIONS
+                    const score = calcAnalysisScore(analysisAnswers, qs)
+                    const result = analysisResult(score, answered, crmSource === 'scp')
                     return result ? (
                       <div className="analysis-result" style={{ background: result.bg, color: result.color }}>
                         {result.label} · {score}/15
@@ -1220,7 +1360,7 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
                     ) : null
                   })()}
                 </div>
-                {ANALYSIS_QUESTIONS.map((q, qi) => (
+                {(crmSource === 'scp' ? SCP_ANALYSIS_QUESTIONS : ANALYSIS_QUESTIONS).map((q, qi) => (
                   <div key={q.key} className="analysis-q">
                     <div className="analysis-q-label"><span className="analysis-q-num">{qi + 1}</span>{q.question}</div>
                     <div className="analysis-options">
@@ -1281,7 +1421,27 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
                   </button>
                 </div>
               )}
-              <div style={{ flex: 1 }} />
+              {(() => {
+                const linkedClient = clientsList.find(c => c.id === form.client_id)
+                const phone = linkedClient?.phone
+                const clientLabel = encodeURIComponent(form.client_name || linkedClient?.name || 'Client')
+                const meetUrl = `https://calendar.google.com/calendar/u/0/r/eventedit?text=Reuni%C3%B3+amb+${clientLabel}&add=guinewagency%40gmail.com&vcon=meet`
+                return (
+                  <div style={{ display: 'flex', gap: 6, marginRight: 'auto' }}>
+                    {phone && (
+                      <a href={`tel:${phone}`} className="btn-action btn-action--call" title={`Trucar: ${phone}`}
+                        onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Phone size={13} strokeWidth={2.5} fill="currentColor" />{phone}
+                      </a>
+                    )}
+                    <a href={meetUrl} target="_blank" rel="noopener noreferrer"
+                      className="btn-action btn-action--meet" title="Crear reunió a Google Calendar"
+                      onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <Video size={13} strokeWidth={2} />Nova reunió
+                    </a>
+                  </div>
+                )
+              })()}
               <button className="btn-cancel" onClick={() => { setShowModal(false); setConfirmDelete(false) }}>Cancel·lar</button>
               <button className="btn-confirm" onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 size={13} className="spin" /> : null}
@@ -1293,6 +1453,21 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
       )}
 
       <style jsx>{`
+        .btn-action {
+          display: inline-flex; align-items: center; gap: 6px;
+          padding: 8px 14px; border-radius: 9px; border: none;
+          font-size: 13px; font-weight: 700;
+          text-decoration: none; cursor: pointer; transition: all 0.15s;
+          white-space: nowrap;
+        }
+        .btn-action--call {
+          background: #16A34A; color: white;
+          box-shadow: 0 2px 8px rgba(22,163,74,0.35);
+        }
+        .btn-action--call:hover { background: #15803D; box-shadow: 0 4px 14px rgba(22,163,74,0.45); transform: translateY(-1px); }
+        .btn-action--meet { background: #F0FDF4; border: 1px solid #BBF7D0; color: #15803D; }
+        .btn-action--meet:hover { background: #DCFCE7; border-color: #16A34A; }
+
         .crm-page { flex: 1; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
 
         /* KPIs Row 1 */
@@ -1386,7 +1561,32 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
           border: none; border-bottom: 1px solid currentColor; background: transparent;
           outline: none; width: 100%; font-family: inherit; padding: 0;
         }
-        .col-meta { font-size: 11px; color: #A0A9BB; margin-top: 3px; font-weight: 500; }
+        .col-meta { font-size: 11px; color: #A0A9BB; font-weight: 500; }
+        .col-del-btn {
+          width: 18px; height: 18px; border: none; background: transparent; cursor: pointer;
+          color: #C0C0C0; font-size: 16px; line-height: 1; border-radius: 4px;
+          display: flex; align-items: center; justify-content: center; padding: 0;
+          transition: background 0.15s, color 0.15s; flex-shrink: 0;
+        }
+        .col-del-btn:hover { background: #FEE2E2; color: #DC2626; }
+        .pipeline-add-col {
+          flex: 0 0 48px; height: 120px; border: 2px dashed #E0E6EF; border-radius: 16px;
+          background: transparent; cursor: pointer; color: #B0BAC9;
+          display: flex; align-items: center; justify-content: center;
+          transition: border-color 0.15s, color 0.15s, background 0.15s;
+          align-self: flex-start;
+        }
+        .pipeline-add-col:hover { border-color: #254067; color: #254067; background: rgba(37,64,103,0.04); }
+        .pipeline-col--new { min-width: 180px; flex: 0 0 180px; }
+        .btn-col-confirm {
+          flex: 1; height: 30px; border: none; border-radius: 7px;
+          background: #254067; color: white; font-size: 12px; font-weight: 600; cursor: pointer;
+        }
+        .btn-col-confirm:hover { background: #1a2e4a; }
+        .btn-col-cancel {
+          flex: 1; height: 30px; border: 1px solid #E0E6EF; border-radius: 7px;
+          background: white; color: #5C6B80; font-size: 12px; cursor: pointer;
+        }
         .col-cards {
           flex: 1; overflow-y: auto; padding: 8px 10px 10px;
           display: flex; flex-direction: column; gap: 8px;
@@ -1405,13 +1605,13 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
         }
         .op-card:hover {
           box-shadow: 0 4px 14px rgba(0,0,0,0.09);
-          border-color: rgba(37,99,235,0.18);
+          border-color: rgba(37,64,103,0.18);
           transform: translateY(-1px);
           background: white;
         }
         .op-card:active { cursor: grabbing; transform: scale(0.98); }
         .op-card.dragging { opacity: 0.35; }
-        .col-cards.drag-over { background: rgba(37,99,235,0.04); border-radius: 0 0 16px 16px; }
+        .col-cards.drag-over { background: rgba(37,64,103,0.04); border-radius: 0 0 16px 16px; }
         .op-card-top { display: flex; align-items: flex-start; gap: 6px; }
         .op-name { flex: 1; font-size: 13px; font-weight: 600; color: #0F1B2D; line-height: 1.3; }
         .op-stale { font-size: 12px; flex-shrink: 0; cursor: default; }
@@ -1426,7 +1626,7 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
         }
         .op-stale-label { font-size: 10px; color: #DC2626; font-weight: 600; }
         .op-next-step {
-          font-size: 10.5px; color: #5A70A0; background: rgba(37,99,235,0.07);
+          font-size: 10.5px; color: #5A70A0; background: rgba(37,64,103,0.07);
           border-radius: 6px; padding: 2px 7px; display: inline-block; font-weight: 500;
         }
         .op-score { display: flex; align-items: center; gap: 2px; }
@@ -1440,6 +1640,61 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
           border: none; cursor: pointer; font-family: inherit; transition: opacity 0.15s;
         }
         .move-btn:hover { opacity: 0.75; }
+
+        /* Closed deals table */
+        .closed-section {
+          margin-top: 28px; border: 1px solid rgba(0,0,0,0.07); border-radius: 18px;
+          background: white; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .closed-header {
+          display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+          gap: 10px; padding: 16px 20px; border-bottom: 1px solid #F0F4FA;
+        }
+        .closed-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .closed-title-text { font-size: 14px; font-weight: 700; color: #0F1B2D; }
+        .closed-badge {
+          font-size: 11.5px; font-weight: 600; padding: 3px 10px; border-radius: 20px;
+        }
+        .closed-badge--won { background: #F0FDF4; color: #16A34A; }
+        .closed-badge--lost { background: #FEF2F2; color: #DC2626; }
+        .closed-controls { display: flex; gap: 8px; flex-wrap: wrap; }
+        .closed-tabs { display: flex; border: 1px solid #E8EFF8; border-radius: 8px; overflow: hidden; }
+        .closed-tab {
+          padding: 5px 12px; font-size: 12px; font-weight: 500; border: none; background: white;
+          color: #5C6B80; cursor: pointer; transition: background 0.15s, color 0.15s;
+        }
+        .closed-tab:not(:last-child) { border-right: 1px solid #E8EFF8; }
+        .closed-tab--active { background: #254067; color: white; font-weight: 600; }
+        .closed-table-wrap { overflow-x: auto; }
+        .closed-table {
+          width: 100%; border-collapse: collapse; font-size: 13px;
+        }
+        .closed-table thead th {
+          text-align: left; font-size: 11px; font-weight: 600; color: #8896A8;
+          text-transform: uppercase; letter-spacing: 0.04em;
+          padding: 10px 20px; background: #FAFBFC; border-bottom: 1px solid #F0F4FA;
+        }
+        .closed-row {
+          cursor: pointer; transition: background 0.12s;
+          border-bottom: 1px solid #F7F9FC;
+        }
+        .closed-row:last-child { border-bottom: none; }
+        .closed-row:hover { background: #F7FAFF; }
+        .closed-row td { padding: 11px 20px; vertical-align: middle; }
+        .closed-client { font-weight: 600; color: #0F1B2D; white-space: nowrap; }
+        .closed-services { color: #7A8899; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .closed-value { font-weight: 700; color: #1B2B4B; white-space: nowrap; }
+        .closed-resp {
+          width: 28px; height: 28px; border-radius: 50%; background: #EEF3FA; color: #254067;
+          font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+        }
+        .closed-date { color: #8896A8; white-space: nowrap; font-size: 12px; }
+        .closed-result {
+          display: inline-block; font-size: 11.5px; font-weight: 700;
+          padding: 3px 10px; border-radius: 20px; white-space: nowrap;
+        }
+        .closed-result--won { background: #F0FDF4; color: #16A34A; }
+        .closed-result--lost { background: #FEF2F2; color: #DC2626; }
 
         /* Analysis */
         .analysis-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
@@ -1522,7 +1777,7 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
           box-shadow: 0 1px 3px rgba(0,0,0,0.05); font-family: inherit;
         }
         .crm-pag-btn:hover:not(:disabled) {
-          background: #F5F8FF; border-color: rgba(37,99,235,0.2); color: #1B2B4B;
+          background: #F5F8FF; border-color: rgba(37,64,103,0.2); color: #1B2B4B;
         }
         .crm-pag-btn:disabled { opacity: 0.35; cursor: default; }
         .crm-pag-pages { display: flex; gap: 4px; }
@@ -1533,13 +1788,13 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
           cursor: pointer; transition: all 0.2s ease;
           box-shadow: 0 1px 3px rgba(0,0,0,0.05); font-family: inherit;
         }
-        .crm-pag-num:hover { background: #F5F8FF; border-color: rgba(37,99,235,0.2); color: #1B2B4B; }
+        .crm-pag-num:hover { background: #F5F8FF; border-color: rgba(37,64,103,0.2); color: #1B2B4B; }
         .crm-pag-num--active {
-          background: linear-gradient(135deg, #1B2B4B, #2563EB);
+          background: linear-gradient(135deg, #1B2B4B, #254067);
           border-color: transparent; color: white; font-weight: 700;
-          box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+          box-shadow: 0 2px 8px rgba(37,64,103,0.3);
         }
-        .crm-pag-num--active:hover { background: linear-gradient(135deg, #0F1E33, #1D4ED8); color: white; }
+        .crm-pag-num--active:hover { background: linear-gradient(135deg, #0F1E33, #1a2e4a); color: white; }
         .table-wrap { overflow-x: auto; border: 1px solid #ECECEC; border-radius: 12px; background: white; }
         .crm-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
         .crm-table thead th {
@@ -1579,8 +1834,8 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
           display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 24px;
         }
         .modal {
-          background: white; border-radius: 16px; width: 100%; max-width: 600px;
-          max-height: 90vh; display: flex; flex-direction: column;
+          background: white; border-radius: 16px; width: 100%; max-width: 860px;
+          max-height: 92vh; display: flex; flex-direction: column;
           box-shadow: 0 20px 60px rgba(0,0,0,0.2);
         }
         .modal-header {

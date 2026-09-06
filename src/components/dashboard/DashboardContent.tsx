@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import {
   CheckSquare, Clock, FolderKanban, Users, Plus,
@@ -23,6 +23,13 @@ interface Stats {
   pendingTasks: number
 }
 
+interface CRMOpportunity {
+  stage: string
+  value: number
+  close_date?: string
+  created_at: string
+}
+
 interface Props {
   user: Profile
   tasks: Task[]
@@ -36,6 +43,7 @@ interface Props {
   currentUserId: string
   blockedTasks: Task[]
   inboxNotifs: Notification[]
+  opportunities?: CRMOpportunity[]
 }
 
 function getGreetingKey(): 'greetMorning' | 'greetAfternoon' | 'greetEvening' {
@@ -52,8 +60,28 @@ const priorityColor: Record<string, string> = {
   low: '#9A9A9A',
 }
 
-export function DashboardContent({ user, tasks, projects, activity, meetings, stats, profiles, clients, allProjects, currentUserId, blockedTasks, inboxNotifs }: Props) {
+export function DashboardContent({ user, tasks, projects, activity, meetings, stats, profiles, clients, allProjects, currentUserId, blockedTasks, inboxNotifs, opportunities = [] }: Props) {
   const { t: tr } = useLanguage()
+  const isSuperAdmin = user.role === 'superadmin'
+
+  const crmSummary = useMemo(() => {
+    if (!isSuperAdmin || opportunities.length === 0) return null
+    const now = new Date()
+    const m = now.getMonth(); const y = now.getFullYear()
+    const ingressosMes = opportunities
+      .filter(o => o.stage === 'tancat_guanyat' && o.close_date)
+      .filter(o => { const d = new Date(o.close_date!); return d.getFullYear() === y && d.getMonth() === m })
+      .reduce((s, o) => s + (Number(o.value) || 0), 0)
+    const actives = opportunities.filter(o => !['tancat_guanyat', 'tancat_perdut'].includes(o.stage)).length
+    const won = opportunities.filter(o => o.stage === 'tancat_guanyat').length
+    const lost = opportunities.filter(o => o.stage === 'tancat_perdut').length
+    const winRate = won + lost > 0 ? Math.round((won / (won + lost)) * 100) : 0
+    const pipelineTotal = opportunities
+      .filter(o => !['tancat_guanyat', 'tancat_perdut'].includes(o.stage))
+      .reduce((s, o) => s + (Number(o.value) || 0), 0)
+    return { ingressosMes, actives, winRate, pipelineTotal }
+  }, [isSuperAdmin, opportunities])
+
   const [completingTask, setCompletingTask] = useState<string | null>(null)
   const [localTasks, setLocalTasks] = useState(tasks)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
@@ -566,6 +594,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
         </div>
       </div>
 
+
       {selectedTask && (
         <TaskDetailModal
           task={selectedTask}
@@ -615,6 +644,63 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
       />
 
       <style jsx>{`
+        .crm-bottom-link { text-decoration: none; display: block; margin-top: 28px; }
+        .crm-bottom {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          background: white;
+          border: 1px solid rgba(0,0,0,0.07);
+          border-radius: 16px;
+          padding: 18px 22px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+          cursor: pointer;
+          transition: box-shadow 0.15s, transform 0.15s;
+        }
+        .crm-bottom:hover {
+          box-shadow: 0 6px 20px rgba(37,64,103,0.1);
+          transform: translateY(-1px);
+        }
+        .crm-bottom-left {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+        .crm-bottom-icon {
+          width: 38px; height: 38px; border-radius: 10px;
+          background: linear-gradient(135deg, #254067, #3a6fa8);
+          display: flex; align-items: center; justify-content: center;
+          color: white; flex-shrink: 0;
+        }
+        .crm-bottom-label {
+          font-size: 11.5px;
+          font-weight: 600;
+          color: #A0A9BB;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          margin-bottom: 2px;
+        }
+        .crm-bottom-main {
+          font-size: 26px;
+          font-weight: 800;
+          color: #0F1B2D;
+          letter-spacing: -1px;
+          line-height: 1;
+        }
+        .crm-bottom-right {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .crm-pill {
+          font-size: 12px;
+          font-weight: 600;
+          color: #4A5568;
+          background: #F4F7FB;
+          border-radius: 20px;
+          padding: 5px 12px;
+        }
+
         .dash {
           flex: 1;
           padding: 28px 28px 40px;
@@ -687,17 +773,17 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
         }
 
         .quick-btn--primary {
-          background: linear-gradient(135deg, #1B2B4B, #2563EB);
+          background: linear-gradient(135deg, #1B2B4B, #254067);
           border-color: transparent;
           color: white;
-          box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+          box-shadow: 0 2px 8px rgba(37,64,103,0.3);
         }
 
         .quick-btn--primary:hover {
-          background: linear-gradient(135deg, #0F1E33, #1D4ED8);
+          background: linear-gradient(135deg, #0F1E33, #1a2e4a);
           border-color: transparent;
           color: white;
-          box-shadow: 0 4px 14px rgba(37,99,235,0.38);
+          box-shadow: 0 4px 14px rgba(37,64,103,0.38);
           transform: translateY(-1px);
         }
 
@@ -762,10 +848,10 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
         }
 
         .attn-btn--primary {
-          background: linear-gradient(135deg, #1B2B4B, #2563EB); color: white; border: none;
-          box-shadow: 0 2px 6px rgba(37,99,235,0.25);
+          background: linear-gradient(135deg, #1B2B4B, #254067); color: white; border: none;
+          box-shadow: 0 2px 6px rgba(37,64,103,0.25);
         }
-        .attn-btn--primary:hover { background: linear-gradient(135deg, #0F1E33, #1D4ED8); }
+        .attn-btn--primary:hover { background: linear-gradient(135deg, #0F1E33, #1a2e4a); }
 
         .attn-btn--resolve {
           background: white; color: #059669; border: 1px solid #A7F3D0;
@@ -815,8 +901,8 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           flex-shrink: 0;
         }
 
-        .stat-icon--blue { background: linear-gradient(135deg, #3B82F6, #1B2B4B); color: white; }
-        .stat-icon--indigo { background: linear-gradient(135deg, #818CF8, #4F46E5); color: white; }
+        .stat-icon--blue { background: linear-gradient(135deg, #254067, #1B2B4B); color: white; }
+        .stat-icon--indigo { background: linear-gradient(135deg, #818CF8, #254067); color: white; }
         .stat-icon--amber { background: linear-gradient(135deg, #FBBF24, #D97706); color: white; }
         .stat-icon--green { background: linear-gradient(135deg, #34D399, #059669); color: white; }
 
@@ -890,14 +976,14 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           align-items: center;
           gap: 4px;
           font-size: 12px;
-          color: #2563EB;
+          color: #254067;
           text-decoration: none;
           font-weight: 600;
           transition: color 0.15s;
         }
 
         :global(.widget-link:hover) {
-          color: #1D4ED8;
+          color: #1a2e4a;
         }
 
         .widget-empty {

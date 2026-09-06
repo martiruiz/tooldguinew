@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, Search, FolderKanban, Clock } from 'lucide-react'
+import { Plus, Search, FolderKanban, Clock, Trash2 } from 'lucide-react'
 import { cn, projectStatusLabels, projectTypeLabels, getInitials, formatDate, clientTypeLabels } from '@/lib/utils'
 import { NewProjectModal } from '@/components/projects/NewProjectModal'
 import type { Project } from '@/types'
@@ -34,11 +34,11 @@ const statusColors: Record<string, { bg: string; color: string }> = {
 
 const typeColors: Record<string, string> = {
   social_media: '#E879F9',
-  content: '#0EA5E9',
+  content: '#3a6fa8',
   event: '#F97316',
   matchday: '#DC2626',
   campaign: '#D97706',
-  reporting: '#6366F1',
+  reporting: '#254067',
   custom: '#9A9A9A',
 }
 
@@ -116,7 +116,15 @@ export function ProjectsContent({ projects, clients, profiles, userRole }: Props
       ) : (
         <div className="projects-list">
           {filtered.map((project) => (
-            <ProjectRow key={project.id} project={project} />
+            <ProjectRow
+              key={project.id}
+              project={project}
+              onDelete={async (id) => {
+                if (!confirm('Segur que vols eliminar aquest projecte?')) return
+                const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' })
+                if (res.ok) setLocalProjects(prev => prev.filter(p => p.id !== id))
+              }}
+            />
           ))}
         </div>
       )}
@@ -137,6 +145,8 @@ export function ProjectsContent({ projects, clients, profiles, userRole }: Props
         .projects-page {
           flex: 1;
           padding: 24px 28px 40px;
+          max-width: 100%;
+          box-sizing: border-box;
         }
 
         @media (max-width: 767px) {
@@ -172,8 +182,8 @@ export function ProjectsContent({ projects, clients, profiles, userRole }: Props
         }
 
         .search-wrap:focus-within {
-          border-color: rgba(37,99,235,0.3);
-          box-shadow: 0 0 0 3px rgba(37,99,235,0.08);
+          border-color: rgba(37,64,103,0.3);
+          box-shadow: 0 0 0 3px rgba(37,64,103,0.08);
         }
 
         .search-input {
@@ -210,14 +220,14 @@ export function ProjectsContent({ projects, clients, profiles, userRole }: Props
         .filter-btn:hover { border-color: rgba(0,0,0,0.14); color: #0F1B2D; box-shadow: 0 2px 6px rgba(0,0,0,0.08); transform: translateY(-1px); }
 
         .filter-btn--active {
-          background: linear-gradient(135deg, #1B2B4B, #2563EB);
+          background: linear-gradient(135deg, #1B2B4B, #254067);
           border-color: transparent;
           color: white;
           font-weight: 600;
-          box-shadow: 0 2px 8px rgba(37,99,235,0.25);
+          box-shadow: 0 2px 8px rgba(37,64,103,0.25);
         }
 
-        .filter-btn--active:hover { background: linear-gradient(135deg, #0F1E33, #1D4ED8); color: white; transform: translateY(-1px); }
+        .filter-btn--active:hover { background: linear-gradient(135deg, #0F1E33, #1a2e4a); color: white; transform: translateY(-1px); }
 
         .btn-primary {
           display: flex;
@@ -225,7 +235,7 @@ export function ProjectsContent({ projects, clients, profiles, userRole }: Props
           gap: 6px;
           height: 38px;
           padding: 0 16px;
-          background: linear-gradient(135deg, #1B2B4B, #2563EB);
+          background: linear-gradient(135deg, #1B2B4B, #254067);
           color: white;
           border: none;
           border-radius: 10px;
@@ -234,10 +244,10 @@ export function ProjectsContent({ projects, clients, profiles, userRole }: Props
           cursor: pointer;
           transition: all 0.2s ease;
           white-space: nowrap;
-          box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+          box-shadow: 0 2px 8px rgba(37,64,103,0.3);
         }
 
-        .btn-primary:hover { background: linear-gradient(135deg, #0F1E33, #1D4ED8); box-shadow: 0 4px 14px rgba(37,99,235,0.38); transform: translateY(-1px); }
+        .btn-primary:hover { background: linear-gradient(135deg, #0F1E33, #1a2e4a); box-shadow: 0 4px 14px rgba(37,64,103,0.38); transform: translateY(-1px); }
 
         .count {
           font-size: 12.5px;
@@ -267,13 +277,14 @@ export function ProjectsContent({ projects, clients, profiles, userRole }: Props
   )
 }
 
-function ProjectRow({ project }: { project: Project }) {
+function ProjectRow({ project, onDelete }: { project: Project; onDelete: (id: string) => void }) {
   const badge = statusColors[project.status] || statusColors.planning
   const typeColor = typeColors[project.type] || '#9A9A9A'
   const client = project.client as any
   const responsible = project.responsible as any
 
   return (
+    <div className="project-row-wrap">
     <Link href={`/projects/${project.id}`} className="project-row">
       <div className="project-type-dot" style={{ background: typeColor }} />
 
@@ -316,6 +327,37 @@ function ProjectRow({ project }: { project: Project }) {
       )}
 
       <style jsx>{`
+        :global(.project-row-wrap) {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+        :global(.project-row-wrap:hover .project-del-btn) {
+          opacity: 1;
+        }
+        :global(.project-del-btn) {
+          position: absolute;
+          right: 14px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 30px;
+          height: 30px;
+          border: none;
+          background: transparent;
+          border-radius: 8px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #C0C0C0;
+          opacity: 1;
+          transition: background 0.15s, color 0.15s;
+          z-index: 2;
+        }
+        :global(.project-del-btn:hover) {
+          background: #FEE2E2;
+          color: #DC2626;
+        }
         :global(.project-row) {
           display: flex;
           align-items: center;
@@ -332,7 +374,7 @@ function ProjectRow({ project }: { project: Project }) {
 
         :global(.project-row:hover) {
           box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-          border-color: rgba(37,99,235,0.15);
+          border-color: rgba(37,64,103,0.15);
           transform: translateY(-1px);
         }
 
@@ -431,5 +473,13 @@ function ProjectRow({ project }: { project: Project }) {
         }
       `}</style>
     </Link>
+    <button
+      className="project-del-btn"
+      title="Eliminar projecte"
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(project.id) }}
+    >
+      <Trash2 size={13} />
+    </button>
+    </div>
   )
 }

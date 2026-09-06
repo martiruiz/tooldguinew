@@ -79,7 +79,7 @@ const MONTHS = ['Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny', 'Juliol', '
 const HOURS = Array.from({ length: 15 }, (_, i) => i + 7) // 7:00–21:00
 const HOUR_PX = 64
 const DAY_START = 7
-const COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#14B8A6', '#F97316']
+const COLORS = ['#254067', '#3a6fa8', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#14B8A6', '#F97316']
 
 const TYPE_LABELS: Record<MeetType, string> = {
   intern: 'Interna', client: 'Client', kickoff: 'Kick-off', followup: 'Seguiment',
@@ -148,7 +148,7 @@ function dbToCalEvent(m: any, uid: string, profileMap: Map<string, any>, colorMa
 // ─────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────
-const SESSION_COLOR = '#F97316' // orange — visually distinct from meetings (blue) and GCal (slate)
+const SESSION_COLOR = '#254067' // blue corporatiu Guinew
 
 export function CalendarContent({
   meetings: initialMeetings,
@@ -239,7 +239,7 @@ export function CalendarContent({
         participants: e.attendees || [],
         ownerId: e.ownerId || '',
         ownerName: e.ownerName || '',
-        color: e.isOwn ? (colorMap.get(currentUserId) || '#3B82F6') : '#94A3B8',
+        color: e.isOwn ? (colorMap.get(currentUserId) || '#254067') : '#94A3B8',
         allDay: e.allDay,
         isOwn: e.isOwn,
         status: 'scheduled' as const,
@@ -878,7 +878,7 @@ export function CalendarContent({
   function renderModal() {
     if (!showModal) return null
     return (
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
         <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 520, maxHeight: '92vh', overflow: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.15)' }}>
           {/* Header */}
           <div style={{ padding: '14px 18px', borderBottom: '1px solid #EBEBEB', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1166,12 +1166,12 @@ export function CalendarContent({
       {renderModal()}
 
       <style>{`
-        .cal-btn-primary { display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 14px;background:linear-gradient(135deg,#1B2B4B,#2563EB);color:#fff;border:none;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px rgba(37,99,235,0.3);transition:all 0.2s ease; }
-        .cal-btn-primary:hover { background:linear-gradient(135deg,#0F1E33,#1D4ED8);box-shadow:0 4px 14px rgba(37,99,235,0.38);transform:translateY(-1px); }
+        .cal-btn-primary { display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 14px;background:linear-gradient(135deg,#1B2B4B,#254067);color:#fff;border:none;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px rgba(37,64,103,0.3);transition:all 0.2s ease; }
+        .cal-btn-primary:hover { background:linear-gradient(135deg,#0F1E33,#1a2e4a);box-shadow:0 4px 14px rgba(37,64,103,0.38);transform:translateY(-1px); }
         .cal-nav { display:flex;align-items:center;justify-content:center;width:30px;height:30px;background:white;border:1px solid rgba(0,0,0,0.08);border-radius:9px;cursor:pointer;color:#5C6B80;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.2s ease; }
-        .cal-nav:hover { background:#F5F8FF;border-color:rgba(37,99,235,0.2);color:#1B2B4B;box-shadow:0 2px 6px rgba(0,0,0,0.08); }
+        .cal-nav:hover { background:#F5F8FF;border-color:rgba(37,64,103,0.2);color:#1B2B4B;box-shadow:0 2px 6px rgba(0,0,0,0.08); }
         .cal-today { height:30px;padding:0 11px;background:white;border:1px solid rgba(0,0,0,0.08);border-radius:9px;font-size:11.5px;cursor:pointer;color:#5C6B80;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.2s ease;font-family:inherit;font-weight:500; }
-        .cal-today:hover { background:#F5F8FF;border-color:rgba(37,99,235,0.2);color:#1B2B4B; }
+        .cal-today:hover { background:#F5F8FF;border-color:rgba(37,64,103,0.2);color:#1B2B4B; }
         .cal-gcal-badge { display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:7px;font-size:11px;color:#1d4ed8;cursor:pointer; }
         .cal-gcal-badge:hover { background:#DBEAFE; }
         .cal-gcal-x { display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:transparent;border:none;border-radius:4px;font-size:10px;color:#94a3b8;cursor:pointer;text-decoration:none; }

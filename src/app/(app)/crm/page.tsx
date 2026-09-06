@@ -18,13 +18,13 @@ export default async function CRMPage() {
     { data: profiles },
   ] = await Promise.all([
     supabase.from('clients').select('*, projects:projects(count)').order('name'),
-    supabase.from('opportunities').select('*').order('created_at', { ascending: false }),
+    supabase.from('opportunities').select('*').eq('crm_source', 'guinew').order('created_at', { ascending: false }),
     supabase.from('profiles').select('id, full_name').eq('is_active', true).order('full_name'),
   ])
 
   return (
     <>
-      <Topbar user={profile as Profile} title="CRM" />
+      <Topbar user={profile as Profile} title="CRM d'Agència Guinew" />
       <CRMContent
         clients={clients || []}
         opportunities={opportunities || []}

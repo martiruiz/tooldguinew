@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
       lost_reason:      body.lost_reason      || null,
       services:         body.services         || null,
       analysis_answers: body.analysis_answers ?? null,
+      crm_source:       body.crm_source       || 'guinew',
     }
 
     const { data, error } = await supabase.rpc('save_opportunity', { p })

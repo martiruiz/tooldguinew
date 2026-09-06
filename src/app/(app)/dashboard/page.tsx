@@ -66,6 +66,12 @@ export default async function DashboardPage() {
     .order('updated_at', { ascending: false })
     .limit(8)
 
+  // CRM summary for superadmin
+  const isSuperAdmin = (profile as Profile)?.role === 'superadmin'
+  const { data: opportunities } = isSuperAdmin
+    ? await supabase.from('opportunities').select('stage, value, close_date, created_at').order('created_at', { ascending: false })
+    : { data: null }
+
   // Inbox notifications
   const { data: inboxNotifs } = await supabase
     .from('notifications')
@@ -107,6 +113,7 @@ export default async function DashboardPage() {
         currentUserId={user.id}
         blockedTasks={blockedTasks || []}
         inboxNotifs={inboxNotifs || []}
+        opportunities={opportunities || []}
         stats={{
           activeClients: activeClientsCount || 0,
           activeProjects: activeProjectsCount || 0,

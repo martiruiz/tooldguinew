@@ -597,13 +597,13 @@ function ReportView({ report }: { report: Report }) {
         .analysis-card {
           background: white;
           border: 1px solid #E8E4FF;
-          border-left: 3px solid #7C3AED;
+          border-left: 3px solid #254067;
           border-radius: 12px;
           padding: 20px 24px;
           display: flex;
           flex-direction: column;
           gap: 12px;
-          box-shadow: 0 2px 8px rgba(124,58,237,0.06);
+          box-shadow: 0 2px 8px rgba(37,64,103,0.06);
         }
         .analysis-card p { font-size: 14px; line-height: 1.7; color: #3C3C3C; }
       `}</style>

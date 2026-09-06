@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Camera, Save, Plus, Shield, User, Users, Power, Edit2, Check, X, Briefcase, FileSignature, ChevronRight, Banknote, Globe } from 'lucide-react'
+import { Camera, Save, Plus, Shield, User, Users, Power, Edit2, Check, X, Briefcase, FileSignature, ChevronRight, Banknote, Globe, Bell, Mail } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { cn, getInitials, roleLabels } from '@/lib/utils'
@@ -39,8 +39,8 @@ function IdiomesCard({ profileId }: { profileId: string }) {
   return (
     <div className="idiomes-card">
       <div className="idiomes-header">
-        <div className="tool-icon" style={{ background: '#0EA5E90F' }}>
-          <Globe size={20} color="#0EA5E9" strokeWidth={1.8} />
+        <div className="tool-icon" style={{ background: '#3a6fa80F' }}>
+          <Globe size={20} color="#3a6fa8" strokeWidth={1.8} />
         </div>
         <div className="tool-info">
           <div className="tool-name">Idioma</div>
@@ -67,8 +67,8 @@ function IdiomesCard({ profileId }: { profileId: string }) {
           background: white; font-size: 13px; font-weight: 500; color: #374151;
           cursor: pointer; transition: all 0.15s; font-family: inherit;
         }
-        .idiomes-btn:hover { border-color: #0EA5E9; color: #0EA5E9; background: #F0F9FF; }
-        .idiomes-btn--active { border-color: #0EA5E9; background: #EFF9FF; color: #0369A1; font-weight: 700; }
+        .idiomes-btn:hover { border-color: #3a6fa8; color: #3a6fa8; background: #F0F9FF; }
+        .idiomes-btn--active { border-color: #3a6fa8; background: #EFF9FF; color: #0369A1; font-weight: 700; }
       `}</style>
     </div>
   )
@@ -94,10 +94,10 @@ function ServeisCard({ profileId }: { profileId: string }) {
   return (
     <div className="serveis-card">
       <div className="serveis-header">
-        <div className="tool-icon" style={{ background: '#8B5CF60F' }}>
+        <div className="tool-icon" style={{ background: '#3a6fa80F' }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93V18c0-.55.45-1 1-1s1 .45 1 1v1.93c-2.78-.47-5.11-2.23-6.31-4.68A7.96 7.96 0 0 1 4 12c0-4.41 3.59-8 8-8s8 3.59 8 8c0 3.35-2.06 6.24-5.01 7.47" fill="#8B5CF6" fillOpacity=".7"/>
-            <circle cx="12" cy="12" r="3" fill="#8B5CF6"/>
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93V18c0-.55.45-1 1-1s1 .45 1 1v1.93c-2.78-.47-5.11-2.23-6.31-4.68A7.96 7.96 0 0 1 4 12c0-4.41 3.59-8 8-8s8 3.59 8 8c0 3.35-2.06 6.24-5.01 7.47" fill="#3a6fa8" fillOpacity=".7"/>
+            <circle cx="12" cy="12" r="3" fill="#3a6fa8"/>
           </svg>
         </div>
         <div className="tool-info">
@@ -159,7 +159,7 @@ function ServeisCard({ profileId }: { profileId: string }) {
           padding: 8px 10px; font-size: 13px; color: #111827; font-family: inherit;
           outline: none; background: white; transition: border-color 0.15s, box-shadow 0.15s;
         }
-        .serveis-field input:focus { border-color: #8B5CF6; box-shadow: 0 0 0 3px rgba(139,92,246,0.08); }
+        .serveis-field input:focus { border-color: #3a6fa8; box-shadow: 0 0 0 3px rgba(139,92,246,0.08); }
         .serveis-save-btn {
           align-self: flex-start; display: flex; align-items: center; gap: 6px;
           padding: 8px 18px; border-radius: 8px; border: none;
@@ -167,6 +167,176 @@ function ServeisCard({ profileId }: { profileId: string }) {
           cursor: pointer; transition: opacity 0.15s; font-family: inherit;
         }
         .serveis-save-btn:hover { opacity: 0.85; }
+      `}</style>
+    </div>
+  )
+}
+
+const NOTIF_GROUPS = [
+  {
+    key: 'task_assigned',
+    label: 'Tasca assignada',
+    desc: 'Quan algú t\'assigna una tasca',
+  },
+  {
+    key: 'meeting_created',
+    label: 'Nova reunió',
+    desc: 'Quan ets convidat a una reunió',
+  },
+  {
+    key: 'session_assigned',
+    label: 'Sessió creada',
+    desc: 'Quan es crea una sessió de contingut',
+  },
+  {
+    key: 'deadline_today',
+    label: 'Termini avui',
+    desc: 'Tasques amb data límit avui',
+  },
+  {
+    key: 'deadline_tomorrow',
+    label: 'Termini demà',
+    desc: 'Tasques amb data límit demà',
+  },
+  {
+    key: 'mention',
+    label: 'Menció al chat',
+    desc: 'Quan algú t\'etiqueta amb @',
+  },
+]
+
+function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!on)}
+      style={{
+        width: 38, height: 22, borderRadius: 11, border: 'none', cursor: 'pointer',
+        background: on ? '#254067' : '#D1D5DB', position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+      }}
+    >
+      <span style={{
+        position: 'absolute', top: 3, left: on ? 18 : 3, width: 16, height: 16,
+        borderRadius: '50%', background: 'white', transition: 'left 0.2s',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+      }} />
+    </button>
+  )
+}
+
+function NotificationPrefsCard() {
+  const [prefs, setPrefs] = useState<Record<string, boolean>>({})
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/notifications/preferences')
+      .then(r => r.json())
+      .then(d => { setPrefs(d); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const toggle = (key: string) => setPrefs(p => ({ ...p, [key]: !p[key] }))
+
+  const save = async () => {
+    setSaving(true)
+    await fetch('/api/notifications/preferences', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(prefs),
+    })
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  if (loading) return null
+
+  return (
+    <div className="notif-prefs-card">
+      <div className="notif-prefs-header">
+        <Bell size={16} color="#254067" strokeWidth={1.8} />
+        <div>
+          <div className="notif-prefs-title">Notificacions</div>
+          <div className="notif-prefs-sub">Tria quins avisos vols rebre, per canal</div>
+        </div>
+      </div>
+
+      <div className="notif-prefs-table">
+        <div className="notif-prefs-col-heads">
+          <div />
+          <div className="notif-col-head"><Bell size={13} /> Web</div>
+          <div className="notif-col-head"><Mail size={13} /> Email</div>
+        </div>
+
+        {NOTIF_GROUPS.map(g => (
+          <div key={g.key} className="notif-prefs-row">
+            <div className="notif-prefs-info">
+              <div className="notif-prefs-lbl">{g.label}</div>
+              <div className="notif-prefs-desc">{g.desc}</div>
+            </div>
+            <Toggle
+              on={prefs[`inapp_${g.key}`] !== false}
+              onChange={() => toggle(`inapp_${g.key}`)}
+            />
+            <Toggle
+              on={prefs[`email_${g.key}`] === true}
+              onChange={() => toggle(`email_${g.key}`)}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="notif-prefs-footer">
+        <p className="notif-prefs-note">
+          Per rebre emails cal configurar <code>BREVO_API_KEY</code> al servidor.
+        </p>
+        <button className="notif-save-btn" onClick={save} disabled={saving}>
+          {saved ? <><Check size={14} /> Desat</> : saving ? 'Desant...' : <><Save size={14} /> Desar preferències</>}
+        </button>
+      </div>
+
+      <style jsx>{`
+        .notif-prefs-card {
+          background: white; border: 1px solid #ECECEC; border-radius: 16px;
+          padding: 24px 28px; display: flex; flex-direction: column; gap: 20px;
+        }
+        .notif-prefs-header { display: flex; align-items: flex-start; gap: 12px; }
+        .notif-prefs-title { font-size: 14px; font-weight: 700; color: #111827; }
+        .notif-prefs-sub { font-size: 12px; color: #9CA3AF; margin-top: 2px; }
+
+        .notif-prefs-table { display: flex; flex-direction: column; gap: 0; border: 1px solid #F0F0F0; border-radius: 10px; overflow: hidden; }
+        .notif-prefs-col-heads {
+          display: grid; grid-template-columns: 1fr 70px 70px;
+          padding: 8px 16px; background: #F9FAFB; border-bottom: 1px solid #F0F0F0;
+          gap: 8px;
+        }
+        .notif-col-head {
+          display: flex; align-items: center; gap: 4px; justify-content: center;
+          font-size: 11px; font-weight: 600; color: #6B7280; text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        .notif-prefs-row {
+          display: grid; grid-template-columns: 1fr 70px 70px;
+          padding: 12px 16px; border-bottom: 1px solid #F9FAFB; align-items: center; gap: 8px;
+        }
+        .notif-prefs-row:last-child { border-bottom: none; }
+        .notif-prefs-row:hover { background: #FAFAFA; }
+        .notif-prefs-info { display: flex; flex-direction: column; gap: 2px; }
+        .notif-prefs-lbl { font-size: 13px; font-weight: 500; color: #1F2937; }
+        .notif-prefs-desc { font-size: 11.5px; color: #9CA3AF; }
+        .notif-prefs-row > button { margin: 0 auto; }
+
+        .notif-prefs-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+        .notif-prefs-note { font-size: 11.5px; color: #9CA3AF; margin: 0; }
+        .notif-prefs-note code { background: #F3F4F6; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+        .notif-save-btn {
+          display: flex; align-items: center; gap: 6px; padding: 8px 18px;
+          background: #254067; color: white; border: none; border-radius: 8px;
+          font-size: 13px; font-weight: 600; cursor: pointer;
+        }
+        .notif-save-btn:hover:not(:disabled) { background: #1a2e4a; }
+        .notif-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
       `}</style>
     </div>
   )
@@ -381,8 +551,8 @@ export function ProfileContent({ profile, allMembers = [] }: Props) {
                 <ChevronRight size={16} color="#C0C0C0" className="tool-arrow" />
               </Link>
               <Link href="/contracts" className="tool-card">
-                <div className="tool-icon" style={{ background: '#6366F10F' }}>
-                  <FileSignature size={20} color="#6366F1" strokeWidth={1.8} />
+                <div className="tool-icon" style={{ background: '#2540670F' }}>
+                  <FileSignature size={20} color="#254067" strokeWidth={1.8} />
                 </div>
                 <div className="tool-info">
                   <div className="tool-name">Contractes</div>
@@ -422,6 +592,9 @@ export function ProfileContent({ profile, allMembers = [] }: Props) {
           handleSave={handleSave}
         />
       )}
+
+      {/* Notification preferences */}
+      <NotificationPrefsCard />
 
       {/* Superadmin: User management */}
       {isSuperadmin && (
@@ -564,7 +737,6 @@ export function ProfileContent({ profile, allMembers = [] }: Props) {
       <style jsx>{`
         .profile-page {
           padding: 28px 28px 40px;
-          max-width: 780px;
           display: flex;
           flex-direction: column;
           gap: 24px;
@@ -806,7 +978,7 @@ export function ProfileContent({ profile, allMembers = [] }: Props) {
 
         .role-badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 5px; }
         .role-badge--superadmin { background: #1B2B4B14; color: #1B2B4B; }
-        .role-badge--manager { background: #6366F114; color: #6366F1; }
+        .role-badge--manager { background: #25406714; color: #254067; }
         .role-badge--team_member { background: #F0F0F0; color: #5C5C5C; }
 
         .status-badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 5px; }

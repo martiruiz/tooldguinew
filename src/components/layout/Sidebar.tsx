@@ -6,6 +6,7 @@ import {
   LayoutDashboard, Users, FolderKanban, CheckSquare,
   Calendar, BarChart2, Shield, LogOut, ChevronLeft, ChevronRight, ClipboardList,
   TrendingUp, BarChart3, Truck, Building2, PieChart, Plus, X, Pencil, Check,
+  Target, FileText, LineChart,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -39,6 +40,7 @@ const serviceLinks = [
   { label: 'Gmail',        href: '',                         abbr: 'GM', color: '#EA4335', bg: '#FDECEA', gmail: true },
   { label: 'Dropbox',      href: 'https://www.dropbox.com',  abbr: 'D', color: '#0061FF', bg: '#E5EDFF' },
   { label: 'Metricool',    href: 'https://metricool.com/es/',    abbr: 'M', color: '#FF6B35', bg: '#FFF0EB', fixed: true },
+  { label: 'Brevo',        href: 'https://login.brevo.com/?target=https%3A%2F%2Fapp.brevo.com%2F', abbr: 'BR', color: '#0B7285', bg: '#E0F7FA', fixed: true },
 ]
 
 function GoogleDriveIcon({ size = 18 }: { size?: number }) {
@@ -56,8 +58,8 @@ function GoogleDriveIcon({ size = 18 }: { size?: number }) {
 
 function DropboxIcon({ size = 18 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-      <path fill="#1E90FF" d="M12 6L0 14l12 8 12-8zM36 6l-12 8 12 8 12-8zM0 30l12 8 12-8-12-8zM36 22l-12 8 12 8 12-8zM12 38.5L24 46.5l12-8-12-8z"/>
+    <svg width={size} height={size} viewBox="0 0 43 40" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#0061FF" d="M12.5 0L0 8.09l8.58 6.89L21.5 7.25 34.42 15l8.58-6.89L30.5 0 21.5 6.27zM0 22.25l12.5 8.09 9-7.21L12.5 15.36zm30.5 8.09L43 22.25l-9-7.21L21.5 23.03zM21.5 24.84l-9 7.21 3.5 2.27h11l3.5-2.27zM12.5 14.98l9 7.21 9-7.21-9-7.73z"/>
     </svg>
   )
 }
@@ -70,6 +72,15 @@ function GmailIcon({ size = 18 }: { size?: number }) {
       <polygon fill="#E53935" points="35,11.2 24,19.45 13,11.2 12,28 24,37.45 36,28"/>
       <path fill="#C62828" d="M3,12.298V16.2l10,7.5V11.2L9.876,8.859C9.132,8.301,8.228,8,7.298,8h0C4.924,8,3,9.924,3,12.298z"/>
       <path fill="#FBC02D" d="M45,12.298V16.2l-10,7.5V11.2l3.124-2.341C38.868,8.301,39.772,8,40.702,8h0 C43.076,8,45,9.924,45,12.298z"/>
+    </svg>
+  )
+}
+
+function BrevoIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <rect width="100" height="100" rx="20" fill="#0B7285"/>
+      <text x="50" y="68" textAnchor="middle" fontFamily="Arial, sans-serif" fontWeight="bold" fontSize="56" fill="white">B</text>
     </svg>
   )
 }
@@ -90,7 +101,7 @@ function getInitials(name: string) {
 }
 
 function getAvatarColor(name: string) {
-  const colors = ['#6366F1','#8B5CF6','#EC4899','#EF4444','#F97316','#22C55E','#14B8A6','#3B82F6','#0EA5E9']
+  const colors = ['#254067','#3a6fa8','#EC4899','#EF4444','#F97316','#22C55E','#14B8A6','#254067','#3a6fa8']
   let h = 0
   for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h)
   return colors[Math.abs(h) % colors.length]
@@ -116,7 +127,9 @@ export function Sidebar({ user }: Props) {
   const editInputRef = useRef<HTMLInputElement>(null)
   const [showGmailPicker, setShowGmailPicker] = useState(false)
   const [gmailProfiles, setGmailProfiles] = useState<{ id: string; full_name: string; email: string; avatar_url?: string }[]>([])
+  const [gmailPickerPos, setGmailPickerPos] = useState<{ top: number; left: number } | null>(null)
   const gmailRef = useRef<HTMLDivElement>(null)
+  const gmailBtnRef = useRef<HTMLButtonElement>(null)
 
   const inFinances = pathname.startsWith('/finances')
   const activeFinanceSection = searchParams.get('s') || 'resum'
@@ -129,7 +142,7 @@ export function Sidebar({ user }: Props) {
     return t('greetEvening')
   })()
 
-  const avatarColor = user.full_name ? getAvatarColor(user.full_name) : '#6366F1'
+  const avatarColor = user.full_name ? getAvatarColor(user.full_name) : '#254067'
   const initials = user.full_name ? getInitials(user.full_name) : '?'
   const firstName = user.full_name?.split(' ')[0] ?? 'Guinew'
 
@@ -153,15 +166,20 @@ export function Sidebar({ user }: Props) {
         .order('full_name')
       setGmailProfiles(data ?? [])
     }
+    if (!showGmailPicker && gmailBtnRef.current) {
+      const rect = gmailBtnRef.current.getBoundingClientRect()
+      setGmailPickerPos({ top: rect.top, left: rect.right + 8 })
+    }
     setShowGmailPicker(v => !v)
   }
 
   useEffect(() => {
     if (!showGmailPicker) return
     const handler = (e: MouseEvent) => {
-      if (gmailRef.current && !gmailRef.current.contains(e.target as Node)) {
-        setShowGmailPicker(false)
-      }
+      const target = e.target as Node
+      const inBtn = gmailBtnRef.current?.contains(target)
+      const inPopup = gmailRef.current?.contains(target)
+      if (!inBtn && !inPopup) setShowGmailPicker(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -219,7 +237,7 @@ export function Sidebar({ user }: Props) {
       <div className="sb-header">
         <button className="sb-avatar-btn" onClick={toggle} title={c ? 'Expandir menú' : 'Col·lapsar menú'} style={{ background: avatarColor }}>
           {user.avatar_url
-            ? <img src={user.avatar_url} alt="" className="sb-avatar-img" />
+            ? <img src={user.avatar_url} alt="" className="sb-avatar-img" width={38} height={38} />
             : initials}
         </button>
         {!c && (
@@ -252,8 +270,63 @@ export function Sidebar({ user }: Props) {
           })}
         </nav>
 
-        {/* Finances subnav */}
-        {inFinances && (
+
+        {/* Sales section: CRM + Plantilles */}
+        {user.role === 'superadmin' && (
+          <>
+            <div className="sb-divider" />
+            {!c && <div className="sb-section-lbl">Vendes · 3</div>}
+            <nav className="sb-nav">
+              {[
+                { href: '/crm',        icon: Target,     label: 'CRM Guinew' },
+                { href: '/analisi',    icon: LineChart,  label: 'Anàlisi'    },
+                { href: '/plantilles', icon: FileText,   label: 'Plantilles' },
+              ].map(item => {
+                const active = pathname.startsWith(item.href)
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn('sb-item', active && 'sb-item--active', c && 'sb-item--icon')}
+                    title={c ? item.label : undefined}
+                  >
+                    <item.icon size={c ? 20 : 17} strokeWidth={active ? 2.2 : 1.8} />
+                    {!c && <span>{item.label}</span>}
+                  </Link>
+                )
+              })}
+            </nav>
+          </>
+        )}
+
+        {/* Sports Content Playbook section */}
+        {user.role === 'superadmin' && (
+          <>
+            <div className="sb-divider" />
+            {!c && <div className="sb-section-lbl">Sports Content Playbook · 1</div>}
+            <nav className="sb-nav">
+              {[
+                { href: '/sports-crm', icon: TrendingUp, label: 'CRM SCP' },
+              ].map(item => {
+                const active = pathname.startsWith(item.href)
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn('sb-item', active && 'sb-item--active', c && 'sb-item--icon')}
+                    title={c ? item.label : undefined}
+                  >
+                    <item.icon size={c ? 20 : 17} strokeWidth={active ? 2.2 : 1.8} />
+                    {!c && <span>{item.label}</span>}
+                  </Link>
+                )
+              })}
+            </nav>
+          </>
+        )}
+
+        {/* Finances section — permanent for superadmins */}
+        {user.role === 'superadmin' && (
           <>
             <div className="sb-divider" />
             {!c && (
@@ -265,17 +338,17 @@ export function Sidebar({ user }: Props) {
             <nav className="sb-nav">
               {financeNavDefs.map(item => {
                 const label = t(item.labelKey)
-                const isActive = activeFinanceSection === item.id
+                const isActive = inFinances && activeFinanceSection === item.id
                 return (
-                  <Link
+                  <a
                     key={item.id}
                     href={`/finances?s=${item.id}`}
-                    className={cn('sb-item sb-item--sub', isActive && 'sb-item--active', c && 'sb-item--icon')}
+                    className={cn('sb-item', isActive && 'sb-item--active', c && 'sb-item--icon')}
                     title={c ? label : undefined}
                   >
-                    <item.icon size={c ? 18 : 14} strokeWidth={isActive ? 2.2 : 1.8} />
+                    <item.icon size={c ? 20 : 17} strokeWidth={isActive ? 2.2 : 1.8} />
                     {!c && <span>{label}</span>}
-                  </Link>
+                  </a>
                 )
               })}
             </nav>
@@ -291,7 +364,7 @@ export function Sidebar({ user }: Props) {
             {serviceLinks.map(s => {
               const sa = s as any
               const href = sa.fixed ? s.href : (s.abbr === 'G' ? driveUrl : s.abbr === 'D' ? dropboxUrl : s.href)
-              const ServiceIcon = s.abbr === 'G' ? GoogleDriveIcon : s.abbr === 'GM' ? GmailIcon : s.abbr === 'M' ? MetricoolIcon : DropboxIcon
+              const ServiceIcon = s.abbr === 'G' ? GoogleDriveIcon : s.abbr === 'GM' ? GmailIcon : s.abbr === 'M' ? MetricoolIcon : s.abbr === 'BR' ? BrevoIcon : DropboxIcon
               if (sa.gmail) {
                 return (
                   <a key={s.abbr} href="https://mail.google.com" target="_blank" rel="noopener noreferrer"
@@ -321,27 +394,33 @@ export function Sidebar({ user }: Props) {
               const key = s.abbr === 'G' ? 'drive' : 'dropbox'
               const href = sa.fixed ? s.href : (s.abbr === 'G' ? driveUrl : s.abbr === 'D' ? dropboxUrl : s.href)
               const isEditing = editingService === key && !sa.fixed && !sa.gmail
-              const ServiceIcon = s.abbr === 'G' ? GoogleDriveIcon : s.abbr === 'GM' ? GmailIcon : s.abbr === 'M' ? MetricoolIcon : DropboxIcon
+              const ServiceIcon = s.abbr === 'G' ? GoogleDriveIcon : s.abbr === 'GM' ? GmailIcon : s.abbr === 'M' ? MetricoolIcon : s.abbr === 'BR' ? BrevoIcon : DropboxIcon
 
               if (sa.gmail) {
                 return (
                   <div key={s.abbr} className="sb-service-wrap">
                     <div className="sb-service-row-wrap">
-                      <button className="sb-service-row sb-service-gmail-btn" onClick={openGmailPicker}>
+                      <button ref={gmailBtnRef} className="sb-service-row sb-service-gmail-btn" onClick={openGmailPicker}>
                         <div className="sb-service-badge" style={{ background: s.bg }}>
                           <GmailIcon size={16} />
                         </div>
                         <span className="sb-service-label">{s.label}</span>
                       </button>
                     </div>
-                    {showGmailPicker && (
-                      <div className="sb-gmail-picker">
+                    {showGmailPicker && gmailPickerPos && (
+                      <div
+                        ref={gmailRef}
+                        className="sb-gmail-picker-floating"
+                        style={{ top: gmailPickerPos.top, left: gmailPickerPos.left }}
+                      >
                         <div className="sb-gmail-picker-title">Envia un mail a:</div>
                         {gmailProfiles.length === 0 && <div className="sb-gmail-picker-empty">Carregant...</div>}
                         {gmailProfiles.map(p => (
                           <a
                             key={p.id}
-                            href={`mailto:${p.email}`}
+                            href={`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(p.email)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="sb-gmail-picker-row"
                             onClick={() => setShowGmailPicker(false)}
                           >
@@ -532,7 +611,7 @@ export function Sidebar({ user }: Props) {
           letter-spacing: 0.08em; text-transform: uppercase;
           white-space: nowrap; flex-shrink: 0;
         }
-        .sb-section-lbl--fin { color: #2563EB; padding-top: 8px; }
+        .sb-section-lbl--fin { color: #254067; padding-top: 8px; }
 
         /* Nav */
         .sb-nav { display: flex; flex-direction: column; padding: 0 8px; gap: 1px; flex-shrink: 0; }
@@ -547,12 +626,18 @@ export function Sidebar({ user }: Props) {
         :global(.sb-item--icon) { justify-content: center; padding: 10px; }
         :global(.sb-item:hover):not(:global(.sb-item--active)) { background: #F5F5F5; color: #111827; }
         :global(.sb-item--active) {
-          background: #2563EB !important;
+          background: #254067 !important;
           color: #FFFFFF !important;
           font-weight: 600;
         }
         :global(.sb-item--sub) { font-size: 13px; padding: 7px 10px; }
         :global(.sb-item--sub.sb-item--icon) { padding: 9px 10px; }
+        :global(.sb-item--scp:hover):not(:global(.sb-item--active-scp)) { background: #F5F3FF; color: #6D28D9; }
+        :global(.sb-item--active-scp) {
+          background: #7C3AED !important;
+          color: #FFFFFF !important;
+          font-weight: 600;
+        }
 
         /* Divider */
         .sb-divider { margin: 8px 12px; border-top: 1px solid #F0F0F0; flex-shrink: 0; }
@@ -600,7 +685,7 @@ export function Sidebar({ user }: Props) {
           justify-content: center; border-radius: 6px; flex-shrink: 0;
           transition: opacity 0.15s, color 0.12s; margin-right: 4px;
         }
-        .sb-service-edit-btn:hover { color: #2563EB; }
+        .sb-service-edit-btn:hover { color: #254067; }
         .sb-service-edit {
           display: flex; align-items: center; gap: 5px;
           background: #F0F6FF; border: 1.5px solid #BFDBFE; border-radius: 9px;
@@ -614,20 +699,25 @@ export function Sidebar({ user }: Props) {
         .sb-service-input::placeholder { color: #94A3B8; }
         .sb-service-save {
           width: 22px; height: 22px; border-radius: 6px; border: none;
-          background: #2563EB; color: white; cursor: pointer;
+          background: #254067; color: white; cursor: pointer;
           display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
-        .sb-service-save:hover { background: #1D4ED8; }
+        .sb-service-save:hover { background: #1a2e4a; }
 
         /* Gmail picker */
         :global(.sb-service-gmail-btn) {
           background: none; border: none; cursor: pointer; font-family: inherit;
           width: 100%; text-align: left;
         }
-        .sb-gmail-picker {
-          background: white; border: 1px solid #E5E7EB; border-radius: 10px;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.1); overflow: hidden;
-          margin: 4px 0; position: relative; z-index: 200;
+        :global(.sb-gmail-picker-floating) {
+          position: fixed;
+          z-index: 500;
+          background: white; border: 1px solid #E5E7EB; border-radius: 12px;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.06);
+          overflow: hidden;
+          min-width: 240px;
+          max-height: 70vh;
+          overflow-y: auto;
         }
         .sb-gmail-picker-title {
           padding: 8px 10px 4px; font-size: 10px; font-weight: 700;
@@ -664,20 +754,20 @@ export function Sidebar({ user }: Props) {
           transition: box-shadow 0.18s, border-color 0.18s, transform 0.15s;
         }
         .sb-newtask-card:hover {
-          border-color: #C7D7F5; box-shadow: 0 4px 16px rgba(37,99,235,0.1);
+          border-color: #C7D7F5; box-shadow: 0 4px 16px rgba(37,64,103,0.1);
           transform: translateY(-1px);
         }
 
         .sb-newtask-circle {
           width: 46px; height: 46px; border-radius: 50%;
-          background: linear-gradient(135deg, #2563EB, #3B82F6);
+          background: #254067;
           display: flex; align-items: center; justify-content: center;
           color: white; margin-bottom: 10px;
-          box-shadow: 0 4px 12px rgba(37,99,235,0.35);
+          box-shadow: 0 4px 12px rgba(37,64,103,0.35);
           transition: box-shadow 0.18s;
         }
         .sb-newtask-card:hover .sb-newtask-circle {
-          box-shadow: 0 6px 18px rgba(37,99,235,0.45);
+          box-shadow: 0 6px 18px rgba(37,64,103,0.45);
         }
 
         .sb-newtask-label {
@@ -691,7 +781,7 @@ export function Sidebar({ user }: Props) {
         .sb-newtask-icon-btn {
           display: flex; align-items: center; justify-content: center;
           width: 100%; padding: 10px; border-radius: 10px;
-          background: linear-gradient(135deg, #2563EB, #3B82F6);
+          background: #254067;
           border: none; color: white; cursor: pointer;
           transition: opacity 0.15s;
         }

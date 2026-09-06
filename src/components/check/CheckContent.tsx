@@ -1,15 +1,15 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Plus, X, ChevronLeft, ChevronRight, Camera, Video, FileText,
   Image, Mic, Loader2, Trash2, Clock, Pencil, CalendarCheck,
 } from 'lucide-react'
-import { SessionDetailModal } from './SessionDetailModal'
 
 const SESSION_TYPES = [
-  { value: 'foto', label: 'Foto', icon: Camera, color: '#3B82F6' },
-  { value: 'video', label: 'Vídeo', icon: Video, color: '#8B5CF6' },
+  { value: 'foto', label: 'Foto', icon: Camera, color: '#254067' },
+  { value: 'video', label: 'Vídeo', icon: Video, color: '#3a6fa8' },
   { value: 'reels', label: 'Reels', icon: Video, color: '#EC4899' },
   { value: 'stories', label: 'Stories', icon: Image, color: '#F59E0B' },
   { value: 'copy', label: 'Copy', icon: FileText, color: '#10B981' },
@@ -47,6 +47,7 @@ interface Props {
 const MONTHS_CA = ['Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny', 'Juliol', 'Agost', 'Setembre', 'Octubre', 'Novembre', 'Desembre']
 
 export function CheckContent({ sessions: initialSessions, clients, currentUserId }: Props) {
+  const router = useRouter()
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
@@ -69,7 +70,6 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
   const [editForm, setEditForm] = useState({
     client_id: '', session_date: '', session_types: [] as string[], hours: '0', notes: '', start_time: '', end_time: '',
   })
-  const [detailSession, setDetailSession] = useState<Session | null>(null)
   const [addCalendar, setAddCalendar] = useState(false)
   const [calendarConnected, setCalendarConnected] = useState(true)
 
@@ -284,7 +284,7 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
                 {daySessions.map(session => {
                   const types = Array.isArray(session.session_types) ? session.session_types : []
                   return (
-                    <div key={session.id} className="session-row" onClick={() => setDetailSession(session)} style={{ cursor: 'pointer' }}>
+                    <div key={session.id} className="session-row" onClick={() => router.push(`/check/${session.id}`)} style={{ cursor: 'pointer' }}>
                       <div className="session-main">
                         <div className="session-client-name">{session.client?.name || '—'}</div>
                         <div className="session-types-wrap">
@@ -531,7 +531,7 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
           color: #5C6B80; transition: all 0.2s ease;
           box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
-        .nav-btn:hover { background: #F5F8FF; color: #1B2B4B; border-color: rgba(37,99,235,0.2); box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+        .nav-btn:hover { background: #F5F8FF; color: #1B2B4B; border-color: rgba(37,64,103,0.2); box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
 
         .month-label {
           font-size: 17px; font-weight: 700; color: #0a0a0a;
@@ -551,12 +551,12 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
         .btn-add {
           display: flex; align-items: center; gap: 6px;
           height: 38px; padding: 0 16px;
-          background: linear-gradient(135deg, #1B2B4B, #2563EB); color: white; border: none; border-radius: 10px;
+          background: linear-gradient(135deg, #1B2B4B, #254067); color: white; border: none; border-radius: 10px;
           font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
           transition: all 0.2s ease; white-space: nowrap;
-          box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+          box-shadow: 0 2px 8px rgba(37,64,103,0.3);
         }
-        .btn-add:hover { background: linear-gradient(135deg, #0F1E33, #1D4ED8); box-shadow: 0 4px 14px rgba(37,99,235,0.38); transform: translateY(-1px); }
+        .btn-add:hover { background: linear-gradient(135deg, #0F1E33, #1a2e4a); box-shadow: 0 4px 14px rgba(37,64,103,0.38); transform: translateY(-1px); }
 
         /* Stats */
         .stats-row { display: flex; gap: 14px; flex-wrap: wrap; }
@@ -602,7 +602,7 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
           box-shadow: 0 2px 6px rgba(0,0,0,0.04);
           transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s;
         }
-        .session-row:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.08); border-color: rgba(37,99,235,0.14); transform: translateY(-1px); }
+        .session-row:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.08); border-color: rgba(37,64,103,0.14); transform: translateY(-1px); }
 
         .session-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
         .session-client-name { font-size: 13.5px; font-weight: 600; color: #0a0a0a; }
@@ -734,17 +734,6 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
         .cal-check { accent-color: #1B2B4B; width: 14px; height: 14px; cursor: pointer; }
       `}</style>
 
-      {/* Session detail modal */}
-      {detailSession && (
-        <SessionDetailModal
-          session={detailSession}
-          onClose={() => setDetailSession(null)}
-          onUpdate={updated => {
-            setSessions(prev => prev.map(s => s.id === updated.id ? updated : s))
-            setDetailSession(updated)
-          }}
-        />
-      )}
     </div>
   )
 }

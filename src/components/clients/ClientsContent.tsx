@@ -318,7 +318,7 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
                 Cancel·lar
               </button>
               <button onClick={saveEdit} disabled={editSaving}
-                style={{ padding: '9px 18px', background: 'linear-gradient(135deg, #1B2B4B, #2563EB)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: editSaving ? 'wait' : 'pointer', boxShadow: '0 2px 8px rgba(37,99,235,0.3)' }}>
+                style={{ padding: '9px 18px', background: 'linear-gradient(135deg, #1B2B4B, #254067)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: editSaving ? 'wait' : 'pointer', boxShadow: '0 2px 8px rgba(37,64,103,0.3)' }}>
                 {editSaving ? 'Guardant...' : 'Guardar'}
               </button>
             </div>
@@ -379,8 +379,8 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
         }
 
         .clients-search-wrap:focus-within {
-          border-color: rgba(37,99,235,0.3);
-          box-shadow: 0 0 0 3px rgba(37,99,235,0.08);
+          border-color: rgba(37,64,103,0.3);
+          box-shadow: 0 0 0 3px rgba(37,64,103,0.08);
         }
 
         .clients-search {
@@ -433,15 +433,15 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
         }
 
         .filter-btn--active {
-          background: linear-gradient(135deg, #1B2B4B, #2563EB);
+          background: linear-gradient(135deg, #1B2B4B, #254067);
           border-color: transparent;
           color: white;
           font-weight: 600;
-          box-shadow: 0 2px 8px rgba(37,99,235,0.25);
+          box-shadow: 0 2px 8px rgba(37,64,103,0.25);
         }
 
         .filter-btn--active:hover {
-          background: linear-gradient(135deg, #0F1E33, #1D4ED8);
+          background: linear-gradient(135deg, #0F1E33, #1a2e4a);
           color: white;
         }
 
@@ -451,7 +451,7 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
           gap: 6px;
           height: 38px;
           padding: 0 16px;
-          background: linear-gradient(135deg, #1B2B4B, #2563EB);
+          background: linear-gradient(135deg, #1B2B4B, #254067);
           color: white;
           border: none;
           border-radius: 10px;
@@ -460,12 +460,12 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
           cursor: pointer;
           transition: all 0.2s ease;
           white-space: nowrap;
-          box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+          box-shadow: 0 2px 8px rgba(37,64,103,0.3);
         }
 
         .btn-primary:hover {
-          background: linear-gradient(135deg, #0F1E33, #1D4ED8);
-          box-shadow: 0 4px 14px rgba(37,99,235,0.38);
+          background: linear-gradient(135deg, #0F1E33, #1a2e4a);
+          box-shadow: 0 4px 14px rgba(37,64,103,0.38);
           transform: translateY(-1px);
         }
 
@@ -511,8 +511,8 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
         }
         .view-btn:last-child { border-right: none; }
         .view-btn:hover { background: #F5F8FF; color: #1B2B4B; }
-        .view-btn--active { background: linear-gradient(135deg, #1B2B4B, #2563EB); color: white; }
-        .view-btn--active:hover { background: linear-gradient(135deg, #0F1E33, #1D4ED8); color: white; }
+        .view-btn--active { background: linear-gradient(135deg, #1B2B4B, #254067); color: white; }
+        .view-btn--active:hover { background: linear-gradient(135deg, #0F1E33, #1a2e4a); color: white; }
 
         .clients-grid {
           display: grid;
@@ -557,7 +557,7 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
         }
         .pag-btn:hover:not(:disabled) {
           background: #F5F8FF;
-          border-color: rgba(37,99,235,0.2);
+          border-color: rgba(37,64,103,0.2);
           color: #1B2B4B;
           box-shadow: 0 2px 6px rgba(0,0,0,0.08);
         }
@@ -586,18 +586,18 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
         }
         .pag-num:hover {
           background: #F5F8FF;
-          border-color: rgba(37,99,235,0.2);
+          border-color: rgba(37,64,103,0.2);
           color: #1B2B4B;
         }
         .pag-num--active {
-          background: linear-gradient(135deg, #1B2B4B, #2563EB);
+          background: linear-gradient(135deg, #1B2B4B, #254067);
           border-color: transparent;
           color: white;
           font-weight: 700;
-          box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+          box-shadow: 0 2px 8px rgba(37,64,103,0.3);
         }
         .pag-num--active:hover {
-          background: linear-gradient(135deg, #0F1E33, #1D4ED8);
+          background: linear-gradient(135deg, #0F1E33, #1a2e4a);
           color: white;
         }
       `}</style>
@@ -668,15 +668,15 @@ function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete }: CardP
           <span><FolderKanban size={12} />{projectCount} projectes</span>
           <span><CheckSquare size={12} />{taskCount} tasques</span>
         </div>
-        {isSuperadmin && (
-          <button
-            onClick={e => { e.preventDefault(); e.stopPropagation(); window.location.href = '/finances?s=cartera' }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, padding: '3px 10px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 6, fontSize: 11.5, fontWeight: 600, color: '#2563EB', cursor: 'pointer', fontFamily: 'inherit', width: 'fit-content', transition: 'background 0.12s' }}
-          >
-            <BarChart2 size={11} /> Finances
-          </button>
-        )}
       </Link>
+      {isSuperadmin && (
+        <button
+          onClick={e => { e.stopPropagation(); window.location.href = '/finances?s=cartera' }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, margin: '4px 16px 10px', padding: '3px 10px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 6, fontSize: 11.5, fontWeight: 600, color: '#254067', cursor: 'pointer', fontFamily: 'inherit', width: 'fit-content', transition: 'background 0.12s', position: 'relative', zIndex: 5 }}
+        >
+          <BarChart2 size={11} /> Finances
+        </button>
+      )}
 
       {/* Actions menu */}
       {canManage && (
@@ -730,7 +730,7 @@ function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete }: CardP
 
         :global(.client-card:hover) {
           box-shadow: 0 8px 28px rgba(0,0,0,0.09), 0 2px 6px rgba(0,0,0,0.04);
-          border-color: rgba(37,99,235,0.15);
+          border-color: rgba(37,64,103,0.15);
           transform: translateY(-2px);
         }
 
@@ -758,7 +758,7 @@ function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete }: CardP
           width: 46px;
           height: 46px;
           border-radius: 12px;
-          background: linear-gradient(135deg, #3B82F6, #1B2B4B);
+          background: linear-gradient(135deg, #254067, #1B2B4B);
           color: white;
           font-size: 15px;
           font-weight: 700;
@@ -952,12 +952,12 @@ function ClientRow({ client, canManage, onEdit, onDelete }: CardProps) {
         }
         :global(.client-row:hover) {
           box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-          border-color: rgba(37,99,235,0.15);
+          border-color: rgba(37,64,103,0.15);
           transform: translateY(-1px);
         }
         .cr-avatar {
           width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
-          background: linear-gradient(135deg, #3B82F6, #1B2B4B);
+          background: linear-gradient(135deg, #254067, #1B2B4B);
           color: white; font-size: 13px; font-weight: 700;
           display: flex; align-items: center; justify-content: center; overflow: hidden;
         }
@@ -1139,7 +1139,7 @@ function ClientTable({ clients, canManage, onEdit, onDelete }: {
         }
         .ct-avatar {
           width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
-          background: linear-gradient(135deg, #3B82F6, #1B2B4B);
+          background: linear-gradient(135deg, #254067, #1B2B4B);
           color: white; font-size: 10px; font-weight: 700;
           display: flex; align-items: center; justify-content: center; overflow: hidden;
         }

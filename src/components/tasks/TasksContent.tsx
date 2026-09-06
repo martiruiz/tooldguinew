@@ -15,7 +15,7 @@ const columns: { status: string; label: string; color: string }[] = [
   { status: 'todo', label: 'Per fer', color: '#DC2626' },
   { status: 'in_progress', label: 'En curs', color: '#1B2B4B' },
   { status: 'review', label: 'Revisió', color: '#D97706' },
-  { status: 'blocked', label: 'Bloquejat', color: '#7C3AED' },
+  { status: 'blocked', label: 'Bloquejat', color: '#254067' },
   { status: 'done', label: 'Fet', color: '#16A34A' },
 ]
 
@@ -554,7 +554,7 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
           background: white; flex: 1; min-width: 160px; max-width: 240px;
           box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: border-color 0.15s, box-shadow 0.15s;
         }
-        .search-wrap:focus-within { border-color: rgba(37,99,235,0.3); box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
+        .search-wrap:focus-within { border-color: rgba(37,64,103,0.3); box-shadow: 0 0 0 3px rgba(37,64,103,0.08); }
         .search-input { flex: 1; border: none; outline: none; font-size: 13.5px; color: #0F1B2D; background: transparent; }
         .search-input::placeholder { color: #C8D0DC; }
 
@@ -565,8 +565,8 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
         .view-btn--active { background: #1B2B4B; color: white; }
         .view-btn--active:hover { background: #4A82C6; }
 
-        .btn-primary { display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 16px; background: linear-gradient(135deg, #1B2B4B, #2563EB); color: white; border: none; border-radius: 10px; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; box-shadow: 0 2px 8px rgba(37,99,235,0.3); }
-        .btn-primary:hover { background: linear-gradient(135deg, #0F1E33, #1D4ED8); box-shadow: 0 4px 14px rgba(37,99,235,0.38); transform: translateY(-1px); }
+        .btn-primary { display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 16px; background: linear-gradient(135deg, #1B2B4B, #254067); color: white; border: none; border-radius: 10px; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; box-shadow: 0 2px 8px rgba(37,64,103,0.3); }
+        .btn-primary:hover { background: linear-gradient(135deg, #0F1E33, #1a2e4a); box-shadow: 0 4px 14px rgba(37,64,103,0.38); transform: translateY(-1px); }
 
         .btn-filter-toggle { position: relative; width: 34px; height: 34px; border: 1px solid #E8E8E8; border-radius: 8px; background: white; color: #9A9A9A; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
         .btn-filter-toggle:hover { background: #F8F8F8; color: #0a0a0a; }
@@ -790,11 +790,36 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
   const startX = useRef(0)
   const scrollLeft = useRef(0)
 
-  const saveColCustom = (status: string, patch: Partial<{ color: string; icon: string }>) => {
+  // Load column customizations from DB on mount
+  useEffect(() => {
+    fetch('/api/board/columns')
+      .then(r => r.json())
+      .then((rows: { status: string; label: string; color: string; icon: string }[]) => {
+        if (!Array.isArray(rows)) return
+        const map: Record<string, { color: string; icon: string; label: string }> = {}
+        rows.forEach(r => { map[r.status] = { color: r.color, icon: r.icon, label: r.label } })
+        setColCustom(map)
+        // Also update columns array labels for list view etc.
+        rows.forEach(r => {
+          const col = columns.find(c => c.status === r.status)
+          if (col) { col.label = r.label; col.color = r.color }
+        })
+      })
+      .catch(() => {})
+  }, [])
+
+  const saveColCustom = (status: string, patch: Partial<{ color: string; icon: string; label: string }>) => {
     const col = columns.find(c => c.status === status)!
-    const current = colCustom[status] || { color: col.color, icon: DEFAULT_COL_ICONS[status] || '📋' }
+    const current = colCustom[status] || { color: col.color, icon: DEFAULT_COL_ICONS[status] || 'RefreshCw', label: col.label }
     const next = { ...colCustom, [status]: { ...current, ...patch } }
     setColCustom(next)
+    // Persist to DB (fire-and-forget)
+    fetch('/api/board/columns', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, ...patch }),
+    }).catch(() => {})
+    // Also keep localStorage as fallback cache
     localStorage.setItem('kanban-col-custom', JSON.stringify(next))
   }
 
@@ -803,7 +828,8 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
     const custom = colCustom[status]
     const iconKey = custom?.icon || DEFAULT_COL_ICONS[status] || 'RefreshCw'
     const iconDef = ICON_OPTIONS.find(i => i.key === iconKey) || ICON_OPTIONS[0]
-    return { color: custom?.color || col.color, iconKey, Icon: iconDef.Icon }
+    const label = custom?.label || col.label
+    return { color: custom?.color || col.color, iconKey, Icon: iconDef.Icon, label }
   }
 
   const onMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -884,7 +910,7 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
                       onClick={e => e.stopPropagation()}
                       onBlur={e => {
                         const val = e.target.value.trim() || col.label
-                        saveColCustom(col.status, { label: val } as any)
+                        saveColCustom(col.status, { label: val })
                         setEditingLabelStatus(null)
                       }}
                       onKeyDown={e => {
@@ -1193,7 +1219,7 @@ function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onSta
 
   return (
     <div
-      className={`kcard${isDragging ? ' kcard--dragging' : ''}`}
+      className={`kcard${isDragging ? ' kcard--dragging' : ''}${task.session_id ? ' kcard--session' : ''}`}
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
@@ -1283,8 +1309,10 @@ function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onSta
           cursor: grab;
           transition: box-shadow 0.2s ease, opacity 0.15s, transform 0.2s ease, border-color 0.2s;
         }
-        .kcard:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.09); border-color: rgba(37,99,235,0.14); transform: translateY(-1px); }
+        .kcard:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.09); border-color: rgba(37,64,103,0.14); transform: translateY(-1px); }
         .kcard--dragging { opacity: 0.4; transform: scale(0.97); cursor: grabbing; }
+        .kcard--session { background: #EEF3FA; border-color: #C5D4E8; }
+        .kcard--session:hover { background: #EEF3FA; border-color: #9BB5D5; }
 
         .kcard-top {
           display: flex;
@@ -1437,7 +1465,7 @@ function ListView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete }: {
           const isToday = deadline && deadline.getTime() === today.getTime()
 
           return (
-            <div key={task.id} className="list-row" onClick={() => onTaskClick(task)}>
+            <div key={task.id} className={`list-row${task.session_id ? ' list-row--session' : ''}`} onClick={() => onTaskClick(task)}>
               {/* Priority stripe */}
               <span className="list-stripe" style={{ background: pColor }} />
 
@@ -1591,6 +1619,8 @@ function ListView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete }: {
           transition: box-shadow 0.15s, border-color 0.15s;
         }
         .list-row:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.07); border-color: #D8D8D8; }
+        .list-row--session { background: #EEF3FA; border-color: #C5D4E8; }
+        .list-row--session:hover { background: #EEF3FA; border-color: #9BB5D5; }
         .list-del {
           width: 30px; height: 30px; border: none; background: transparent;
           border-radius: 7px; cursor: pointer; display: flex; align-items: center; justify-content: center;

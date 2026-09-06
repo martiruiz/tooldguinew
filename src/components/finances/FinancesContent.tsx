@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Trash2, Save, ArrowUpRight, ArrowDownRight, Pencil, Download, ChevronUp, ChevronDown, ArrowLeft } from 'lucide-react'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 interface ClientBasic { id: string; name: string; type: string; status: string; logo_url?: string | null; responsible_id?: string | null }
 interface ProfileBasic { id: string; full_name: string }
@@ -46,6 +47,7 @@ interface FinanceData {
   structureCosts: StructureCost[]
   marginObjective: number
   allocationMode?: 'proportional' | 'equal'
+  monthlyAccountingTotals?: number[]  // 12 values: total facturat per mes (per derivar recurrent = total - CRM)
 }
 
 const STORAGE_KEY = 'guinew_finances_v2'
@@ -108,12 +110,15 @@ const SEED_STRUCTURE_COSTS: StructureCost[] = [
   { id: _scid('gastosvari'),name: 'Gastos Varios',     category: 'Software',                    amount: 2500, supplierRef: ''                 },
 ]
 
+const DEFAULT_ACCOUNTING_TOTALS = [13848.5, 11906.4, 27104.9, 19124.04, 32503.75, 44252, 25373.44, 20782.06, 0, 0, 0, 0]
+
 const defaultData: FinanceData = {
   records: SEED_RECORDS,
   suppliers: SEED_SUPPLIERS,
   structureCosts: SEED_STRUCTURE_COSTS,
   marginObjective: 50,
   allocationMode: 'proportional',
+  monthlyAccountingTotals: DEFAULT_ACCOUNTING_TOTALS,
 }
 
 type Section = 'resum' | 'cartera' | 'proveidors' | 'estructura' | 'grafics' | 'configuracio'
@@ -161,6 +166,15 @@ export function FinancesContent({ clients, profiles }: { clients: ClientBasic[];
         const hasSeededSC = parsed.structureCosts?.some((sc: StructureCost) => sc.id?.startsWith('seed-sc-'))
         if (!parsed.structureCosts || parsed.structureCosts.length === 0 || !hasSeededSC) {
           parsed.structureCosts = SEED_STRUCTURE_COSTS; changed = true
+        }
+        {
+          const saved: number[] = parsed.monthlyAccountingTotals || []
+          const merged = DEFAULT_ACCOUNTING_TOTALS.map((def, i) =>
+            (saved[i] === undefined || saved[i] === 0) ? def : saved[i]
+          )
+          if (JSON.stringify(merged) !== JSON.stringify(parsed.monthlyAccountingTotals)) {
+            parsed.monthlyAccountingTotals = merged; changed = true
+          }
         }
         if (changed) localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed))
         setData(parsed)
@@ -265,8 +279,8 @@ function ResumSection({ kpis, adequate, belowObj, deficit, marginObjective }: an
   const [activeGroup, setActiveGroup] = useState<'adequate' | 'below' | 'deficit' | null>(null)
 
   const kpi1 = [
-    { label: 'Pressupost mensual recurrent', value: formatEur(kpis.totalRecurrent), sub: `${adequate.length + belowObj.length + deficit.length} clients actius`, color: '#2563EB' },
-    { label: 'Pressupost projectes puntuals', value: formatEur(kpis.totalProjects), sub: 'Projectes en curs', color: '#7C3AED' },
+    { label: 'Pressupost mensual recurrent', value: formatEur(kpis.totalRecurrent), sub: `${adequate.length + belowObj.length + deficit.length} clients actius`, color: '#254067' },
+    { label: 'Pressupost projectes puntuals', value: formatEur(kpis.totalProjects), sub: 'Projectes en curs', color: '#254067' },
     { label: 'Costos directes', value: formatEur(kpis.directCosts), sub: 'Equip + despeses directes', color: '#DC2626' },
     { label: 'Gastos d\'estructura', value: formatEur(kpis.structureCosts), sub: 'Repartiment proporcional al fee', color: '#D97706' },
   ]
@@ -359,7 +373,7 @@ function ResumSection({ kpis, adequate, belowObj, deficit, marginObjective }: an
         .rs-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 14px; }
         .rs-kpi { background: white; border-radius: 18px; padding: 20px 20px 18px; border: 1px solid rgba(0,0,0,0.06); box-shadow: 0 2px 8px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03); transition: all 0.18s; }
         .rs-kpi:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
-        .rs-kpi--accent { border-top: 3px solid #2563EB; }
+        .rs-kpi--accent { border-top: 3px solid #254067; }
         .rs-kpi-label { font-size: 11px; font-weight: 600; color: #A0A9BB; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 10px; line-height: 1.4; }
         .rs-kpi-value { font-size: 22px; font-weight: 700; color: #0F1B2D; letter-spacing: -0.02em; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
         .rs-kpi-value--pos { color: #059669; }
@@ -381,15 +395,15 @@ function ResumSection({ kpis, adequate, belowObj, deficit, marginObjective }: an
         .rs-client-table tbody tr:last-child td { border-bottom: none; }
         .rs-client-table tbody tr:hover { background: #F8FAFF; }
         .rs-ct-name { font-size: 13.5px; font-weight: 600; color: #0F1B2D; }
-        .rs-ct-link { font-size: 13.5px; font-weight: 600; color: #2563EB; text-decoration: none; }
+        .rs-ct-link { font-size: 13.5px; font-weight: 600; color: #254067; text-decoration: none; }
         .rs-ct-link:hover { text-decoration: underline; }
         .rs-ct-goto { font-size: 14px; color: #A0A9BB; text-decoration: none; padding: 4px 8px; border-radius: 6px; transition: all 0.15s; }
-        .rs-ct-goto:hover { color: #2563EB; background: #EFF6FF; }
+        .rs-ct-goto:hover { color: #254067; background: #EFF6FF; }
         .rs-ct-fee { font-size: 13.5px; font-weight: 500; color: #5A6478; }
         .rs-ct-margin-eur { font-size: 13.5px; font-weight: 700; }
         .rs-ct-pct { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
         .rs-ct-footer { padding: 12px 18px; border-top: 1px solid rgba(0,0,0,0.05); text-align: right; }
-        .rs-ct-cartera-link { font-size: 12.5px; font-weight: 600; color: #2563EB; text-decoration: none; opacity: 0.8; transition: opacity 0.15s; }
+        .rs-ct-cartera-link { font-size: 12.5px; font-weight: 600; color: #254067; text-decoration: none; opacity: 0.8; transition: opacity 0.15s; }
         .rs-ct-cartera-link:hover { opacity: 1; text-decoration: underline; }
         .rs-client-table-empty { margin-top: 14px; padding: 24px; text-align: center; font-size: 13.5px; color: #A0A9BB; background: white; border-radius: 14px; border: 1px solid rgba(0,0,0,0.06); }
         @media (max-width: 767px) {
@@ -442,7 +456,7 @@ function CarteraSection({ data, save, clients, profiles, kpis, marginObjective }
 }
 
 /* ─── CARTERA TABLE ─── */
-const AVATAR_COLORS = ['#1B2B4B','#2563EB','#7C3AED','#059669','#D97706','#0891B2','#9333EA','#DC2626','#0D9488']
+const AVATAR_COLORS = ['#1B2B4B','#254067','#254067','#059669','#D97706','#0891B2','#9333EA','#DC2626','#0D9488']
 const getAvatarColor = (name: string) => AVATAR_COLORS[(name.charCodeAt(0) + (name.charCodeAt(1) || 0)) % AVATAR_COLORS.length]
 const getInitials = (name: string) => name.trim().split(/\s+/).map((w: string) => w[0]).join('').slice(0,2).toUpperCase()
 
@@ -711,15 +725,15 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
         .ct-sub { font-size: 12.5px; color: #9CA3AF; margin-top: 2px; }
         .ct-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
         .ct-btn-export { height: 34px; padding: 0 14px; border: 1px solid #E5E7EB; border-radius: 8px; font-size: 13px; font-weight: 500; color: #374151; background: white; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.12s; white-space: nowrap; }
-        .ct-btn-export:hover { border-color: #2563EB; color: #2563EB; }
-        .ct-btn-new { height: 34px; padding: 0 16px; background: linear-gradient(135deg,#1B2B4B,#2563EB); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 6px rgba(37,99,235,0.25); transition: opacity 0.12s; }
+        .ct-btn-export:hover { border-color: #254067; color: #254067; }
+        .ct-btn-new { height: 34px; padding: 0 16px; background: linear-gradient(135deg,#1B2B4B,#254067); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 6px rgba(37,64,103,0.25); transition: opacity 0.12s; }
         .ct-btn-new:hover { opacity: 0.88; }
 
         /* Column visibility menu */
         .ct-col-menu { position: absolute; top: calc(100% + 6px); right: 0; background: white; border: 1px solid #E5E7EB; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); padding: 8px; z-index: 200; min-width: 170px; display: flex; flex-direction: column; gap: 2px; }
         .ct-col-menu-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px; font-size: 13px; color: #374151; cursor: pointer; font-weight: 500; transition: background 0.1s; user-select: none; }
         .ct-col-menu-item:hover { background: #F3F4F6; }
-        .ct-col-menu-item input[type="checkbox"] { width: 15px; height: 15px; accent-color: #2563EB; cursor: pointer; flex-shrink: 0; }
+        .ct-col-menu-item input[type="checkbox"] { width: 15px; height: 15px; accent-color: #254067; cursor: pointer; flex-shrink: 0; }
 
         /* ── Toolbar ── */
         .ct-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
@@ -727,13 +741,13 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
         .ct-filter-group { display: flex; flex-direction: column; gap: 3px; }
         .ct-filter-group label { font-size: 10px; font-weight: 700; color: #9CA3AF; letter-spacing: 0.07em; text-transform: uppercase; }
         .ct-filter-group select { height: 32px; padding: 0 10px; border: 1px solid #E5E7EB; border-radius: 7px; font-size: 13px; color: #111827; background: white; outline: none; cursor: pointer; font-family: inherit; min-width: 120px; transition: border-color 0.12s; }
-        .ct-filter-group select:focus { border-color: #2563EB; }
+        .ct-filter-group select:focus { border-color: #254067; }
         .ct-sort-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
         .ct-sort-label { font-size: 10px; font-weight: 700; color: #9CA3AF; letter-spacing: 0.07em; text-transform: uppercase; white-space: nowrap; }
         .ct-sort-select { height: 32px; padding: 0 10px; border: 1px solid #E5E7EB; border-radius: 7px; font-size: 13px; color: #111827; background: white; outline: none; cursor: pointer; font-family: inherit; transition: border-color 0.12s; }
-        .ct-sort-select:focus { border-color: #2563EB; }
+        .ct-sort-select:focus { border-color: #254067; }
         .ct-sort-dir { width: 32px; height: 32px; border: 1px solid #E5E7EB; border-radius: 7px; background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #6B7280; transition: all 0.12s; }
-        .ct-sort-dir:hover { border-color: #2563EB; color: #2563EB; }
+        .ct-sort-dir:hover { border-color: #254067; color: #254067; }
 
         /* ── Card layout (Proveïdors-style flex) ── */
         .ct-list { display: flex; flex-direction: column; gap: 5px; }
@@ -745,7 +759,7 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
         .ct-hcell { font-size: 10.5px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.07em; white-space: nowrap; text-align: right; border-radius: 6px; padding: 3px 5px; user-select: none; transition: background 0.12s, color 0.12s, outline 0.12s; }
         .ct-hcell--resp { text-align: center; }
         .ct-hcell--dragging { opacity: 0.25; background: #E5E7EB; }
-        .ct-hcell--over { background: #DBEAFE; color: #1D4ED8; outline: 2px solid #3B82F6; outline-offset: 1px; }
+        .ct-hcell--over { background: #DBEAFE; color: #1a2e4a; outline: 2px solid #254067; outline-offset: 1px; }
 
         .ct-card { display: flex; align-items: center; background: white; border-radius: 12px; border: 1px solid #E8ECF2; padding: 14px 20px; gap: 16px; transition: border-color 0.15s, box-shadow 0.15s; }
         .ct-card:hover { border-color: #C7D2E4; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
@@ -760,22 +774,22 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
         .ct-avatar--photo { object-fit: cover; }
         .ct-card-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
         .ct-name { font-size: 14px; font-weight: 700; color: #111827; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .ct-name-link { text-decoration: none; color: #2563EB; }
+        .ct-name-link { text-decoration: none; color: #254067; }
         .ct-name-link:hover { text-decoration: underline; }
         .ct-tipo { font-size: 12px; color: #9CA3AF; font-weight: 500; }
         /* Inline editable inputs */
         .ct-inline-input { width: 100%; border: 1px solid transparent; border-radius: 6px; font-size: 14px; font-weight: 700; color: #111827; font-family: inherit; outline: none; background: transparent; padding: 1px 0; transition: border-color 0.12s, background 0.12s, padding 0.12s; cursor: default; letter-spacing: -0.01em; }
         .ct-inline-input:hover { background: #F3F4F6; padding: 1px 6px; cursor: text; }
-        .ct-inline-input:focus { border-color: #2563EB; background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); padding: 1px 6px; cursor: text; }
+        .ct-inline-input:focus { border-color: #254067; background: white; box-shadow: 0 0 0 3px rgba(37,64,103,0.08); padding: 1px 6px; cursor: text; }
         .ct-inline-select { border: 1px solid transparent; border-radius: 6px; font-size: 12px; font-weight: 500; color: #9CA3AF; font-family: inherit; outline: none; background: transparent; padding: 1px 0; transition: border-color 0.12s, background 0.12s; cursor: default; appearance: none; }
         .ct-inline-select:hover { background: #F3F4F6; padding: 1px 4px; cursor: pointer; }
-        .ct-inline-select:focus { border-color: #2563EB; background: white; padding: 1px 4px; cursor: pointer; }
+        .ct-inline-select:focus { border-color: #254067; background: white; padding: 1px 4px; cursor: pointer; }
         .ct-num-input { width: 100%; height: 28px; padding: 0 4px; border: 1px solid transparent; border-radius: 6px; font-size: 14px; font-weight: 600; color: #111827; text-align: right; font-family: inherit; outline: none; font-variant-numeric: tabular-nums; background: transparent; transition: border-color 0.12s, background 0.12s; cursor: default; }
         .ct-num-input:hover { background: #F3F4F6; cursor: text; }
-        .ct-num-input:focus { border-color: #2563EB; background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); cursor: text; }
+        .ct-num-input:focus { border-color: #254067; background: white; box-shadow: 0 0 0 3px rgba(37,64,103,0.08); cursor: text; }
         .ct-resp-input { width: 100%; border: 1px solid transparent; border-radius: 6px; font-size: 11px; font-weight: 600; color: #374151; text-align: center; font-family: inherit; outline: none; background: transparent; padding: 2px 2px; transition: border-color 0.12s, background 0.12s; cursor: default; }
         .ct-resp-input:hover { background: #F3F4F6; cursor: text; }
-        .ct-resp-input:focus { border-color: #2563EB; background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); cursor: text; }
+        .ct-resp-input:focus { border-color: #254067; background: white; box-shadow: 0 0 0 3px rgba(37,64,103,0.08); cursor: text; }
         .ct-estat--btn { background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; }
 
         /* Stat columns */
@@ -804,11 +818,11 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
 
         /* Actions */
         .ct-action-btn { width: 28px; height: 28px; border: 1px solid #E5E7EB; border-radius: 7px; background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #9CA3AF; transition: all 0.12s; }
-        .ct-action-btn:hover { border-color: #2563EB; color: #2563EB; background: #EEF2FF; }
+        .ct-action-btn:hover { border-color: #254067; color: #254067; background: #EEF2FF; }
         .ct-action-btn--del { color: #FCA5A5; border-color: #FEE2E2; background: #FFF5F5; }
         .ct-action-btn--del:hover { border-color: #EF4444; color: #EF4444; background: #FEE2E2; }
         .ct-action-btn--edit { color: #9CA3AF; }
-        .ct-action-btn--edit:hover { color: #2563EB; border-color: #2563EB; background: #EEF2FF; }
+        .ct-action-btn--edit:hover { color: #254067; border-color: #254067; background: #EEF2FF; }
 
         /* Empty */
         .ct-empty { padding: 52px; text-align: center; font-size: 14px; color: #D1D5DB; background: white; border-radius: 12px; border: 1px solid #E8ECF2; }
@@ -1035,7 +1049,7 @@ function RecordForm({ record, clients, profiles, data, kpis, marginObjective, on
       <style jsx>{`
         .rf-root { padding-bottom: 40px; }
         .rf-back { display: flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 500; color: #5A6478; padding: 0 0 18px; transition: color 0.15s; }
-        .rf-back:hover { color: #2563EB; }
+        .rf-back:hover { color: #254067; }
         .rf-name-row { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
         .rf-name-wrap { flex: 1; }
         .rf-photo-wrap { position: relative; width: 64px; height: 64px; border-radius: 14px; overflow: hidden; cursor: pointer; flex-shrink: 0; display: block; }
@@ -1045,16 +1059,16 @@ function RecordForm({ record, clients, profiles, data, kpis, marginObjective, on
         .rf-photo-wrap:hover .rf-photo-overlay { opacity: 1; }
         .rf-name-label { font-size: 11px; font-weight: 600; color: #A0A9BB; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px; }
         .rf-client-select { width: 100%; height: 44px; padding: 0 14px; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 12px; font-size: 16px; font-weight: 600; color: #0F1B2D; outline: none; background: white; font-family: inherit; transition: border-color 0.15s; cursor: pointer; }
-        .rf-client-select:focus { border-color: #2563EB; }
+        .rf-client-select:focus { border-color: #254067; }
         .rf-name-input { width: 100%; height: 48px; padding: 0 16px; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 12px; font-size: 20px; font-weight: 700; color: #0F1B2D; outline: none; background: white; font-family: inherit; transition: border-color 0.15s; }
-        .rf-name-input:focus { border-color: #2563EB; }
+        .rf-name-input:focus { border-color: #254067; }
         .rf-header-actions { display: flex; gap: 8px; }
         .rf-toggle-btn { height: 36px; padding: 0 16px; border: 1.5px solid #059669; border-radius: 9px; font-size: 13px; font-weight: 600; color: #059669; background: #ECFDF5; cursor: pointer; transition: all 0.15s; }
         .rf-toggle-btn--inactive { border-color: #9CA3AF; color: #9CA3AF; background: #F3F4F6; }
 
         .rf-kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
         .rf-kpi { background: white; border-radius: 14px; padding: 16px 18px; border: 1px solid rgba(0,0,0,0.06); box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-        .rf-kpi--accent { border-left: 3px solid #2563EB; }
+        .rf-kpi--accent { border-left: 3px solid #254067; }
         .rf-kpi-label { font-size: 10px; font-weight: 700; color: #A0A9BB; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
         .rf-kpi-value { font-size: 20px; font-weight: 700; color: #0F1B2D; letter-spacing: -0.02em; }
         .rf-kpi-value--pos { color: #059669; }
@@ -1066,7 +1080,7 @@ function RecordForm({ record, clients, profiles, data, kpis, marginObjective, on
         .rf-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
         .rf-card-hint { font-size: 12px; color: #A0A9BB; margin-bottom: 14px; line-height: 1.4; }
         .rf-empty-hint { font-size: 13px; color: #A0A9BB; padding: 12px 0; }
-        .rf-add-btn { height: 32px; padding: 0 12px; background: linear-gradient(135deg,#1B2B4B,#2563EB); color: white; border: none; border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 6px rgba(37,99,235,0.25); }
+        .rf-add-btn { height: 32px; padding: 0 12px; background: linear-gradient(135deg,#1B2B4B,#254067); color: white; border: none; border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 6px rgba(37,64,103,0.25); }
         .rf-add-btn:hover { opacity: 0.9; }
 
         .rf-form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
@@ -1079,7 +1093,7 @@ function RecordForm({ record, clients, profiles, data, kpis, marginObjective, on
           height: 38px; padding: 0 11px; border: 1.5px solid rgba(0,0,0,0.09); border-radius: 9px; font-size: 13px; color: #0F1B2D; outline: none; background: #FAFAFA; font-family: inherit; transition: border-color 0.15s;
         }
         .rf-field textarea, .rf-field--block textarea { height: auto; padding: 10px 11px; resize: vertical; }
-        .rf-field input:focus, .rf-field select:focus, .rf-field textarea:focus, .rf-field--block input:focus, .rf-field--block textarea:focus { border-color: #2563EB; background: white; }
+        .rf-field input:focus, .rf-field select:focus, .rf-field textarea:focus, .rf-field--block input:focus, .rf-field--block textarea:focus { border-color: #254067; background: white; }
 
         .rf-collab-table { display: flex; flex-direction: column; gap: 6px; }
         .rf-collab-header { display: grid; grid-template-columns: 1fr 1fr 120px 32px; gap: 8px; padding: 0 0 4px; font-size: 10px; font-weight: 700; color: #A0A9BB; letter-spacing: 0.06em; text-transform: uppercase; }
@@ -1088,13 +1102,13 @@ function RecordForm({ record, clients, profiles, data, kpis, marginObjective, on
         .rf-collab-input { height: 36px; padding: 0 10px; border: 1.5px solid rgba(0,0,0,0.09); border-radius: 8px; font-size: 13px; color: #0F1B2D; outline: none; background: #FAFAFA; font-family: inherit; transition: border-color 0.15s; }
         .rf-collab-input--grow { flex: 1; }
         .rf-collab-input--num { text-align: right; }
-        .rf-collab-input:focus { border-color: #2563EB; background: white; }
+        .rf-collab-input:focus { border-color: #254067; background: white; }
         .rf-remove-btn { width: 32px; height: 32px; border: 1px solid rgba(0,0,0,0.08); border-radius: 7px; background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #DC2626; transition: background 0.15s; }
         .rf-remove-btn:hover { background: #FEF2F2; }
         .rf-collab-total { font-size: 13px; color: #5A6478; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.05); }
 
         .rf-bottom-bar { position: sticky; bottom: 0; background: white; border-top: 1px solid rgba(0,0,0,0.06); padding: 14px 24px; margin: 20px -32px -28px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 -4px 16px rgba(0,0,0,0.06); }
-        .rf-save-btn { height: 38px; padding: 0 20px; background: linear-gradient(135deg,#1B2B4B,#2563EB); color: white; border: none; border-radius: 10px; font-size: 13.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; box-shadow: 0 2px 8px rgba(37,99,235,0.3); }
+        .rf-save-btn { height: 38px; padding: 0 20px; background: linear-gradient(135deg,#1B2B4B,#254067); color: white; border: none; border-radius: 10px; font-size: 13.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; box-shadow: 0 2px 8px rgba(37,64,103,0.3); }
         .rf-save-btn:hover { opacity: 0.9; }
         .rf-del-btn { height: 38px; padding: 0 16px; border: 1.5px solid #FECACA; border-radius: 10px; background: white; color: #DC2626; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
         .rf-del-btn:hover { background: #FEF2F2; }
@@ -1341,20 +1355,20 @@ function ProveidorsSection({ data, save }: { data: FinanceData; save: (d: Financ
         .pv-sort-wrap { display: flex; align-items: center; gap: 6px; margin-right: 4px; }
         .pv-sort-label { font-size: 10px; font-weight: 700; color: #9CA3AF; letter-spacing: 0.07em; text-transform: uppercase; white-space: nowrap; }
         .pv-sort-select { height: 32px; padding: 0 10px; border: 1px solid #E5E7EB; border-radius: 7px; font-size: 13px; color: #111827; background: white; outline: none; cursor: pointer; font-family: inherit; transition: border-color 0.12s; }
-        .pv-sort-select:focus { border-color: #2563EB; }
+        .pv-sort-select:focus { border-color: #254067; }
         .pv-sort-dir { width: 32px; height: 32px; border: 1px solid #E5E7EB; border-radius: 7px; background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #6B7280; transition: all 0.12s; }
-        .pv-sort-dir:hover { border-color: #2563EB; color: #2563EB; }
+        .pv-sort-dir:hover { border-color: #254067; color: #254067; }
         .pv-btn-export { height: 34px; padding: 0 14px; border: 1px solid #E5E7EB; border-radius: 8px; font-size: 13px; font-weight: 500; color: #374151; background: white; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.12s; }
-        .pv-btn-export:hover { border-color: #2563EB; color: #2563EB; }
-        .pv-btn-new { height: 34px; padding: 0 16px; background: linear-gradient(135deg,#1B2B4B,#2563EB); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 6px rgba(37,99,235,0.25); transition: opacity 0.12s; white-space: nowrap; }
+        .pv-btn-export:hover { border-color: #254067; color: #254067; }
+        .pv-btn-new { height: 34px; padding: 0 16px; background: linear-gradient(135deg,#1B2B4B,#254067); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 6px rgba(37,64,103,0.25); transition: opacity 0.12s; white-space: nowrap; }
         .pv-btn-new:hover { opacity: 0.88; }
         .pv-btn-cols { height: 34px; padding: 0 14px; border: 1px solid #E5E7EB; border-radius: 8px; font-size: 13px; font-weight: 500; color: #374151; background: white; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.12s; }
-        .pv-btn-cols:hover { border-color: #2563EB; color: #2563EB; }
+        .pv-btn-cols:hover { border-color: #254067; color: #254067; }
         .pv-col-overlay { position: fixed; inset: 0; z-index: 49; }
         .pv-col-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 50; background: white; border: 1px solid #E5E7EB; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.10); padding: 8px; min-width: 180px; }
         .pv-col-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 7px; font-size: 13px; color: #374151; cursor: pointer; transition: background 0.1s; user-select: none; }
         .pv-col-item:hover { background: #F3F4F6; }
-        .pv-col-item input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; accent-color: #2563EB; }
+        .pv-col-item input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; accent-color: #254067; }
 
         /* ── List ── */
         .pv-list { display: flex; flex-direction: column; gap: 5px; }
@@ -1366,7 +1380,7 @@ function ProveidorsSection({ data, save }: { data: FinanceData; save: (d: Financ
         .pv-hcell { font-size: 10.5px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.07em; white-space: nowrap; border-radius: 6px; padding: 3px 5px; user-select: none; transition: background 0.12s, color 0.12s, outline 0.12s; }
         .pv-hcell--num { min-width: 90px; text-align: right; }
         .pv-hcell--dragging { opacity: 0.25; background: #E5E7EB; }
-        .pv-hcell--over { background: #DBEAFE; color: #1D4ED8; outline: 2px solid #3B82F6; outline-offset: 1px; }
+        .pv-hcell--over { background: #DBEAFE; color: #1a2e4a; outline: 2px solid #254067; outline-offset: 1px; }
         .pv-hcell--contact { min-width: 150px; flex: 1; max-width: 260px; }
         .pv-hcell--del { width: 30px; flex-shrink: 0; }
 
@@ -1396,12 +1410,12 @@ function ProveidorsSection({ data, save }: { data: FinanceData; save: (d: Financ
         .pv-stat { display: flex; align-items: flex-end; justify-content: flex-end; min-width: 90px; }
         .pv-stat-val { font-size: 14px; font-weight: 600; color: #374151; white-space: nowrap; font-variant-numeric: tabular-nums; }
         .pv-stat-val--main { font-size: 15px; font-weight: 700; color: #111827; }
-        .pv-stat-val--blue { font-size: 14px; font-weight: 700; color: #2563EB; }
+        .pv-stat-val--blue { font-size: 14px; font-weight: 700; color: #254067; }
 
         /* Numeric input — invisible by default, editable on click */
         .pv-num-input { width: 90px; height: 30px; padding: 0 4px; border: 1px solid transparent; border-radius: 7px; font-size: 14px; font-weight: 600; color: #111827; text-align: right; font-family: inherit; outline: none; font-variant-numeric: tabular-nums; background: transparent; transition: border-color 0.12s, background 0.12s, padding 0.12s; cursor: default; }
         .pv-num-input:hover { background: #F3F4F6; cursor: text; }
-        .pv-num-input:focus { border-color: #2563EB; background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); padding: 0 8px; cursor: text; }
+        .pv-num-input:focus { border-color: #254067; background: white; box-shadow: 0 0 0 3px rgba(37,64,103,0.08); padding: 0 8px; cursor: text; }
         .pv-num-input::placeholder { color: #D1D5DB; font-weight: 400; }
 
         /* Contact + notes group */
@@ -1421,7 +1435,7 @@ function ProveidorsSection({ data, save }: { data: FinanceData; save: (d: Financ
         .pv-total-item { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
         .pv-total-item-lbl { font-size: 10px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.07em; }
         .pv-total-val { font-size: 14px; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
-        .pv-total-val--blue { color: #2563EB; }
+        .pv-total-val--blue { color: #254067; }
       `}</style>
     </div>
   )
@@ -1499,7 +1513,7 @@ function GraficsSection({ data, kpis }: any) {
       {/* KPI strip */}
       <div className="gr-kpi-row">
         <div className="gr-kpi">
-          <div className="gr-kpi-dot" style={{ background: 'linear-gradient(135deg,#3B82F6,#2563EB)' }} />
+          <div className="gr-kpi-dot" style={{ background: 'linear-gradient(135deg,#254067,#254067)' }} />
           <div>
             <div className="gr-kpi-val">{formatEur(recurrent)}</div>
             <div className="gr-kpi-lbl">Recurrent · {rPct}%</div>
@@ -1523,7 +1537,7 @@ function GraficsSection({ data, kpis }: any) {
         </div>
         <div className="gr-kpi-sep" />
         <div className="gr-kpi">
-          <div className="gr-kpi-dot" style={{ background: 'linear-gradient(135deg,#8B5CF6,#7C3AED)' }} />
+          <div className="gr-kpi-dot" style={{ background: 'linear-gradient(135deg,#3a6fa8,#254067)' }} />
           <div>
             <div className="gr-kpi-val">{clients.length}</div>
             <div className="gr-kpi-lbl">Clients actius</div>
@@ -1540,15 +1554,15 @@ function GraficsSection({ data, kpis }: any) {
           <svg viewBox={`0 0 ${DW} ${DH}`} width={DW} height={DH} style={{ display: 'block', margin: '0 auto', overflow: 'visible' }}>
             <defs>
               <linearGradient id="grad-rec" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#3B82F6" />
-                <stop offset="100%" stopColor="#1D4ED8" />
+                <stop offset="0%" stopColor="#254067" />
+                <stop offset="100%" stopColor="#1a2e4a" />
               </linearGradient>
               <linearGradient id="grad-pun" x1="0" y1="0" x2="1" y2="1">
                 <stop offset="0%" stopColor="#374151" />
                 <stop offset="100%" stopColor="#111827" />
               </linearGradient>
               <filter id="donut-shadow">
-                <feDropShadow dx="0" dy="2" stdDeviation="6" floodColor="#2563EB" floodOpacity="0.18" />
+                <feDropShadow dx="0" dy="2" stdDeviation="6" floodColor="#254067" floodOpacity="0.18" />
               </filter>
             </defs>
             {total > 1 ? (
@@ -1640,7 +1654,7 @@ function GraficsSection({ data, kpis }: any) {
               <defs>
                 <linearGradient id="grad-fee" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#60A5FA" />
-                  <stop offset="100%" stopColor="#1D4ED8" />
+                  <stop offset="100%" stopColor="#1a2e4a" />
                 </linearGradient>
                 <linearGradient id="grad-cost" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#6B7280" />
@@ -1686,6 +1700,54 @@ function GraficsSection({ data, kpis }: any) {
         )}
       </div>
 
+      {/* Recurring revenue monthly chart */}
+      {(() => {
+        const MONTHS = ['Gen','Feb','Mar','Abr','Mai','Jun','Jul','Ago','Set','Oct','Nov','Des']
+        const year = new Date().getFullYear()
+        const recurrentRecords = records.filter((r: ClientRecord) => r.tipo === 'Recurrent' && r.estado === 'Actiu')
+        const monthlyData = MONTHS.map((mes, i) => {
+          const monthStart = new Date(year, i, 1)
+          const monthEnd = new Date(year, i + 1, 0)
+          const valor = recurrentRecords.reduce((sum: number, r: ClientRecord) => {
+            const start = r.startDate ? new Date(r.startDate) : null
+            const end = r.endDate ? new Date(r.endDate) : null
+            const active = (!start || start <= monthEnd) && (!end || end >= monthStart)
+            return sum + (active ? (r.fee || 0) : 0)
+          }, 0)
+          return { mes, valor }
+        })
+        return (
+          <div className="gr-card" style={{ marginTop: 14 }}>
+            <div className="gr-card-title">Beneficis recurrents per mes ({year})</div>
+            <div className="gr-card-sub">Suma dels fees de clients recurrents actius cada mes</div>
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={monthlyData} margin={{ top: 12, right: 20, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="recFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#254067" stopOpacity={0.18} />
+                    <stop offset="90%" stopColor="#254067" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F0F4FA" vertical={false} />
+                <XAxis dataKey="mes" tick={{ fontSize: 11, fill: '#A0A9BB' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#A0A9BB' }} axisLine={false} tickLine={false}
+                  tickFormatter={v => v >= 1000 ? `€${v/1000}k` : `€${v}`} />
+                <Tooltip
+                  formatter={(v) => [`€${Number(v).toLocaleString('ca-ES')}`, 'Recurrent']}
+                  contentStyle={{ fontSize: 12.5, borderRadius: 12, border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '10px 14px', fontWeight: 600, color: '#1B2B4B' }}
+                  labelStyle={{ fontSize: 11, color: '#A0A9BB', fontWeight: 500, marginBottom: 2 }}
+                  cursor={{ stroke: '#254067', strokeWidth: 1, strokeDasharray: '4 4' }}
+                />
+                <Area type="monotone" dataKey="valor" stroke="#254067" strokeWidth={2.5}
+                  fill="url(#recFill)"
+                  dot={{ r: 3, fill: '#254067', strokeWidth: 2, stroke: 'white' }}
+                  activeDot={{ r: 5, fill: '#254067', strokeWidth: 2, stroke: 'white' }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )
+      })()}
+
       <style jsx>{`
         .gr-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
         .gr-title { font-size: 19px; font-weight: 700; color: #111827; letter-spacing: -0.02em; margin-bottom: 3px; }
@@ -1723,7 +1785,7 @@ function GraficsSection({ data, kpis }: any) {
 }
 
 /* ─── ESTRUCTURA ─── */
-const ES_COLORS = ['#1B2B4B','#2563EB','#7C3AED','#059669','#D97706','#0891B2','#9333EA','#DC2626','#0D9488']
+const ES_COLORS = ['#1B2B4B','#254067','#254067','#059669','#D97706','#0891B2','#9333EA','#DC2626','#0D9488']
 function esColor(name: string) { return ES_COLORS[(name.charCodeAt(0) + (name.charCodeAt(1) || 0)) % ES_COLORS.length] }
 function esInitials(name: string) { return name.trim().split(/\s+/).map((w: string) => w[0]).join('').slice(0,2).toUpperCase() || '?' }
 
@@ -1830,8 +1892,8 @@ function EstructuraSection({ data, save }: { data: FinanceData; save: (d: Financ
         .es-hint { font-size: 11.5px; color: #9CA3AF; margin-top: 5px; line-height: 1.5; max-width: 680px; }
         .es-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; padding-top: 2px; }
         .es-btn-export { height: 34px; padding: 0 14px; border: 1px solid #E5E7EB; border-radius: 8px; font-size: 13px; font-weight: 500; color: #374151; background: white; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.12s; white-space: nowrap; }
-        .es-btn-export:hover { border-color: #2563EB; color: #2563EB; }
-        .es-btn-new { height: 34px; padding: 0 16px; background: linear-gradient(135deg,#1B2B4B,#2563EB); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 6px rgba(37,99,235,0.25); transition: opacity 0.12s; white-space: nowrap; }
+        .es-btn-export:hover { border-color: #254067; color: #254067; }
+        .es-btn-new { height: 34px; padding: 0 16px; background: linear-gradient(135deg,#1B2B4B,#254067); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 6px rgba(37,64,103,0.25); transition: opacity 0.12s; white-space: nowrap; }
         .es-btn-new:hover { opacity: 0.88; }
 
         /* Allocation card */
@@ -1839,7 +1901,7 @@ function EstructuraSection({ data, save }: { data: FinanceData; save: (d: Financ
         .es-alloc-title { font-size: 13px; font-weight: 700; color: #111827; margin-bottom: 10px; }
         .es-alloc-opts { display: flex; gap: 24px; flex-wrap: wrap; }
         .es-alloc-opt { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: #374151; cursor: pointer; font-weight: 500; }
-        .es-alloc-opt input[type="radio"] { accent-color: #2563EB; width: 15px; height: 15px; cursor: pointer; }
+        .es-alloc-opt input[type="radio"] { accent-color: #254067; width: 15px; height: 15px; cursor: pointer; }
 
         /* Table */
         .es-table-wrap { background: white; border: 1px solid #E8ECF2; border-radius: 12px; overflow: hidden; }
@@ -1855,12 +1917,12 @@ function EstructuraSection({ data, save }: { data: FinanceData; save: (d: Financ
         .es-cell--del { justify-content: flex-end; }
         .es-inp { width: 100%; border: 1px solid transparent; border-radius: 7px; padding: 7px 8px; font-size: 13.5px; color: #111827; font-family: inherit; outline: none; background: transparent; transition: border-color 0.12s, background 0.12s; cursor: default; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .es-inp:hover { border-color: #D1D5DB; background: #F9FAFB; cursor: text; }
-        .es-inp:focus { border-color: #2563EB; background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); cursor: text; }
+        .es-inp:focus { border-color: #254067; background: white; box-shadow: 0 0 0 3px rgba(37,64,103,0.08); cursor: text; }
         .es-inp::placeholder { color: #C9CDD4; }
         .es-inp--num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
         .es-sel { width: 100%; cursor: pointer; border: 1px solid transparent; border-radius: 7px; background: transparent; transition: border-color 0.12s, background 0.12s; padding: 7px 8px; font-size: 13px; color: #374151; font-family: inherit; outline: none; }
         .es-sel:hover { border-color: #D1D5DB; background: #F9FAFB; }
-        .es-sel:focus { border-color: #2563EB; background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
+        .es-sel:focus { border-color: #254067; background: white; box-shadow: 0 0 0 3px rgba(37,64,103,0.08); }
         .es-del-btn { width: 28px; height: 28px; border: 1px solid #FEE2E2; background: #FFF5F5; border-radius: 7px; cursor: pointer; color: #FCA5A5; display: flex; align-items: center; justify-content: center; transition: all 0.12s; flex-shrink: 0; }
         .es-del-btn:hover { background: #FEE2E2; border-color: #EF4444; color: #EF4444; }
         .es-tfoot { display: flex; align-items: center; justify-content: space-between; padding: 14px 22px; background: #F8F9FB; border-top: 1px solid #E8ECF2; }
@@ -1898,8 +1960,8 @@ function ConfiguracioSection({ data, save }: { data: FinanceData; save: (d: Fina
         .cfg-field { display: flex; flex-direction: column; gap: 6px; }
         .cfg-field label { font-size: 11.5px; font-weight: 600; color: #5A6478; letter-spacing: 0.03em; text-transform: uppercase; }
         .cfg-input { height: 40px; padding: 0 12px; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 10px; font-size: 14px; color: #0F1B2D; outline: none; background: #FAFAFA; font-family: inherit; transition: border-color 0.15s; max-width: 280px; }
-        .cfg-input:focus { border-color: #2563EB; background: white; }
-        .cfg-save-btn { margin-top: 24px; height: 40px; padding: 0 20px; background: linear-gradient(135deg,#1B2B4B,#2563EB); color: white; border: none; border-radius: 10px; font-size: 13.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; box-shadow: 0 2px 8px rgba(37,99,235,0.3); }
+        .cfg-input:focus { border-color: #254067; background: white; }
+        .cfg-save-btn { margin-top: 24px; height: 40px; padding: 0 20px; background: linear-gradient(135deg,#1B2B4B,#254067); color: white; border: none; border-radius: 10px; font-size: 13.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; box-shadow: 0 2px 8px rgba(37,64,103,0.3); }
         .cfg-save-btn:hover { opacity: 0.9; }
       `}</style>
     </div>
