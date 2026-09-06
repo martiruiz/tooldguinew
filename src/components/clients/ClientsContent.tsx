@@ -25,14 +25,12 @@ interface Props {
 }
 
 export function ClientsContent({ clients: initialClients, profiles, userRole }: Props) {
-  const PAGE_SIZE = 15
   const [clients, setClients] = useState(initialClients)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('Tots')
   const [filterAgreement, setFilterAgreement] = useState('Tots')
   const [view, setView] = useState<'grid' | 'list' | 'table'>('grid')
   const [isMobile, setIsMobile] = useState(false)
-  const [page, setPage] = useState(1)
 
   useEffect(() => {
     const check = () => {
@@ -59,13 +57,9 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
     return matchSearch && matchStatus && matchAgreement
   })
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const safePage = Math.min(page, totalPages)
-  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
-
-  function changeSearch(v: string) { setSearch(v); setPage(1) }
-  function changeFilter(f: string) { setFilter(f); setPage(1) }
-  function changeAgreement(f: string) { setFilterAgreement(f); setPage(1) }
+  function changeSearch(v: string) { setSearch(v) }
+  function changeFilter(f: string) { setFilter(f) }
+  function changeAgreement(f: string) { setFilterAgreement(f) }
 
   const canManage = userRole === 'superadmin' || userRole === 'manager'
 
@@ -187,12 +181,8 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
         </div>
       </div>
 
-      {/* Count + pagination info */}
       <div className="clients-count">
         {filtered.length} {filtered.length === 1 ? 'client' : 'clients'}
-        {totalPages > 1 && (
-          <span className="clients-page-info"> · pàgina {safePage} de {totalPages}</span>
-        )}
       </div>
 
       {/* Content */}
@@ -208,7 +198,7 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
         </div>
       ) : view === 'grid' ? (
         <div className="clients-grid">
-          {paginated.map((client) => (
+          {filtered.map((client) => (
             <ClientCard
               key={client.id}
               client={client}
@@ -221,7 +211,7 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
         </div>
       ) : view === 'list' ? (
         <div className="clients-list">
-          {paginated.map((client) => (
+          {filtered.map((client) => (
             <ClientRow
               key={client.id}
               client={client}
@@ -233,43 +223,13 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
         </div>
       ) : (
         <ClientTable
-          clients={paginated}
+          clients={filtered}
           canManage={canManage}
           onEdit={openEdit}
           onDelete={deleteClient}
         />
       )}
 
-      {/* Pagination controls */}
-      {totalPages > 1 && (
-        <div className="pagination">
-          <button
-            className="pag-btn"
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={safePage === 1}
-          >
-            ‹ Anterior
-          </button>
-          <div className="pag-pages">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-              <button
-                key={p}
-                className={cn('pag-num', p === safePage && 'pag-num--active')}
-                onClick={() => setPage(p)}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-          <button
-            className="pag-btn"
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={safePage === totalPages}
-          >
-            Següent ›
-          </button>
-        </div>
-      )}
 
       {/* New client modal */}
       {showNew && (
