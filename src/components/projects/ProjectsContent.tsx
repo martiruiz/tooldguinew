@@ -328,53 +328,49 @@ function ProjectRow({ project, onDelete }: { project: Project; onDelete: (id: st
 
       <style jsx>{`
         :global(.project-row-wrap) {
-          position: relative;
           display: flex;
           align-items: center;
           width: 100%;
+          background: white;
+          border: 1px solid rgba(0,0,0,0.06);
+          border-radius: 18px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+          transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+          overflow: hidden;
         }
-        :global(.project-row-wrap:hover .project-del-btn) {
-          opacity: 1;
+        :global(.project-row-wrap:hover) {
+          box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+          border-color: rgba(37,64,103,0.15);
+          transform: translateY(-1px);
         }
         :global(.project-del-btn) {
-          width: 34px;
-          height: 34px;
+          width: 44px;
+          height: 100%;
+          min-height: 52px;
           flex-shrink: 0;
-          border: 1px solid #E8E8E8;
-          background: white;
-          border-radius: 8px;
+          border: none;
+          border-left: 1px solid rgba(0,0,0,0.06);
+          background: transparent;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: #C0C0C0;
-          transition: background 0.15s, color 0.15s, border-color 0.15s;
+          color: #D0D0D0;
+          transition: background 0.15s, color 0.15s;
         }
         :global(.project-del-btn:hover) {
           background: #FEE2E2;
           color: #DC2626;
-          border-color: #FECACA;
         }
         :global(.project-row) {
           display: flex;
           align-items: center;
           gap: 12px;
           padding: 15px 20px;
-          background: white;
-          border: 1px solid rgba(0,0,0,0.06);
-          border-radius: 18px;
           text-decoration: none;
-          transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
-          flex-wrap: wrap;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
           flex: 1;
           min-width: 0;
-        }
-
-        :global(.project-row:hover) {
-          box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-          border-color: rgba(37,64,103,0.15);
-          transform: translateY(-1px);
+          flex-wrap: wrap;
         }
 
         .project-type-dot {
