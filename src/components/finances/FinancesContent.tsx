@@ -490,7 +490,12 @@ function CarteraSection({ data, save, clients, profiles, kpis, marginObjective }
     const nextRecords = exists
       ? data.records.map((rec: ClientRecord) => rec.id === r.id ? r : rec)
       : [...data.records, r]
-    save({ ...data, records: nextRecords })
+    // Auto-register new collaborators as suppliers if not already present
+    const existingNames = new Set(data.suppliers.map((s: Supplier) => s.name.toLowerCase().trim()))
+    const newSuppliers: Supplier[] = r.collaborators
+      .filter(c => c.name.trim() && !existingNames.has(c.name.toLowerCase().trim()))
+      .map(c => ({ id: uid(), name: c.name.trim(), category: c.role.trim(), contact: '', notes: '', monthlyFee: 0, structureAmount: 0, irpfPct: 0, ivaPct: 21 }))
+    save({ ...data, records: nextRecords, suppliers: [...data.suppliers, ...newSuppliers] })
     back()
   }
 
@@ -657,11 +662,13 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
             <div className="ct-header-right">
               {visibleCtCols.map((ci, pos) => {
                 const col = CT_COLS[ci]
+                const isSorted = sortCol === col.id
+                const sortable = ['clientName','fee','dc','margenEur','margenPct','rentKey','responsible'].includes(col.id)
                 return (
                   <div
                     key={col.id}
-                    className={`ct-hcell${col.id === 'responsible' ? ' ct-hcell--resp' : ''}${dragIdx === pos ? ' ct-hcell--dragging' : ''}${dragOverIdx === pos && dragIdx !== pos ? ' ct-hcell--over' : ''}`}
-                    style={{ width: col.width, flexShrink: 0, cursor: dragIdx !== null ? 'grabbing' : 'grab' }}
+                    className={`ct-hcell${col.id === 'responsible' ? ' ct-hcell--resp' : ''}${dragIdx === pos ? ' ct-hcell--dragging' : ''}${dragOverIdx === pos && dragIdx !== pos ? ' ct-hcell--over' : ''}${isSorted ? ' ct-hcell--sorted' : ''}`}
+                    style={{ width: col.width, flexShrink: 0, cursor: dragIdx !== null ? 'grabbing' : sortable ? 'pointer' : 'grab', userSelect: 'none' }}
                     draggable
                     onDragStart={() => setDragIdx(pos)}
                     onDragOver={e => { e.preventDefault(); setDragOverIdx(pos) }}
@@ -678,8 +685,14 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
                       setColOrder(next); setDragIdx(null); setDragOverIdx(null)
                     }}
                     onDragEnd={() => { setDragIdx(null); setDragOverIdx(null) }}
+                    onClick={() => {
+                      if (!sortable) return
+                      if (sortCol === col.id) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+                      else { setSortCol(col.id); setSortDir('asc') }
+                    }}
                   >
                     {col.label === 'Resp.' ? 'Resp.' : col.label}
+                    {isSorted && <span style={{ marginLeft: 4, fontSize: 10 }}>{sortDir === 'asc' ? '▲' : '▼'}</span>}
                   </div>
                 )
               })}
@@ -1068,8 +1081,21 @@ function RecordForm({ record, clients, profiles, data, kpis, marginObjective, on
           </div>
           {r.collaborators.map(c => (
             <div key={c.id} className="rf-collab-row">
-              <input className="rf-collab-input" value={c.name} placeholder="Escriu o tria un proveïdor" onChange={e => updateCollab(c.id, 'name', e.target.value)} />
-              <input className="rf-collab-input" value={c.role} placeholder="Fotògraf, CM..." onChange={e => updateCollab(c.id, 'role', e.target.value)} />
+              <select
+                className="rf-collab-input rf-collab-select"
+                value={c.name}
+                onChange={e => {
+                  const chosen = data.suppliers.find((s: Supplier) => s.name === e.target.value)
+                  updateCollab(c.id, 'name', e.target.value)
+                  if (chosen) updateCollab(c.id, 'role', chosen.category)
+                }}
+              >
+                <option value="">— Tria un proveïdor —</option>
+                {data.suppliers.filter((s: Supplier) => s.name.trim()).sort((a: Supplier, b: Supplier) => a.name.localeCompare(b.name)).map((s: Supplier) => (
+                  <option key={s.id} value={s.name}>{s.name}</option>
+                ))}
+              </select>
+              <input className="rf-collab-input" value={c.role} placeholder="Rol..." onChange={e => updateCollab(c.id, 'role', e.target.value)} />
               <input className="rf-collab-input rf-collab-input--num" type="number" min="0" value={c.cost || ''} placeholder="0.00" onChange={e => updateCollab(c.id, 'cost', parseFloat(e.target.value) || 0)} />
               <button className="rf-remove-btn" onClick={() => removeCollab(c.id)}><Trash2 size={13} /></button>
             </div>
@@ -1163,6 +1189,7 @@ function RecordForm({ record, clients, profiles, data, kpis, marginObjective, on
         .rf-collab-row, .rf-other-row { display: grid; grid-template-columns: 1fr 1fr 120px 32px; gap: 8px; align-items: center; }
         .rf-other-row { grid-template-columns: 1fr 120px 32px; }
         .rf-collab-input { height: 36px; padding: 0 10px; border: 1.5px solid rgba(0,0,0,0.09); border-radius: 8px; font-size: 13px; color: #0F1B2D; outline: none; background: #FAFAFA; font-family: inherit; transition: border-color 0.15s; }
+        .rf-collab-select { cursor: pointer; }
         .rf-collab-input--grow { flex: 1; }
         .rf-collab-input--num { text-align: right; }
         .rf-collab-input:focus { border-color: #254067; background: white; }
