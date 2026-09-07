@@ -1406,11 +1406,12 @@ function SupplierDetailView({ supplier, data, save, supplierStats, onBack }: {
 }
 
 const PV_COLS = [
-  { id: 'activeClients',  label: 'Clients actius',  contact: false },
-  { id: 'structure',      label: 'Estructura',       contact: false },
-  { id: 'monthlyFee',     label: 'Mensual total',    contact: false },
-  { id: 'totalInClients', label: 'Total en clients', contact: false },
-  { id: 'contact',        label: 'Contacte / Notes', contact: true  },
+  { id: 'category',       label: 'Rol',              sortKey: 'category',       wide: false },
+  { id: 'activeClients',  label: 'Clients actius',   sortKey: 'activeClients',  wide: false },
+  { id: 'structure',      label: 'Gastos estructura', sortKey: 'structureAmount', wide: false },
+  { id: 'monthlyFee',     label: 'Cobro mensual',    sortKey: 'monthlyFee',     wide: false },
+  { id: 'totalInClients', label: 'Total en clients', sortKey: 'totalInClients', wide: false },
+  { id: 'notes',          label: 'Notes',            sortKey: null,             wide: true  },
 ]
 
 function ProveidorsSection({ data, save }: { data: FinanceData; save: (d: FinanceData) => void }) {
@@ -1560,10 +1561,11 @@ function ProveidorsSection({ data, save }: { data: FinanceData; save: (d: Financ
             <div className="pv-header-right">
               {visibleCols.map((ci, pos) => {
                 const col = PV_COLS[ci]
+                const isSorted = col.sortKey && sortCol === col.sortKey
                 return (
                   <div
                     key={col.id}
-                    className={`pv-hcell ${col.contact ? 'pv-hcell--contact' : 'pv-hcell--num'}${dragIdx === pos ? ' pv-hcell--dragging' : ''}${dragOverIdx === pos && dragIdx !== pos ? ' pv-hcell--over' : ''}`}
+                    className={`pv-hcell ${col.wide ? 'pv-hcell--wide' : 'pv-hcell--num'}${isSorted ? ' pv-hcell--sorted' : ''}${dragIdx === pos ? ' pv-hcell--dragging' : ''}${dragOverIdx === pos && dragIdx !== pos ? ' pv-hcell--over' : ''}`}
                     draggable
                     onDragStart={() => setDragIdx(pos)}
                     onDragOver={e => { e.preventDefault(); setDragOverIdx(pos) }}
@@ -1580,9 +1582,10 @@ function ProveidorsSection({ data, save }: { data: FinanceData; save: (d: Financ
                       setColOrder(next); setDragIdx(null); setDragOverIdx(null)
                     }}
                     onDragEnd={() => { setDragIdx(null); setDragOverIdx(null) }}
-                    style={{ cursor: dragIdx !== null ? 'grabbing' : 'grab' }}
+                    style={{ cursor: dragIdx !== null ? 'grabbing' : col.sortKey ? 'pointer' : 'grab', userSelect: 'none' }}
+                    onClick={() => col.sortKey && toggleSort(col.sortKey)}
                   >
-                    {col.label}
+                    {col.label}{isSorted && <span style={{ marginLeft: 4, fontSize: 10 }}>{sortDir === 'asc' ? '▲' : '▼'}</span>}
                   </div>
                 )
               })}
@@ -1591,38 +1594,31 @@ function ProveidorsSection({ data, save }: { data: FinanceData; save: (d: Financ
           </div>
 
           {sorted.map((row: any) => {
-            const up = (field: keyof Supplier, val: any) => updateSupplier(row.id, field, val)
             const initials = row.name ? getInitials(row.name) : '?'
             const avatarBg = row.name ? getAvatarColor(row.name) : '#9CA3AF'
             return (
-              <div key={row.id} className="pv-card">
-                {/* Left: avatar + name + category */}
+              <div key={row.id} className="pv-card" onClick={() => setSelectedSupplierId(row.id)} style={{ cursor: 'pointer' }}>
+                {/* Left: avatar + name */}
                 <div className="pv-card-left">
                   <div className="pv-avatar" style={{ background: avatarBg }}>{initials}</div>
-                  <div className="pv-card-inputs">
-                    <input className="pv-input pv-input--name" value={row.name} placeholder="Nom del proveïdor..." onChange={e => up('name', e.target.value)} />
-                    <input className="pv-input pv-input--cat" value={row.category} placeholder="Categoria..." onChange={e => up('category', e.target.value)} />
+                  <div className="pv-card-texts">
+                    <span className="pv-name">{row.name || <span style={{ color: '#C0C8D8' }}>Sense nom</span>}</span>
                   </div>
                 </div>
 
-                {/* Right: stats + editable fields + delete */}
+                {/* Right: stats + delete */}
                 <div className="pv-card-right">
                   {visibleCols.map(ci => {
                     const col = PV_COLS[ci]
+                    if (col.id === 'category') return <div key={col.id} className="pv-stat pv-stat--wide"><span className="pv-stat-tag">{row.category || '—'}</span></div>
                     if (col.id === 'activeClients') return <div key={col.id} className="pv-stat"><span className="pv-stat-val pv-stat-val--main">{row.activeClients}</span></div>
-                    if (col.id === 'structure') return <div key={col.id} className="pv-stat"><input className="pv-num-input" type="number" min="0" value={row.structureAmount || ''} placeholder="0" onChange={e => up('structureAmount', parseFloat(e.target.value) || 0)} /></div>
-                    if (col.id === 'monthlyFee') return <div key={col.id} className="pv-stat"><input className="pv-num-input" type="number" min="0" value={row.monthlyFee || ''} placeholder="0" onChange={e => up('monthlyFee', parseFloat(e.target.value) || 0)} /></div>
+                    if (col.id === 'structure') return <div key={col.id} className="pv-stat"><span className="pv-stat-val">{row.structureAmount ? formatEur(row.structureAmount) : '—'}</span></div>
+                    if (col.id === 'monthlyFee') return <div key={col.id} className="pv-stat"><span className="pv-stat-val">{row.monthlyFee ? formatEur(row.monthlyFee) : '—'}</span></div>
                     if (col.id === 'totalInClients') return <div key={col.id} className="pv-stat"><span className="pv-stat-val pv-stat-val--blue">{formatEur(row.totalInClients)}</span></div>
-                    if (col.id === 'contact') return (
-                      <div key={col.id} className="pv-contact-group">
-                        <input className="pv-input pv-input--contact" value={row.contact} placeholder="Telèfon / email" onChange={e => up('contact', e.target.value)} />
-                        <input className="pv-input pv-input--notes" value={row.notes} placeholder="Notes..." onChange={e => up('notes', e.target.value)} />
-                      </div>
-                    )
+                    if (col.id === 'notes') return <div key={col.id} className="pv-stat pv-stat--notes"><span className="pv-notes-text">{row.notes || <span style={{ color: '#D1D5DB' }}>—</span>}</span></div>
                     return null
                   })}
-                  <button className="pv-detail-btn" onClick={() => setSelectedSupplierId(row.id)} title="Veure detall">→</button>
-                  <button className="pv-del-btn" onClick={() => removeSupplier(row.id)}><Trash2 size={14}/></button>
+                  <button className="pv-del-btn" onClick={e => { e.stopPropagation(); removeSupplier(row.id) }}><Trash2 size={14}/></button>
                 </div>
               </div>
             )
@@ -1673,37 +1669,33 @@ function ProveidorsSection({ data, save }: { data: FinanceData; save: (d: Financ
         .pv-header-right { display: flex; align-items: center; flex: 1; gap: 16px; justify-content: space-between; }
         .pv-hcell { font-size: 10.5px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.07em; white-space: nowrap; border-radius: 6px; padding: 3px 5px; user-select: none; transition: background 0.12s, color 0.12s, outline 0.12s; }
         .pv-hcell--num { min-width: 90px; text-align: right; }
+        .pv-hcell--wide { min-width: 120px; flex: 1; }
+        .pv-hcell--sorted { color: #254067; }
         .pv-hcell--dragging { opacity: 0.25; background: #E5E7EB; }
         .pv-hcell--over { background: #DBEAFE; color: #1a2e4a; outline: 2px solid #254067; outline-offset: 1px; }
-        .pv-hcell--contact { min-width: 150px; flex: 1; max-width: 260px; }
         .pv-hcell--del { width: 30px; flex-shrink: 0; }
 
         /* ── Card ── */
-        .pv-card { display: flex; align-items: center; background: white; border-radius: 12px; border: 1px solid #E8ECF2; padding: 15px 20px; gap: 16px; transition: border-color 0.15s, box-shadow 0.15s; }
-        .pv-card:hover { border-color: #C7D2E4; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+        .pv-card { display: flex; align-items: center; background: white; border-radius: 12px; border: 1px solid #E8ECF2; padding: 14px 20px; gap: 16px; transition: border-color 0.15s, box-shadow 0.15s; }
+        .pv-card:hover { border-color: #C7D2E4; box-shadow: 0 2px 12px rgba(0,0,0,0.06); background: #FAFBFF; }
 
         /* ── Card left ── */
-        .pv-card-left { display: flex; align-items: center; gap: 14px; width: 240px; flex-shrink: 0; }
-        .pv-avatar { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: white; flex-shrink: 0; letter-spacing: -0.02em; }
-        .pv-card-inputs { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
-        .pv-input { width: 100%; border: none; outline: none; background: transparent; font-family: inherit; padding: 2px 0; transition: background 0.12s, padding 0.12s; cursor: default; }
-        .pv-input:hover { background: #F3F4F6; border-radius: 4px; padding: 2px 6px; cursor: text; }
-        .pv-input:focus { background: #EEF2FF; border-radius: 4px; padding: 2px 6px; cursor: text; }
-        .pv-input--name { font-size: 14px; font-weight: 700; color: #111827; letter-spacing: -0.01em; }
-        .pv-input--name::placeholder { color: #D1D5DB; font-weight: 500; }
-        .pv-input--cat { font-size: 12px; color: #9CA3AF; font-weight: 500; }
-        .pv-input--cat::placeholder { color: #E5E7EB; }
-        .pv-input--contact { font-size: 13px; color: #374151; font-weight: 500; }
-        .pv-input--notes { font-size: 12px; color: #9CA3AF; }
-        .pv-input--contact::placeholder, .pv-input--notes::placeholder { color: #D1D5DB; }
+        .pv-card-left { display: flex; align-items: center; gap: 14px; width: 200px; flex-shrink: 0; }
+        .pv-avatar { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; flex-shrink: 0; letter-spacing: -0.02em; }
+        .pv-card-texts { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+        .pv-name { font-size: 14px; font-weight: 700; color: #111827; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         /* ── Card right ── */
         .pv-card-right { display: flex; align-items: center; flex: 1; gap: 16px; justify-content: space-between; }
 
         /* Stats */
-        .pv-stat { display: flex; align-items: flex-end; justify-content: flex-end; min-width: 90px; }
-        .pv-stat-val { font-size: 14px; font-weight: 600; color: #374151; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .pv-stat { display: flex; align-items: center; justify-content: flex-end; min-width: 90px; }
+        .pv-stat--wide { min-width: 100px; flex: 0 0 auto; justify-content: flex-start; }
+        .pv-stat--notes { flex: 1; min-width: 120px; justify-content: flex-start; }
+        .pv-stat-val { font-size: 13.5px; font-weight: 600; color: #374151; white-space: nowrap; font-variant-numeric: tabular-nums; }
         .pv-stat-val--main { font-size: 15px; font-weight: 700; color: #111827; }
+        .pv-stat-tag { font-size: 12px; font-weight: 600; color: #4B5563; background: #F3F4F6; border-radius: 6px; padding: 2px 8px; white-space: nowrap; }
+        .pv-notes-text { font-size: 12.5px; color: #9CA3AF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
         .pv-stat-val--blue { font-size: 14px; font-weight: 700; color: #254067; }
 
         /* Numeric input — invisible by default, editable on click */
