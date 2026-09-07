@@ -80,12 +80,21 @@ function uid() {
 
 type FiscTab = 'resum' | 'ingressos' | 'gastos' | 'liquidacions' | 'config'
 
+interface CarteraRecord {
+  id: string
+  clientName: string
+  fee: number
+  ivaPct?: number
+  estado: string
+}
+
 interface Props {
   fiscalData: FiscalData
   saveFiscal: (d: FiscalData) => void
   operativeResult: number
   totalFees: number
   directCosts: number
+  carteraRecords?: CarteraRecord[]
 }
 
 interface BaseKpis { totalFees: number; directCosts: number }
@@ -116,7 +125,7 @@ export function computeFiscalKpis(fiscalData: FiscalData, operativeResult: numbe
   return { ivaRepercutit, ivaDeduible, ivaNet, irpfAcumulat, isEstimat, ivaPagat, irpfPagat, isPagat, ivaPendent, irpfPendent, isPendent, totalImpostos, autoIng, autoGas }
 }
 
-export function FiscalitatSection({ fiscalData, saveFiscal, operativeResult, totalFees, directCosts }: Props) {
+export function FiscalitatSection({ fiscalData, saveFiscal, operativeResult, totalFees, directCosts, carteraRecords = [] }: Props) {
   const [tab, setTab] = useState<FiscTab>('resum')
 
   const fkpis = useMemo(() => computeFiscalKpis(fiscalData, operativeResult, { totalFees, directCosts }), [fiscalData, operativeResult, totalFees, directCosts])
@@ -139,7 +148,7 @@ export function FiscalitatSection({ fiscalData, saveFiscal, operativeResult, tot
       </div>
 
       {tab === 'resum' && <FiscResumTab fkpis={fkpis} fiscalData={fiscalData} />}
-      {tab === 'ingressos' && <IngressosTab fiscalData={fiscalData} saveFiscal={saveFiscal} />}
+      {tab === 'ingressos' && <IngressosTab fiscalData={fiscalData} saveFiscal={saveFiscal} carteraRecords={carteraRecords} />}
       {tab === 'gastos' && <GastosTab fiscalData={fiscalData} saveFiscal={saveFiscal} />}
       {tab === 'liquidacions' && <LiquidacionsTab fiscalData={fiscalData} saveFiscal={saveFiscal} fkpis={fkpis} />}
       {tab === 'config' && <FiscConfigTab fiscalData={fiscalData} saveFiscal={saveFiscal} />}
@@ -235,13 +244,27 @@ function FiscResumTab({ fkpis, fiscalData }: { fkpis: ReturnType<typeof computeF
 }
 
 /* ─── INGRESSOS ─── */
-function IngressosTab({ fiscalData, saveFiscal }: { fiscalData: FiscalData; saveFiscal: (d: FiscalData) => void }) {
+function IngressosTab({ fiscalData, saveFiscal, carteraRecords = [] }: { fiscalData: FiscalData; saveFiscal: (d: FiscalData) => void; carteraRecords?: CarteraRecord[] }) {
   const [rows, setRows] = useState<Ingres[]>(fiscalData.ingressos)
   const [saved, setSaved] = useState(false)
 
+  const activeRecords = carteraRecords.filter(r => r.estado === 'Actiu' && r.fee > 0)
+
   function addRow() {
-    const r: Ingres = { id: uid(), data: '', clientName: '', numFactura: '', concepte: '', base: 0, ivaPct: 21, iva: 0, total: 0, estat: 'Pendent' }
+    const r: Ingres = { id: uid(), data: new Date().toISOString().slice(0, 10), clientName: '', numFactura: '', concepte: '', base: 0, ivaPct: 21, iva: 0, total: 0, estat: 'Pendent' }
     setRows(prev => [r, ...prev])
+  }
+
+  function selectClient(rowId: string, recordId: string) {
+    const rec = activeRecords.find(r => r.id === recordId)
+    if (!rec) { updateRow(rowId, 'clientName', ''); return }
+    setRows(prev => prev.map(r => {
+      if (r.id !== rowId) return r
+      const ivaPct = rec.ivaPct ?? 21
+      const base = rec.fee
+      const iva = Math.round(base * ivaPct / 100 * 100) / 100
+      return { ...r, clientName: rec.clientName, base, ivaPct, iva, total: Math.round((base + iva) * 100) / 100 }
+    }))
   }
 
   function updateRow(id: string, field: keyof Ingres, val: string | number) {
@@ -301,7 +324,18 @@ function IngressosTab({ fiscalData, saveFiscal }: { fiscalData: FiscalData; save
           {rows.map(r => (
             <div key={r.id} className="fst-row ing-cols">
               <div className="fst-cell"><input className="fst-inp" type="date" value={r.data} onChange={e => updateRow(r.id, 'data', e.target.value)} /></div>
-              <div className="fst-cell"><input className="fst-inp" value={r.clientName} onChange={e => updateRow(r.id, 'clientName', e.target.value)} placeholder="Client..." /></div>
+              <div className="fst-cell">
+                {activeRecords.length > 0 ? (
+                  <select className="fst-inp fst-sel-client" value={activeRecords.find(rec => rec.clientName === r.clientName)?.id ?? ''} onChange={e => selectClient(r.id, e.target.value)}>
+                    <option value="">— Selecciona client —</option>
+                    {activeRecords.map(rec => (
+                      <option key={rec.id} value={rec.id}>{rec.clientName}{rec.ivaPct !== undefined ? ` (IVA ${rec.ivaPct}%)` : ''}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input className="fst-inp" value={r.clientName} onChange={e => updateRow(r.id, 'clientName', e.target.value)} placeholder="Client..." />
+                )}
+              </div>
               <div className="fst-cell"><input className="fst-inp" value={r.numFactura} onChange={e => updateRow(r.id, 'numFactura', e.target.value)} placeholder="F-001..." /></div>
               <div className="fst-cell"><input className="fst-inp" value={r.concepte} onChange={e => updateRow(r.id, 'concepte', e.target.value)} placeholder="Concepte..." /></div>
               <div className="fst-cell fst-cell--r"><input className="fst-inp fst-inp--num" type="number" min="0" step="0.01" value={r.base || ''} onChange={e => updateRow(r.id, 'base', parseFloat(e.target.value) || 0)} /></div>
@@ -353,6 +387,7 @@ function IngressosTab({ fiscalData, saveFiscal }: { fiscalData: FiscalData; save
         .fst-inp:hover { border-color: #D1D5DB; background: #F9FAFB; }
         .fst-inp:focus { border-color: #254067; background: white; }
         .fst-inp--num { text-align: right; }
+        .fst-sel-client { cursor: pointer; }
         .fst-computed { font-size: 12.5px; font-weight: 600; color: #374151; font-variant-numeric: tabular-nums; padding: 0 8px; }
         .fst-computed--total { color: #254067; }
         .fst-sel { width: 100%; border: 1px solid transparent; border-radius: 6px; padding: 6px 8px; font-size: 12.5px; color: #374151; font-family: inherit; outline: none; background: transparent; cursor: pointer; }

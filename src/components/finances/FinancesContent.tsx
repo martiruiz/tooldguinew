@@ -276,7 +276,7 @@ export function FinancesContent({ clients, profiles }: { clients: ClientBasic[];
         <ConfiguracioSection data={data} save={save} />
       )}
       {section === 'fiscalitat' && (
-        <FiscalitatSection fiscalData={fiscalData} saveFiscal={saveFiscal} operativeResult={kpis.operativeResult} totalFees={kpis.totalFees} directCosts={kpis.directCosts} />
+        <FiscalitatSection fiscalData={fiscalData} saveFiscal={saveFiscal} operativeResult={kpis.operativeResult} totalFees={kpis.totalFees} directCosts={kpis.directCosts} carteraRecords={data.records} />
       )}
 
       <style jsx>{`
