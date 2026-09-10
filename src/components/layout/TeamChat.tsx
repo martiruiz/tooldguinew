@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { MessageCircle, X, Send, Paperclip, Image, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getInitials } from '@/lib/utils'
@@ -186,13 +186,14 @@ export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
   const optimisticIdRef = useRef<string | null>(null)
   const typingCooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const profileMap = Object.fromEntries(profiles.map(p => [p.id, p]))
+  const profilesRef = useRef(profiles)
+  profilesRef.current = profiles
+  const profileMap = useMemo(() => Object.fromEntries(profiles.map(p => [p.id, p])), [profiles])
 
-  const enrich = useCallback((row: any): ChatMessage => ({
-    ...row,
-    profile: profileMap[row.user_id],
-    attachment: row.attachment || null,
-  }), [profileMap])
+  const enrich = useCallback((row: any): ChatMessage => {
+    const pm = Object.fromEntries(profilesRef.current.map(p => [p.id, p]))
+    return { ...row, profile: pm[row.user_id], attachment: row.attachment || null }
+  }, [])
 
   const mentionResults = mentionOpen
     ? profiles.filter(p => p.id !== currentUserId && p.full_name.toLowerCase().includes(mentionQuery.toLowerCase())).slice(0, 6)
@@ -461,15 +462,16 @@ export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
 
   // DM: load and subscribe when peer selected
   useEffect(() => {
-    if (!dmPeer) { setDmMessages([]); return }
+    if (!dmPeer) { setDmMessages(prev => prev.length === 0 ? prev : []); return }
     const supabase = createClient()
+    const pm = () => Object.fromEntries(profilesRef.current.map(p => [p.id, p]))
     supabase.from('direct_messages')
       .select('id, from_user_id, to_user_id, content, attachment, created_at')
       .or(`and(from_user_id.eq.${currentUserId},to_user_id.eq.${dmPeer.id}),and(from_user_id.eq.${dmPeer.id},to_user_id.eq.${currentUserId})`)
       .order('created_at', { ascending: true })
       .limit(100)
       .then(({ data }) => {
-        if (data) setDmMessages(data.map((r: any) => ({ ...r, user_id: r.from_user_id, profile: profileMap[r.from_user_id] })))
+        if (data) setDmMessages(data.map((r: any) => ({ ...r, user_id: r.from_user_id, profile: pm()[r.from_user_id] })))
       })
 
     const dmCh = supabase.channel(`dm-${[currentUserId, dmPeer.id].sort().join('-')}`)
@@ -478,12 +480,12 @@ export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
         const isForMe = (from_user_id === dmPeer.id && to_user_id === currentUserId) || (from_user_id === currentUserId && to_user_id === dmPeer.id)
         if (!isForMe) return
         const { data } = await supabase.from('direct_messages').select('*').eq('id', id).single()
-        if (data) setDmMessages(prev => prev.some(m => m.id === data.id) ? prev : [...prev, { ...data, user_id: data.from_user_id, profile: profileMap[data.from_user_id] }])
+        if (data) setDmMessages(prev => prev.some(m => m.id === data.id) ? prev : [...prev, { ...data, user_id: data.from_user_id, profile: pm()[data.from_user_id] }])
         scrollBottom()
       })
       .subscribe()
     return () => { supabase.removeChannel(dmCh) }
-  }, [dmPeer, currentUserId, profileMap, scrollBottom])
+  }, [dmPeer, currentUserId, scrollBottom])
 
   const sendDm = async () => {
     const text = dmInput.trim()
