@@ -87,8 +87,14 @@ function ConvChat({ conv, currentUserId, profileMap, onBack }: {
     setSending(true); setInput('')
     const opt: ConvMessage = { id: `opt-${Date.now()}`, conversation_id: conv.id, user_id: currentUserId, content: text, created_at: new Date().toISOString() }
     setMessages(prev => [...prev, opt]); scrollBottom()
-    const { data } = await supabase.from('conversation_messages').insert({ conversation_id: conv.id, user_id: currentUserId, content: text }).select('*').single()
-    if (data) setMessages(prev => prev.map(m => m.id === opt.id ? data : m))
+    const { data, error: insertErr } = await supabase.from('conversation_messages').insert({ conversation_id: conv.id, user_id: currentUserId, content: text }).select('*').single()
+    if (insertErr) {
+      setMessages(prev => prev.filter(m => m.id !== opt.id))
+      setInput(text)
+      setError(insertErr.message)
+    } else if (data) {
+      setMessages(prev => prev.map(m => m.id === opt.id ? data : m))
+    }
     setSending(false)
   }
 
@@ -146,8 +152,14 @@ function DmChat({ peer, currentUserId, profileMap, onBack }: {
     setSending(true); setInput('')
     const opt = { id: `opt-${Date.now()}`, from_user_id: currentUserId, to_user_id: peer.id, content: text, created_at: new Date().toISOString() }
     setMessages(prev => [...prev, opt]); scrollBottom()
-    const { data } = await supabase.from('direct_messages').insert({ from_user_id: currentUserId, to_user_id: peer.id, content: text }).select('*').single()
-    if (data) setMessages(prev => prev.map(m => m.id === opt.id ? data : m))
+    const { data, error: insertErr } = await supabase.from('direct_messages').insert({ from_user_id: currentUserId, to_user_id: peer.id, content: text }).select('*').single()
+    if (insertErr) {
+      setMessages(prev => prev.filter(m => m.id !== opt.id))
+      setInput(text)
+      setError(insertErr.message)
+    } else if (data) {
+      setMessages(prev => prev.map(m => m.id === opt.id ? data : m))
+    }
     setSending(false)
   }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { MessageCircle, Send, ArrowLeft, X, Globe, Users, Plus, Search } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getInitials } from '@/lib/utils'
@@ -49,9 +49,11 @@ function MiniChat({ target, currentUserId, profiles, onBack }: {
   const [messages, setMessages] = useState<any[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
-  const supabase = createClient()
-  const profileMap = Object.fromEntries(profiles.map(p => [p.id, p]))
+  const supabaseRef = useRef(createClient())
+  const supabase = supabaseRef.current
+  const profileMap = useMemo(() => Object.fromEntries(profiles.map(p => [p.id, p])), [profiles])
 
   const scrollBottom = useCallback(() => setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 40), [])
 
@@ -94,23 +96,35 @@ function MiniChat({ target, currentUserId, profiles, onBack }: {
 
   const send = async () => {
     const text = input.trim(); if (!text || sending) return
-    setSending(true); setInput('')
+    setSending(true); setInput(''); setSendError(null)
     const optId = `opt-${Date.now()}`
+
+    let insertErr: any = null
     if (target.kind === 'global') {
       const opt = { id: optId, user_id: currentUserId, content: text, created_at: new Date().toISOString() }
       setMessages(prev => [...prev, opt]); scrollBottom()
-      const { data } = await supabase.from('team_chat').insert({ user_id: currentUserId, content: text }).select('*').single()
+      const { data, error } = await supabase.from('team_chat').insert({ user_id: currentUserId, content: text }).select('*').single()
+      insertErr = error
       if (data) setMessages(prev => prev.map(m => m.id === optId ? data : m))
     } else if (target.kind === 'dm') {
       const opt = { id: optId, from_user_id: currentUserId, to_user_id: target.peer.id, content: text, created_at: new Date().toISOString() }
       setMessages(prev => [...prev, opt]); scrollBottom()
-      const { data } = await supabase.from('direct_messages').insert({ from_user_id: currentUserId, to_user_id: target.peer.id, content: text }).select('*').single()
+      const { data, error } = await supabase.from('direct_messages').insert({ from_user_id: currentUserId, to_user_id: target.peer.id, content: text }).select('*').single()
+      insertErr = error
       if (data) setMessages(prev => prev.map(m => m.id === optId ? data : m))
     } else {
       const opt = { id: optId, conversation_id: target.convId, user_id: currentUserId, content: text, created_at: new Date().toISOString() }
       setMessages(prev => [...prev, opt]); scrollBottom()
-      const { data } = await supabase.from('conversation_messages').insert({ conversation_id: target.convId, user_id: currentUserId, content: text }).select('*').single()
+      const { data, error } = await supabase.from('conversation_messages').insert({ conversation_id: target.convId, user_id: currentUserId, content: text }).select('*').single()
+      insertErr = error
       if (data) setMessages(prev => prev.map(m => m.id === optId ? data : m))
+    }
+
+    if (insertErr) {
+      console.error('[ChatFab send error]', insertErr)
+      setMessages(prev => prev.filter(m => m.id !== optId))
+      setInput(text)
+      setSendError(insertErr.message || 'Error en enviar el missatge')
     }
     setSending(false)
   }
@@ -178,6 +192,13 @@ function MiniChat({ target, currentUserId, profiles, onBack }: {
         <div ref={bottomRef} />
       </div>
 
+      {/* Error */}
+      {sendError && (
+        <div style={{ margin: '0 10px 4px', padding: '6px 10px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, fontSize: 11.5, color: '#DC2626', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>{sendError}</span>
+          <button onClick={() => setSendError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', padding: 0, fontSize: 12, lineHeight: 1 }}>✕</button>
+        </div>
+      )}
       {/* Input */}
       <div style={{ display: 'flex', gap: 6, padding: '8px 10px 10px', borderTop: '1px solid #F0F2F5', flexShrink: 0, alignItems: 'flex-end' }}>
         <textarea
@@ -205,8 +226,11 @@ export function ChatFab({ currentUserId, profiles = [] }: Props) {
   const [dmPreviews, setDmPreviews] = useState<DmPreview[]>([])
   const [convPreviews, setConvPreviews] = useState<ConvPreview[]>([])
   const [search, setSearch] = useState('')
-  const supabase = createClient()
-  const profileMap = Object.fromEntries(profiles.map(p => [p.id, p]))
+  const supabaseRef = useRef(createClient())
+  const supabase = supabaseRef.current
+  const profilesRef = useRef(profiles)
+  profilesRef.current = profiles
+  const profileMap = useMemo(() => Object.fromEntries(profiles.map(p => [p.id, p])), [profiles])
 
   // Listen for team chat + open-fab-chat events
   useEffect(() => {
@@ -244,6 +268,7 @@ export function ChatFab({ currentUserId, profiles = [] }: Props) {
 
   const loadPreviews = useCallback(async () => {
     if (!currentUserId) return
+    const pm = Object.fromEntries(profilesRef.current.map(p => [p.id, p]))
 
     // DM previews
     const { data: dms } = await supabase.from('direct_messages')
@@ -256,7 +281,7 @@ export function ChatFab({ currentUserId, profiles = [] }: Props) {
       for (const row of dms) {
         const peerId = row.from_user_id === currentUserId ? row.to_user_id : row.from_user_id
         if (!map[peerId]) {
-          const peer = profileMap[peerId]
+          const peer = pm[peerId]
           map[peerId] = { peerId, peerName: peer?.full_name || '?', peerAvatar: peer?.avatar_url, lastMsg: row.content, lastAt: row.created_at, unread: 0 }
         }
       }
@@ -276,10 +301,10 @@ export function ChatFab({ currentUserId, profiles = [] }: Props) {
         id: c.id, type: c.type, name: c.name || 'Grup', color: c.avatar_color,
         lastMsg: lastMap[c.id]?.content || '',
         lastAt: lastMap[c.id]?.created_at || c.updated_at,
-        members: (membersData || []).filter((m: any) => m.conversation_id === c.id).map((m: any) => profileMap[m.user_id]).filter(Boolean),
+        members: (membersData || []).filter((m: any) => m.conversation_id === c.id).map((m: any) => pm[m.user_id]).filter(Boolean),
       })))
     }
-  }, [currentUserId, profileMap])
+  }, [currentUserId])
 
   useEffect(() => {
     if (currentUserId) loadPreviews()
