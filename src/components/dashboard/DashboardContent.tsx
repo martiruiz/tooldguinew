@@ -465,8 +465,8 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           </div>
 
           {/* Daily checklist */}
-          <div {...wProps('daily-checklist', 'left')}>
-            <DailyChecklist userId={currentUserId} />
+          <div className="dash-widget-checklist-wrap" {...wProps('daily-checklist', 'left')}>
+            <DailyChecklist userId={currentUserId} moveButtons={moveButtons('daily-checklist', 'left')} />
           </div>
 
           {/* Xats recents */}

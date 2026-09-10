@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { CheckCircle2, Circle, Plus, X, GripVertical } from 'lucide-react'
+import type React from 'react'
+import { CheckCircle2, Circle, Plus, X } from 'lucide-react'
 
 interface CheckItem {
   id: string
@@ -12,6 +13,7 @@ interface CheckItem {
 
 interface Props {
   userId: string
+  moveButtons?: React.ReactNode
 }
 
 function storageKey(userId: string) {
@@ -32,7 +34,7 @@ function save(userId: string, items: CheckItem[]) {
   localStorage.setItem(storageKey(userId), JSON.stringify(items))
 }
 
-export function DailyChecklist({ userId }: Props) {
+export function DailyChecklist({ userId, moveButtons }: Props) {
   const [items, setItems] = useState<CheckItem[]>([])
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState('')
@@ -75,7 +77,8 @@ export function DailyChecklist({ userId }: Props) {
     <div className="checklist-widget">
       <div className="checklist-header">
         <div className="checklist-title-row">
-          <CheckCircle2 size={14} strokeWidth={2} color="#1B2B4B" />
+          {moveButtons}
+          <CheckCircle2 size={14} strokeWidth={2} color="#92400E" />
           <h2 className="checklist-title">La meva llista del dia</h2>
           {pending.length > 0 && (
             <span className="checklist-badge">{pending.length}</span>
@@ -143,28 +146,29 @@ export function DailyChecklist({ userId }: Props) {
 
       <style jsx>{`
         .checklist-widget {
-          background: white;
-          border: 1px solid rgba(0,0,0,0.07);
+          background: #FFFBF0;
+          border: 1px solid #FDE68A;
           border-radius: 14px;
           overflow: hidden;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+          box-shadow: 0 1px 4px rgba(251,191,36,0.12), 0 2px 12px rgba(251,191,36,0.08);
         }
 
         .checklist-header {
-          padding: 14px 16px 0;
+          background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+          padding: 13px 14px 13px;
+          border-bottom: 1px solid #FCD34D;
         }
 
         .checklist-title-row {
           display: flex;
           align-items: center;
           gap: 6px;
-          margin-bottom: 8px;
         }
 
         .checklist-title {
           font-size: 13px;
           font-weight: 700;
-          color: #0F1B2D;
+          color: #78350F;
           letter-spacing: -0.01em;
           flex: 1;
         }
@@ -172,7 +176,7 @@ export function DailyChecklist({ userId }: Props) {
         .checklist-badge {
           font-size: 10px;
           font-weight: 700;
-          background: #1A73E8;
+          background: #D97706;
           color: white;
           padding: 1px 6px;
           border-radius: 10px;
@@ -200,7 +204,7 @@ export function DailyChecklist({ userId }: Props) {
         }
 
         .checklist-item:hover {
-          background: #F8F9FA;
+          background: #FEF9EC;
         }
 
         .checklist-item:hover .checklist-remove-btn {
@@ -296,8 +300,13 @@ export function DailyChecklist({ userId }: Props) {
         }
 
         .checklist-add-btn:hover {
-          background: #F0F6FF;
+          background: #FEF3C7;
         }
+
+        .checklist-header .widget-move-btns { opacity: 0; transition: opacity 0.15s; }
+        .checklist-widget:hover .checklist-header .widget-move-btns { opacity: 1; }
+        .checklist-header .widget-move-btn { color: #B45309; }
+        .checklist-header .widget-move-btn:hover:not(:disabled) { color: #92400E; background: rgba(0,0,0,0.08); }
       `}</style>
     </div>
   )
