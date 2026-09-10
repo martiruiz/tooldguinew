@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   CheckSquare, Clock, FolderKanban, Users, Plus,
   Calendar, ArrowRight, AlertCircle, CheckCircle2,
-  Circle, TrendingUp, MessageCircle, GripVertical,
+  Circle, TrendingUp, MessageCircle, ChevronUp, ChevronDown,
 } from 'lucide-react'
 import { cn, formatTime, formatRelative, taskPriorityLabels, getInitials } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -95,80 +95,56 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
   const [showNewClient, setShowNewClient] = useState(false)
   const [showNewProject, setShowNewProject] = useState(false)
 
-  // Dashboard widget drag-to-reorder
+  // Dashboard widget reorder with up/down buttons
   const LEFT_WIDGETS = ['tasks-today', 'upcoming', 'active-projects', 'daily-checklist', 'chat-pending']
   const RIGHT_WIDGETS = ['attention', 'today-at-guinew', 'inbox', 'blocked', 'activity']
   const [widgetOrder, setWidgetOrder] = useState<Record<string, number>>(() => {
     if (typeof window === 'undefined') return {}
     try { return JSON.parse(localStorage.getItem('dash-widget-order') || '{}') } catch { return {} }
   })
-  const [dashDragId, setDashDragId] = useState<string | null>(null)
-  const [dashDragOver, setDashDragOver] = useState<{ id: string; before: boolean } | null>(null)
 
-  const getWidgetOrder = (id: string, col: 'left' | 'right') => {
+  const getSortedCol = (col: 'left' | 'right') => {
     const list = col === 'left' ? LEFT_WIDGETS : RIGHT_WIDGETS
-    return widgetOrder[id] ?? list.indexOf(id)
+    return [...list].sort((a, b) => (widgetOrder[a] ?? list.indexOf(a)) - (widgetOrder[b] ?? list.indexOf(b)))
   }
 
-  const handleWidgetDrop = (targetId: string, col: 'left' | 'right', before: boolean) => {
-    if (!dashDragId || dashDragId === targetId) { setDashDragId(null); setDashDragOver(null); return }
-    const list = col === 'left' ? LEFT_WIDGETS : RIGHT_WIDGETS
-    // Build current sorted order
-    const sorted = list
-      .map(id => ({ id, order: widgetOrder[id] ?? list.indexOf(id) }))
-      .sort((a, b) => a.order - b.order)
-      .map(x => x.id)
-    // Remove the dragged item
-    const without = sorted.filter(id => id !== dashDragId)
-    // Find target in the list without dragged item
-    const targetIdx = without.indexOf(targetId)
-    if (targetIdx === -1) { setDashDragId(null); setDashDragOver(null); return }
-    // Insert before or after target
-    const insertAt = before ? targetIdx : targetIdx + 1
-    without.splice(insertAt, 0, dashDragId)
-    // Persist
-    const next = { ...widgetOrder }
-    without.forEach((id, idx) => { next[id] = idx })
-    setWidgetOrder(next)
-    localStorage.setItem('dash-widget-order', JSON.stringify(next))
-    setDashDragId(null); setDashDragOver(null)
+  const moveWidget = (id: string, col: 'left' | 'right', dir: -1 | 1) => {
+    const sorted = getSortedCol(col)
+    const idx = sorted.indexOf(id)
+    const newIdx = idx + dir
+    if (newIdx < 0 || newIdx >= sorted.length) return
+    const next = [...sorted]
+    next.splice(idx, 1)
+    next.splice(newIdx, 0, id)
+    const newOrder = { ...widgetOrder }
+    next.forEach((wid, i) => { newOrder[wid] = i })
+    setWidgetOrder(newOrder)
+    localStorage.setItem('dash-widget-order', JSON.stringify(newOrder))
   }
 
-  const gripProps = (id: string) => ({
-    draggable: true as const,
-    onDragStart: (e: React.DragEvent) => {
-      e.dataTransfer.setData('text/plain', id)
-      e.dataTransfer.effectAllowed = 'move'
-      setDashDragId(id)
-    },
-    onDragEnd: () => { setDashDragId(null); setDashDragOver(null) },
-    style: { cursor: dashDragId === id ? 'grabbing' : 'grab' } as React.CSSProperties,
-  })
+  const wProps = (id: string, col: 'left' | 'right') => {
+    const sorted = getSortedCol(col)
+    const idx = sorted.indexOf(id)
+    return {
+      'data-widget-id': id,
+      style: { order: idx, position: 'relative' as const },
+    }
+  }
 
-  const wProps = (id: string, col: 'left' | 'right') => ({
-    'data-widget-id': id,
-    'data-drag-target': dashDragOver?.id === id ? (dashDragOver.before ? 'top' : 'bottom') : undefined,
-    onDragOver: (e: React.DragEvent) => {
-      e.preventDefault()
-      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
-      setDashDragOver({ id, before: e.clientY < rect.top + rect.height / 2 })
-    },
-    onDragLeave: (e: React.DragEvent) => {
-      if (!e.currentTarget.contains(e.relatedTarget as Node)) setDashDragOver(null)
-    },
-    onDrop: (e: React.DragEvent) => {
-      e.preventDefault()
-      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
-      const before = e.clientY < rect.top + rect.height / 2
-      handleWidgetDrop(id, col, before)
-    },
-    style: {
-      order: getWidgetOrder(id, col),
-      opacity: dashDragId === id ? 0.3 : 1,
-      position: 'relative' as const,
-      transition: 'opacity 0.15s',
-    } as React.CSSProperties,
-  })
+  const moveButtons = (id: string, col: 'left' | 'right') => {
+    const sorted = getSortedCol(col)
+    const idx = sorted.indexOf(id)
+    return (
+      <div className="widget-move-btns">
+        <button className="widget-move-btn" disabled={idx === 0} onClick={() => moveWidget(id, col, -1)} title="Moure amunt">
+          <ChevronUp size={11} />
+        </button>
+        <button className="widget-move-btn" disabled={idx === sorted.length - 1} onClick={() => moveWidget(id, col, 1)} title="Moure avall">
+          <ChevronDown size={11} />
+        </button>
+      </div>
+    )
+  }
 
   interface DmWidgetItem { peerId: string; peerName: string; peerAvatar?: string; lastMsg: string; lastAt: string }
   const [dmWidgetItems, setDmWidgetItems] = useState<DmWidgetItem[]>([])
@@ -428,7 +404,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
         <div className="dash-col">
           <div className="dash-widget" {...wProps('tasks-today', 'left')}>
             <div className="widget-header">
-              <span className="widget-drag-handle" {...gripProps('tasks-today')}><GripVertical size={13} /></span>
+              {moveButtons('tasks-today', 'left')}
               <CheckSquare size={14} strokeWidth={2} color="#1B2B4B" />
               <h2 className="widget-title">{tr('tasksToday')}</h2>
               <Link href="/tasks" className="widget-link">{tr('seeAll')} <ArrowRight size={12} /></Link>
@@ -450,7 +426,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           {upcomingTasks.length > 0 && (
             <div className="dash-widget" {...wProps('upcoming', 'left')}>
               <div className="widget-header">
-                <span className="widget-drag-handle" {...gripProps('upcoming')}><GripVertical size={13} /></span>
+                {moveButtons('upcoming', 'left')}
                 <Clock size={14} strokeWidth={2} color="#5C5C5C" />
                 <h2 className="widget-title">{tr('upcoming')}</h2>
               </div>
@@ -465,7 +441,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           {/* Active Projects */}
           <div className="dash-widget" {...wProps('active-projects', 'left')}>
             <div className="widget-header">
-              <span className="widget-drag-handle" {...gripProps('active-projects')}><GripVertical size={13} /></span>
+              {moveButtons('active-projects', 'left')}
               <FolderKanban size={14} strokeWidth={2} color="#1B2B4B" />
               <h2 className="widget-title">{tr('activeProjects')}</h2>
               <Link href="/projects" className="widget-link">{tr('seeAllM')} <ArrowRight size={12} /></Link>
@@ -496,7 +472,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           {/* Xats recents */}
           <div className="dash-widget" {...wProps('chat-pending', 'left')}>
             <div className="widget-header">
-              <span className="widget-drag-handle" {...gripProps('chat-pending')}><GripVertical size={13} /></span>
+              {moveButtons('chat-pending', 'left')}
               <MessageCircle size={14} strokeWidth={2} color="#1B2B4B" />
               <h2 className="widget-title">Xats recents</h2>
               <button className="widget-link" style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#9CA3AF', fontFamily: 'inherit', padding: 0 }}
@@ -554,7 +530,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           {attentionItems.length > 0 && (
             <div className="attention-block dash-widget" {...wProps('attention', 'right')}>
               <div className="attention-header">
-                <span className="widget-drag-handle" {...gripProps('attention')}><GripVertical size={13} /></span>
+                {moveButtons('attention', 'right')}
                 <AlertCircle size={15} strokeWidth={2} color="#DC2626" />
                 <h2 className="attention-title">{tr('needsAttention')}</h2>
                 <span className="attention-count">{attentionItems.length}</span>
@@ -603,7 +579,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           {/* Avui a Guinew */}
           <div className="dash-widget" {...wProps('today-at-guinew', 'right')}>
             <div className="widget-header">
-              <span className="widget-drag-handle" {...gripProps('today-at-guinew')}><GripVertical size={13} /></span>
+              {moveButtons('today-at-guinew', 'right')}
               <Calendar size={14} strokeWidth={2} color="#1B2B4B" />
               <h2 className="widget-title">{tr('todayAtGuinew')}</h2>
               <Link href="/calendar" className="widget-link">{tr('calendar')} <ArrowRight size={12} /></Link>
@@ -683,7 +659,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           {inboxTotal > 0 && (
             <div className="dash-widget" {...wProps('inbox', 'right')}>
               <div className="widget-header">
-                <span className="widget-drag-handle" {...gripProps('inbox')}><GripVertical size={13} /></span>
+                {moveButtons('inbox', 'right')}
                 <AlertCircle size={14} strokeWidth={2} color="#1B2B4B" />
                 <h2 className="widget-title">Inbox</h2>
                 <span className="inbox-badge">{inboxTotal}</span>
@@ -720,7 +696,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           {localBlockedTasks.length > 0 && (
             <div className="dash-widget dash-widget--blocked" {...wProps('blocked', 'right')}>
               <div className="widget-header">
-                <span className="widget-drag-handle" {...gripProps('blocked')}><GripVertical size={13} /></span>
+                {moveButtons('blocked', 'right')}
                 <AlertCircle size={14} strokeWidth={2} color="#D97706" />
                 <h2 className="widget-title" style={{ color: '#D97706' }}>{tr('blockers')} ({localBlockedTasks.length})</h2>
               </div>
@@ -750,7 +726,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           {/* Activity feed */}
           <div className="dash-widget" {...wProps('activity', 'right')}>
             <div className="widget-header">
-              <span className="widget-drag-handle" {...gripProps('activity')}><GripVertical size={13} /></span>
+              {moveButtons('activity', 'right')}
               <TrendingUp size={14} strokeWidth={2} color="#5C5C5C" />
               <h2 className="widget-title">{tr('recentActivity')}</h2>
             </div>
@@ -1139,43 +1115,30 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           transform: translateY(-1px);
         }
 
-        .dash-widget .widget-drag-handle {
-          opacity: 0;
-          color: #C0C0C0;
-          cursor: grab;
+        .widget-move-btns {
           display: flex;
-          align-items: center;
-          padding: 0 2px;
+          flex-direction: column;
+          gap: 1px;
+          opacity: 0;
           transition: opacity 0.15s;
           flex-shrink: 0;
         }
-        .dash-widget:hover .widget-drag-handle { opacity: 1; }
-        .dash-widget .widget-drag-handle:active { cursor: grabbing; }
-
-        [data-drag-target="top"]::before {
-          content: '';
-          position: absolute;
-          top: -3px;
-          left: 8px;
-          right: 8px;
-          height: 3px;
-          background: #3B82F6;
-          border-radius: 2px;
-          z-index: 20;
-          pointer-events: none;
+        .dash-widget:hover .widget-move-btns { opacity: 1; }
+        .widget-move-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: none;
+          border: none;
+          padding: 1px 3px;
+          cursor: pointer;
+          color: #9CA3AF;
+          border-radius: 3px;
+          line-height: 1;
+          transition: color 0.12s, background 0.12s;
         }
-        [data-drag-target="bottom"]::after {
-          content: '';
-          position: absolute;
-          bottom: -3px;
-          left: 8px;
-          right: 8px;
-          height: 3px;
-          background: #3B82F6;
-          border-radius: 2px;
-          z-index: 20;
-          pointer-events: none;
-        }
+        .widget-move-btn:hover:not(:disabled) { color: #2563EB; background: #EFF6FF; }
+        .widget-move-btn:disabled { opacity: 0.2; cursor: default; }
 
         .widget-header {
           display: flex;
