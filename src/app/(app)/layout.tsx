@@ -4,8 +4,10 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { MobileNav } from '@/components/layout/MobileNav'
 import { MobileSidebarWrapper } from '@/components/layout/MobileSidebarWrapper'
 import { MentionNotifier } from '@/components/layout/MentionNotifier'
+import { PresenceNotifier } from '@/components/layout/PresenceNotifier'
 import { GlobalActivityPanel } from '@/components/layout/GlobalActivityPanel'
 import { TeamChat } from '@/components/layout/TeamChat'
+import { ChatFab } from '@/components/layout/ChatFab'
 import { LanguageProvider } from '@/contexts/LanguageContext'
 import { NavigationProvider } from '@/contexts/NavigationContext'
 import { PageTransition } from '@/components/layout/PageTransition'
@@ -51,8 +53,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
         <PageTransition />
         <MentionNotifier currentUserId={user.id} currentUserName={profile.full_name} />
+        <PresenceNotifier currentUserId={user.id} currentUserName={profile.full_name} currentUserAvatar={profile.avatar_url ?? undefined} />
         <GlobalActivityPanel currentUserId={user.id} profiles={allProfiles || []} />
         <TeamChat currentUserId={user.id} currentUserName={profile.full_name} profiles={allProfiles || []} />
+        <ChatFab currentUserId={user.id} profiles={allProfiles || []} />
       </div>
     </NavigationProvider>
     </LanguageProvider>

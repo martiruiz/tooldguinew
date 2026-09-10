@@ -9,9 +9,22 @@ import type { Profile } from '@/types'
 interface Props {
   members: Profile[]
   currentUserId: string
+  lastSignInMap?: Record<string, string>
 }
 
-export function AdminContent({ members, currentUserId }: Props) {
+function fmtLastSeen(iso?: string): string {
+  if (!iso) return 'Mai'
+  const diff = Date.now() - new Date(iso).getTime()
+  const m = Math.floor(diff / 60000)
+  if (m < 1) return 'Ara mateix'
+  if (m < 60) return `Fa ${m} min`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `Fa ${h} h`
+  const d = Math.floor(h / 24)
+  return `Fa ${d} ${d === 1 ? 'dia' : 'dies'}`
+}
+
+export function AdminContent({ members, currentUserId, lastSignInMap = {} }: Props) {
   const [localMembers, setLocalMembers] = useState(members)
   const [showNew, setShowNew] = useState(false)
   const [newForm, setNewForm] = useState({ email: '', full_name: '', role: 'team_member', position: '' })
@@ -223,6 +236,7 @@ export function AdminContent({ members, currentUserId }: Props) {
             <span>Membre</span>
             <span>Càrrec</span>
             <span>Rol</span>
+            <span>Darrer accés</span>
             <span>Estat</span>
             <span>Accions</span>
           </div>
@@ -265,6 +279,19 @@ export function AdminContent({ members, currentUserId }: Props) {
                   <option value="manager">Project Manager</option>
                   <option value="superadmin">Superadmin</option>
                 </select>
+              </div>
+              <div className="member-last-seen">
+                {(() => {
+                  const iso = lastSignInMap[member.id]
+                  const mins = iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 60000) : null
+                  const dot = mins === null ? '#E5E7EB' : mins < 60 ? '#22C55E' : mins < 1440 ? '#F59E0B' : '#D1D5DB'
+                  return (
+                    <>
+                      <span className="last-seen-dot" style={{ background: dot }} />
+                      <span className="last-seen-text">{fmtLastSeen(iso)}</span>
+                    </>
+                  )
+                })()}
               </div>
               <div>
                 <span className={cn('status-badge', member.is_active ? 'status-badge--active' : 'status-badge--inactive')}>
@@ -481,7 +508,7 @@ export function AdminContent({ members, currentUserId }: Props) {
 
         .members-header-row {
           display: grid;
-          grid-template-columns: 2fr 1fr 1fr 0.8fr 0.6fr;
+          grid-template-columns: 2fr 1fr 1fr 1.1fr 0.8fr 0.6fr;
           padding: 10px 20px;
           font-size: 11px;
           font-weight: 600;
@@ -497,7 +524,7 @@ export function AdminContent({ members, currentUserId }: Props) {
 
         .member-row {
           display: grid;
-          grid-template-columns: 2fr 1fr 1fr 0.8fr 0.6fr;
+          grid-template-columns: 2fr 1fr 1fr 1.1fr 0.8fr 0.6fr;
           align-items: center;
           padding: 14px 20px;
           border-bottom: 1px solid #F8F8F8;
@@ -509,10 +536,15 @@ export function AdminContent({ members, currentUserId }: Props) {
         .member-row:hover { background: #FAFAFA; }
         .member-row--inactive { opacity: 0.5; }
 
+        .member-last-seen { display: flex; align-items: center; gap: 6px; }
+        .last-seen-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .last-seen-text { font-size: 12.5px; color: #6B7280; }
+
         @media (max-width: 768px) {
           .admin-page { padding: 12px 12px 80px; }
           .member-row { grid-template-columns: 1fr auto auto; gap: 8px; }
           .member-position { display: none; }
+          .member-last-seen { display: none; }
           .member-row > div:nth-child(4) { display: none; }
         }
 

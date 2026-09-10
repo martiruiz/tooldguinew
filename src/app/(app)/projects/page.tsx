@@ -23,7 +23,7 @@ export default async function ProjectsPage() {
 
   return (
     <>
-      <Topbar user={profile as Profile} title="Projectes" />
+      <Topbar user={profile as Profile} title="Campanyes" />
       <ProjectsContent projects={projects || []} clients={clients || []} profiles={profiles || []} userRole={profile?.role} />
     </>
   )

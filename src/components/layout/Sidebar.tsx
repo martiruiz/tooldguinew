@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, FolderKanban, CheckSquare,
   Calendar, Shield, LogOut, ChevronLeft, ChevronRight, ClipboardList,
   TrendingUp, BarChart3, Truck, Building2, PieChart, Plus, X, Pencil, Check,
-  Target, FileText, LineChart, Scale,
+  Target, FileText, LineChart, Scale, Inbox,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -28,6 +28,7 @@ const financeNavDefs = [
 
 const navDefs = [
   { href: '/dashboard', icon: LayoutDashboard, labelKey: 'dashboard' as keyof typeof TRANSLATIONS },
+  { href: '/inbox',     icon: Inbox,           labelKey: 'inbox'     as keyof typeof TRANSLATIONS },
   { href: '/clients',   icon: Users,           labelKey: 'clients'   as keyof typeof TRANSLATIONS },
   { href: '/projects',  icon: FolderKanban,    labelKey: 'campaigns' as keyof typeof TRANSLATIONS },
   { href: '/tasks',     icon: CheckSquare,     labelKey: 'tasks'     as keyof typeof TRANSLATIONS },
@@ -271,6 +272,7 @@ export function Sidebar({ user }: Props) {
         {!c && (
           <button className="sb-section-lbl sb-section-toggle" onClick={() => toggleSection('menu')}>
             {t('sectionMenu')} · {navDefs.length}
+
             <span className="sb-toggle-arrow">{hiddenSections.has('menu') ? '›' : '‹'}</span>
           </button>
         )}

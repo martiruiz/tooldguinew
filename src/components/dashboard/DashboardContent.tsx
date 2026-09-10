@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   CheckSquare, Clock, FolderKanban, Users, Plus,
   Calendar, ArrowRight, AlertCircle, CheckCircle2,
-  Circle, TrendingUp,
+  Circle, TrendingUp, MessageCircle, GripVertical,
 } from 'lucide-react'
 import { cn, formatTime, formatRelative, taskPriorityLabels, getInitials } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -94,6 +94,108 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
   const [showNewTask, setShowNewTask] = useState(false)
   const [showNewClient, setShowNewClient] = useState(false)
   const [showNewProject, setShowNewProject] = useState(false)
+
+  // Dashboard widget drag-to-reorder
+  const LEFT_WIDGETS = ['tasks-today', 'upcoming', 'active-projects', 'daily-checklist', 'chat-pending']
+  const RIGHT_WIDGETS = ['attention', 'today-at-guinew', 'inbox', 'blocked', 'activity']
+  const [widgetOrder, setWidgetOrder] = useState<Record<string, number>>(() => {
+    if (typeof window === 'undefined') return {}
+    try { return JSON.parse(localStorage.getItem('dash-widget-order') || '{}') } catch { return {} }
+  })
+  const [dashDragId, setDashDragId] = useState<string | null>(null)
+  const [dashDragOver, setDashDragOver] = useState<{ id: string; before: boolean } | null>(null)
+
+  const getWidgetOrder = (id: string, col: 'left' | 'right') => {
+    const list = col === 'left' ? LEFT_WIDGETS : RIGHT_WIDGETS
+    return widgetOrder[id] ?? list.indexOf(id)
+  }
+
+  const handleWidgetDrop = (targetId: string, col: 'left' | 'right', before: boolean) => {
+    if (!dashDragId || dashDragId === targetId) { setDashDragId(null); setDashDragOver(null); return }
+    const list = col === 'left' ? LEFT_WIDGETS : RIGHT_WIDGETS
+    // Build current sorted order
+    const sorted = list
+      .map(id => ({ id, order: widgetOrder[id] ?? list.indexOf(id) }))
+      .sort((a, b) => a.order - b.order)
+      .map(x => x.id)
+    // Remove the dragged item
+    const without = sorted.filter(id => id !== dashDragId)
+    // Find target in the list without dragged item
+    const targetIdx = without.indexOf(targetId)
+    if (targetIdx === -1) { setDashDragId(null); setDashDragOver(null); return }
+    // Insert before or after target
+    const insertAt = before ? targetIdx : targetIdx + 1
+    without.splice(insertAt, 0, dashDragId)
+    // Persist
+    const next = { ...widgetOrder }
+    without.forEach((id, idx) => { next[id] = idx })
+    setWidgetOrder(next)
+    localStorage.setItem('dash-widget-order', JSON.stringify(next))
+    setDashDragId(null); setDashDragOver(null)
+  }
+
+  const gripProps = (id: string) => ({
+    draggable: true as const,
+    onDragStart: (e: React.DragEvent) => {
+      e.dataTransfer.setData('text/plain', id)
+      e.dataTransfer.effectAllowed = 'move'
+      setDashDragId(id)
+    },
+    onDragEnd: () => { setDashDragId(null); setDashDragOver(null) },
+    style: { cursor: dashDragId === id ? 'grabbing' : 'grab' } as React.CSSProperties,
+  })
+
+  const wProps = (id: string, col: 'left' | 'right') => ({
+    'data-widget-id': id,
+    'data-drag-target': dashDragOver?.id === id ? (dashDragOver.before ? 'top' : 'bottom') : undefined,
+    onDragOver: (e: React.DragEvent) => {
+      e.preventDefault()
+      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+      setDashDragOver({ id, before: e.clientY < rect.top + rect.height / 2 })
+    },
+    onDragLeave: (e: React.DragEvent) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node)) setDashDragOver(null)
+    },
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault()
+      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+      const before = e.clientY < rect.top + rect.height / 2
+      handleWidgetDrop(id, col, before)
+    },
+    style: {
+      order: getWidgetOrder(id, col),
+      opacity: dashDragId === id ? 0.3 : 1,
+      position: 'relative' as const,
+      transition: 'opacity 0.15s',
+    } as React.CSSProperties,
+  })
+
+  interface DmWidgetItem { peerId: string; peerName: string; peerAvatar?: string; lastMsg: string; lastAt: string }
+  const [dmWidgetItems, setDmWidgetItems] = useState<DmWidgetItem[]>([])
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.from('direct_messages')
+      .select('from_user_id, to_user_id, content, created_at')
+      .or(`from_user_id.eq.${currentUserId},to_user_id.eq.${currentUserId}`)
+      .order('created_at', { ascending: false })
+      .limit(100)
+      .then(({ data }) => {
+        if (!data) return
+        const map: Record<string, DmWidgetItem> = {}
+        for (const row of data) {
+          const peerId = row.from_user_id === currentUserId ? row.to_user_id : row.from_user_id
+          if (!map[peerId]) {
+            const peer = profiles.find(p => p.id === peerId)
+            map[peerId] = { peerId, peerName: peer?.full_name || '?', peerAvatar: peer?.avatar_url, lastMsg: row.content, lastAt: row.created_at }
+          }
+        }
+        setDmWidgetItems(Object.values(map).sort((a, b) => b.lastAt.localeCompare(a.lastAt)).slice(0, 5))
+      })
+  }, [currentUserId, profiles])
+
+  // keep legacy for pendingChatMsgs compatibility
+  const pendingChatMsgs = dmWidgetItems
 
   const firstName = user.full_name.split(' ')[0]
 
@@ -310,55 +412,6 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
         )}
       </div>
 
-      {/* Atenció requerida */}
-      {attentionItems.length > 0 && (
-        <div className="attention-block">
-          <div className="attention-header">
-            <AlertCircle size={15} strokeWidth={2} color="#DC2626" />
-            <h2 className="attention-title">{tr('needsAttention')}</h2>
-            <span className="attention-count">{attentionItems.length}</span>
-          </div>
-          <div className="attention-list">
-            {attentionItems.map(item => (
-              <div key={item.id} className="attention-item">
-                <div className="attention-dot" style={{ background: levelDot[item.level] }} />
-                <div className="attention-info">
-                  <div className="attention-item-title">{item.title}</div>
-                  <div className="attention-item-sub">{item.subtitle}</div>
-                </div>
-                <div className="attention-actions">
-                  {item.taskId && (
-                    <button
-                      className="attn-btn attn-btn--primary"
-                      onClick={() => {
-                        const t = localTasks.find(t => t.id === item.taskId)
-                        if (t) setSelectedTask(t)
-                      }}
-                    >
-                      {tr('open')}
-                    </button>
-                  )}
-                  {item.taskId && (
-                    <button
-                      className="attn-btn attn-btn--resolve"
-                      onClick={() => item.taskId && handleCompleteTask(item.taskId)}
-                    >
-                      {tr('markResolved')}
-                    </button>
-                  )}
-                  <button
-                    className="attn-btn attn-btn--dismiss"
-                    onClick={() => setDismissedItems(prev => new Set(prev).add(item.id))}
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* PM Control Center — only for managers */}
       {isManager && (
         <PMControlCenter
@@ -373,8 +426,9 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
       <div className="dash-grid">
         {/* Left: Tasks */}
         <div className="dash-col">
-          <div className="dash-widget">
+          <div className="dash-widget" {...wProps('tasks-today', 'left')}>
             <div className="widget-header">
+              <span className="widget-drag-handle" {...gripProps('tasks-today')}><GripVertical size={13} /></span>
               <CheckSquare size={14} strokeWidth={2} color="#1B2B4B" />
               <h2 className="widget-title">{tr('tasksToday')}</h2>
               <Link href="/tasks" className="widget-link">{tr('seeAll')} <ArrowRight size={12} /></Link>
@@ -394,8 +448,9 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           </div>
 
           {upcomingTasks.length > 0 && (
-            <div className="dash-widget">
+            <div className="dash-widget" {...wProps('upcoming', 'left')}>
               <div className="widget-header">
+                <span className="widget-drag-handle" {...gripProps('upcoming')}><GripVertical size={13} /></span>
                 <Clock size={14} strokeWidth={2} color="#5C5C5C" />
                 <h2 className="widget-title">{tr('upcoming')}</h2>
               </div>
@@ -408,8 +463,9 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           )}
 
           {/* Active Projects */}
-          <div className="dash-widget">
+          <div className="dash-widget" {...wProps('active-projects', 'left')}>
             <div className="widget-header">
+              <span className="widget-drag-handle" {...gripProps('active-projects')}><GripVertical size={13} /></span>
               <FolderKanban size={14} strokeWidth={2} color="#1B2B4B" />
               <h2 className="widget-title">{tr('activeProjects')}</h2>
               <Link href="/projects" className="widget-link">{tr('seeAllM')} <ArrowRight size={12} /></Link>
@@ -433,14 +489,121 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           </div>
 
           {/* Daily checklist */}
-          <DailyChecklist userId={currentUserId} />
+          <div {...wProps('daily-checklist', 'left')}>
+            <DailyChecklist userId={currentUserId} />
+          </div>
+
+          {/* Xats recents */}
+          <div className="dash-widget" {...wProps('chat-pending', 'left')}>
+            <div className="widget-header">
+              <span className="widget-drag-handle" {...gripProps('chat-pending')}><GripVertical size={13} /></span>
+              <MessageCircle size={14} strokeWidth={2} color="#1B2B4B" />
+              <h2 className="widget-title">Xats recents</h2>
+              <button className="widget-link" style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#9CA3AF', fontFamily: 'inherit', padding: 0 }}
+                onClick={() => window.dispatchEvent(new CustomEvent('open-fab-chat', { detail: { kind: 'list' } }))}>
+                Veure tots <ArrowRight size={12} />
+              </button>
+            </div>
+            <div className="task-list">
+              {/* Global fixat */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderBottom: '1px solid #F3F4F6', cursor: 'pointer' }}
+                onClick={() => window.dispatchEvent(new CustomEvent('toggle-team-chat', { detail: { open: true } }))}>
+                <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg,#1B2B4B,#3B6FD4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#111827' }}>Chat de l'equip</div>
+                  <div style={{ fontSize: 11.5, color: '#94A3B8' }}>Xat global · Tots els membres</div>
+                </div>
+                <span style={{ fontSize: 9.5, background: '#EFF6FF', color: '#3B82F6', padding: '2px 6px', borderRadius: 5, fontWeight: 700, flexShrink: 0 }}>GLOBAL</span>
+              </div>
+              {/* DMs */}
+              {dmWidgetItems.map(dm => {
+                const body = (dm.lastMsg ?? '').replace(/@\[([^\]]+)\]\([^)]+\)/g, '@$1')
+                const peer = profiles.find(p => p.id === dm.peerId) || { id: dm.peerId, full_name: dm.peerName, avatar_url: dm.peerAvatar }
+                return (
+                  <div key={dm.peerId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderBottom: '1px solid #F3F4F6', cursor: 'pointer' }}
+                    onClick={() => window.dispatchEvent(new CustomEvent('open-fab-chat', { detail: { kind: 'dm', peer } }))}>
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg,#1B2B4B,#3B6FD4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'white', overflow: 'hidden' }}>
+                        {dm.peerAvatar ? <img src={dm.peerAvatar} alt={dm.peerName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : getInitials(dm.peerName)}
+                      </div>
+                      <span style={{ position: 'absolute', bottom: 0, right: 0, width: 8, height: 8, borderRadius: '50%', background: '#22C55E', border: '1.5px solid white' }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: '#111827' }}>{dm.peerName}</div>
+                      <div style={{ fontSize: 12, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {body.length > 48 ? body.slice(0, 48) + '…' : body}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+              {dmWidgetItems.length === 0 && (
+                <div style={{ padding: '16px 14px', fontSize: 12.5, color: '#9CA3AF', textAlign: 'center' }}>
+                  Encara no tens missatges directes
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Right: Avui a Guinew + Activity */}
+        {/* Right: Atenció + Avui a Guinew + Activity */}
         <div className="dash-col">
+          {/* Atenció requerida */}
+          {attentionItems.length > 0 && (
+            <div className="attention-block dash-widget" {...wProps('attention', 'right')}>
+              <div className="attention-header">
+                <span className="widget-drag-handle" {...gripProps('attention')}><GripVertical size={13} /></span>
+                <AlertCircle size={15} strokeWidth={2} color="#DC2626" />
+                <h2 className="attention-title">{tr('needsAttention')}</h2>
+                <span className="attention-count">{attentionItems.length}</span>
+              </div>
+              <div className="attention-list">
+                {attentionItems.map(item => (
+                  <div key={item.id} className="attention-item">
+                    <div className="attention-dot" style={{ background: levelDot[item.level] }} />
+                    <div className="attention-info">
+                      <div className="attention-item-title">{item.title}</div>
+                      <div className="attention-item-sub">{item.subtitle}</div>
+                    </div>
+                    <div className="attention-actions">
+                      {item.taskId && (
+                        <button
+                          className="attn-btn attn-btn--primary"
+                          onClick={() => {
+                            const t = localTasks.find(t => t.id === item.taskId)
+                            if (t) setSelectedTask(t)
+                          }}
+                        >
+                          {tr('open')}
+                        </button>
+                      )}
+                      {item.taskId && (
+                        <button
+                          className="attn-btn attn-btn--resolve"
+                          onClick={() => item.taskId && handleCompleteTask(item.taskId)}
+                        >
+                          {tr('markResolved')}
+                        </button>
+                      )}
+                      <button
+                        className="attn-btn attn-btn--dismiss"
+                        onClick={() => setDismissedItems(prev => new Set(prev).add(item.id))}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Avui a Guinew */}
-          <div className="dash-widget">
+          <div className="dash-widget" {...wProps('today-at-guinew', 'right')}>
             <div className="widget-header">
+              <span className="widget-drag-handle" {...gripProps('today-at-guinew')}><GripVertical size={13} /></span>
               <Calendar size={14} strokeWidth={2} color="#1B2B4B" />
               <h2 className="widget-title">{tr('todayAtGuinew')}</h2>
               <Link href="/calendar" className="widget-link">{tr('calendar')} <ArrowRight size={12} /></Link>
@@ -518,8 +681,9 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
 
           {/* Inbox */}
           {inboxTotal > 0 && (
-            <div className="dash-widget">
+            <div className="dash-widget" {...wProps('inbox', 'right')}>
               <div className="widget-header">
+                <span className="widget-drag-handle" {...gripProps('inbox')}><GripVertical size={13} /></span>
                 <AlertCircle size={14} strokeWidth={2} color="#1B2B4B" />
                 <h2 className="widget-title">Inbox</h2>
                 <span className="inbox-badge">{inboxTotal}</span>
@@ -554,8 +718,9 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
 
           {/* Bloquejos */}
           {localBlockedTasks.length > 0 && (
-            <div className="dash-widget dash-widget--blocked">
+            <div className="dash-widget dash-widget--blocked" {...wProps('blocked', 'right')}>
               <div className="widget-header">
+                <span className="widget-drag-handle" {...gripProps('blocked')}><GripVertical size={13} /></span>
                 <AlertCircle size={14} strokeWidth={2} color="#D97706" />
                 <h2 className="widget-title" style={{ color: '#D97706' }}>{tr('blockers')} ({localBlockedTasks.length})</h2>
               </div>
@@ -583,8 +748,9 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           )}
 
           {/* Activity feed */}
-          <div className="dash-widget">
+          <div className="dash-widget" {...wProps('activity', 'right')}>
             <div className="widget-header">
+              <span className="widget-drag-handle" {...gripProps('activity')}><GripVertical size={13} /></span>
               <TrendingUp size={14} strokeWidth={2} color="#5C5C5C" />
               <h2 className="widget-title">{tr('recentActivity')}</h2>
             </div>
@@ -971,6 +1137,44 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
         .dash-widget:hover {
           box-shadow: 0 6px 20px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
           transform: translateY(-1px);
+        }
+
+        .dash-widget .widget-drag-handle {
+          opacity: 0;
+          color: #C0C0C0;
+          cursor: grab;
+          display: flex;
+          align-items: center;
+          padding: 0 2px;
+          transition: opacity 0.15s;
+          flex-shrink: 0;
+        }
+        .dash-widget:hover .widget-drag-handle { opacity: 1; }
+        .dash-widget .widget-drag-handle:active { cursor: grabbing; }
+
+        [data-drag-target="top"]::before {
+          content: '';
+          position: absolute;
+          top: -3px;
+          left: 8px;
+          right: 8px;
+          height: 3px;
+          background: #3B82F6;
+          border-radius: 2px;
+          z-index: 20;
+          pointer-events: none;
+        }
+        [data-drag-target="bottom"]::after {
+          content: '';
+          position: absolute;
+          bottom: -3px;
+          left: 8px;
+          right: 8px;
+          height: 3px;
+          background: #3B82F6;
+          border-radius: 2px;
+          z-index: 20;
+          pointer-events: none;
         }
 
         .widget-header {

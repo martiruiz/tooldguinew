@@ -47,6 +47,7 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
   const [view, setView] = useState<View>('kanban')
   const [localTasks, setLocalTasks] = useState(tasks)
   const [showNew, setShowNew] = useState(false)
+  const pendingTaskIdRef = useRef<string | null>(null)
   const [newTaskStatus, setNewTaskStatus] = useState<Task['status']>('todo')
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [search, setSearch] = useState('')
@@ -74,6 +75,7 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
           .eq('id', payload.new.id)
           .single()
         if (!data) return
+        if (pendingTaskIdRef.current === data.id) return
         setLocalTasks(prev => prev.some(t => t.id === data.id) ? prev : [data as Task, ...prev])
       })
       .subscribe()
@@ -160,6 +162,10 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
     setLocalTasks((prev) => prev.some(t => t.id === newTask.id)
       ? prev.map(t => t.id === newTask.id ? newTask : t)
       : [newTask, ...prev])
+  }
+
+  const handleTaskDiscarded = (taskId: string) => {
+    setLocalTasks((prev) => prev.filter(t => t.id !== taskId))
   }
 
   const handleTaskUpdated = (updated: Task) => {
@@ -526,8 +532,10 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
           profiles={profiles}
           currentUserId={currentUserId}
           defaultStatus={newTaskStatus}
-          onClose={() => setShowNew(false)}
-          onCreated={handleTaskCreated}
+          onClose={() => { setShowNew(false); pendingTaskIdRef.current = null }}
+          onCreated={(t) => { pendingTaskIdRef.current = null; handleTaskCreated(t); setShowNew(false) }}
+          onDiscarded={handleTaskDiscarded}
+          onPending={(id) => { pendingTaskIdRef.current = id }}
         />
       )}
 
@@ -789,6 +797,12 @@ const COL_COLORS = ['#2196F3','#00BCD4','#3F51B5','#9C27B0','#E91E63','#F44336',
 function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, onTitleSave, onColDoubleClick }: { tasks: Task[]; allLabels: LabelDef[]; onStatusChange: (id: string, status: string) => void; onTaskClick: (t: Task) => void; onDelete: (id: string) => void; onTitleSave: (id: string, title: string) => void; onColDoubleClick: (status: string) => void }) {
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dragOverCol, setDragOverCol] = useState<string | null>(null)
+  const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null)
+  const [insertBefore, setInsertBefore] = useState(true)
+  const [colOrders, setColOrders] = useState<Record<string, string[]>>(() => {
+    if (typeof window === 'undefined') return {}
+    try { return JSON.parse(localStorage.getItem('kanban-col-orders') || '{}') } catch { return {} }
+  })
   const [editingCol, setEditingCol] = useState<string | null>(null)
   const [editingLabelStatus, setEditingLabelStatus] = useState<string | null>(null)
   const [colCustom, setColCustom] = useState<Record<string, { color: string; icon: string; label?: string }>>(() => {
@@ -869,14 +883,55 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
   }
 
   const handleDrop = (status: string) => {
-    if (draggedId && draggedId !== status) {
+    if (draggedId) {
       const task = tasks.find((t) => t.id === draggedId)
       if (task && task.status !== status) {
         onStatusChange(draggedId, status)
+        // Add to end of target column order
+        setColOrders(prev => {
+          const colTaskIds = (prev[status] || tasks.filter(t => t.status === status).map(t => t.id)).filter(id => id !== draggedId)
+          const next = { ...prev, [status]: [...colTaskIds, draggedId] }
+          localStorage.setItem('kanban-col-orders', JSON.stringify(next))
+          return next
+        })
       }
     }
     setDraggedId(null)
     setDragOverCol(null)
+    setDragOverTaskId(null)
+  }
+
+  const handleCardDragOver = (e: React.DragEvent, taskId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+    setInsertBefore(e.clientY < rect.top + rect.height / 2)
+    setDragOverTaskId(taskId)
+  }
+
+  const handleCardDrop = (e: React.DragEvent, colStatus: string, targetTaskId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!draggedId || draggedId === targetTaskId) {
+      setDraggedId(null); setDragOverCol(null); setDragOverTaskId(null)
+      return
+    }
+    const draggedTask = tasks.find(t => t.id === draggedId)
+    if (!draggedTask) return
+    if (draggedTask.status !== colStatus) {
+      onStatusChange(draggedId, colStatus)
+    }
+    setColOrders(prev => {
+      const colTaskIds = (prev[colStatus] || tasks.filter(t => t.status === colStatus || t.id === draggedId).filter(t => t.status === colStatus).map(t => t.id))
+      const base = colTaskIds.filter(id => id !== draggedId)
+      const targetIdx = base.indexOf(targetTaskId)
+      const insertIdx = insertBefore ? targetIdx : targetIdx + 1
+      base.splice(Math.max(0, insertIdx), 0, draggedId)
+      const next = { ...prev, [colStatus]: base }
+      localStorage.setItem('kanban-col-orders', JSON.stringify(next))
+      return next
+    })
+    setDraggedId(null); setDragOverCol(null); setDragOverTaskId(null)
   }
 
   return (
@@ -890,7 +945,11 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
       style={{ cursor: 'grab' }}
     >
       {columns.map((col) => {
-        const colTasks = tasks.filter((t) => t.status === col.status)
+        const baseTasks = tasks.filter((t) => t.status === col.status)
+        const order = colOrders[col.status]
+        const colTasks = order
+          ? [...order.filter(id => baseTasks.find(t => t.id === id)).map(id => baseTasks.find(t => t.id === id)!), ...baseTasks.filter(t => !order.includes(t.id))]
+          : baseTasks
         const isOver = dragOverCol === col.status
         return (
           <div
@@ -972,18 +1031,31 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
                 </div>
               ) : (
                 colTasks.map((task) => (
-                  <KanbanCard
+                  <div
                     key={task.id}
-                    task={task}
-                    allLabels={allLabels}
-                    isDragging={draggedId === task.id}
-                    onDragStart={() => setDraggedId(task.id)}
-                    onDragEnd={() => { setDraggedId(null); setDragOverCol(null) }}
-                    onStatusChange={onStatusChange}
-                    onClick={() => onTaskClick(task)}
-                    onDelete={onDelete}
-                    onTitleSave={onTitleSave}
-                  />
+                    style={{ position: 'relative' }}
+                    onDragOver={e => handleCardDragOver(e, task.id)}
+                    onDragLeave={() => setDragOverTaskId(null)}
+                    onDrop={e => handleCardDrop(e, col.status, task.id)}
+                  >
+                    {dragOverTaskId === task.id && insertBefore && draggedId !== task.id && (
+                      <div style={{ height: 3, background: '#2563EB', borderRadius: 2, margin: '0 4px 2px', boxShadow: '0 0 6px rgba(37,99,235,0.5)' }} />
+                    )}
+                    <KanbanCard
+                      task={task}
+                      allLabels={allLabels}
+                      isDragging={draggedId === task.id}
+                      onDragStart={() => setDraggedId(task.id)}
+                      onDragEnd={() => { setDraggedId(null); setDragOverCol(null); setDragOverTaskId(null) }}
+                      onStatusChange={onStatusChange}
+                      onClick={() => onTaskClick(task)}
+                      onDelete={onDelete}
+                      onTitleSave={onTitleSave}
+                    />
+                    {dragOverTaskId === task.id && !insertBefore && draggedId !== task.id && (
+                      <div style={{ height: 3, background: '#2563EB', borderRadius: 2, margin: '2px 4px 0', boxShadow: '0 0 6px rgba(37,99,235,0.5)' }} />
+                    )}
+                  </div>
                 ))
               )}
             </div>

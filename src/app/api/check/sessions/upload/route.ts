@@ -29,7 +29,12 @@ export async function POST(req: NextRequest) {
       await supabaseAdmin.storage.createBucket(BUCKET, { public: true })
     }
 
-    const path = `sessions/${sessionId}/${phase}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`
+    const safeName = file.name
+      .normalize('NFD').replace(/\p{M}/gu, '')
+      .replace(/[^a-zA-Z0-9._-]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+(?=\.)/g, '')
+    const path = `sessions/${sessionId}/${phase}/${Date.now()}_${safeName}`
     const bytes = await file.arrayBuffer()
 
     const { error } = await supabaseAdmin.storage

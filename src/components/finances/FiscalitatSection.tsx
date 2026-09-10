@@ -88,6 +88,13 @@ interface CarteraRecord {
   estado: string
 }
 
+interface SupplierBasic {
+  id: string
+  name: string
+  ivaPct?: number
+  irpfPct?: number
+}
+
 interface Props {
   fiscalData: FiscalData
   saveFiscal: (d: FiscalData) => void
@@ -95,6 +102,7 @@ interface Props {
   totalFees: number
   directCosts: number
   carteraRecords?: CarteraRecord[]
+  suppliers?: SupplierBasic[]
 }
 
 interface BaseKpis { totalFees: number; directCosts: number }
@@ -125,7 +133,7 @@ export function computeFiscalKpis(fiscalData: FiscalData, operativeResult: numbe
   return { ivaRepercutit, ivaDeduible, ivaNet, irpfAcumulat, isEstimat, ivaPagat, irpfPagat, isPagat, ivaPendent, irpfPendent, isPendent, totalImpostos, autoIng, autoGas }
 }
 
-export function FiscalitatSection({ fiscalData, saveFiscal, operativeResult, totalFees, directCosts, carteraRecords = [] }: Props) {
+export function FiscalitatSection({ fiscalData, saveFiscal, operativeResult, totalFees, directCosts, carteraRecords = [], suppliers = [] }: Props) {
   const [tab, setTab] = useState<FiscTab>('resum')
 
   const fkpis = useMemo(() => computeFiscalKpis(fiscalData, operativeResult, { totalFees, directCosts }), [fiscalData, operativeResult, totalFees, directCosts])
@@ -149,7 +157,7 @@ export function FiscalitatSection({ fiscalData, saveFiscal, operativeResult, tot
 
       {tab === 'resum' && <FiscResumTab fkpis={fkpis} fiscalData={fiscalData} />}
       {tab === 'ingressos' && <IngressosTab fiscalData={fiscalData} saveFiscal={saveFiscal} carteraRecords={carteraRecords} />}
-      {tab === 'gastos' && <GastosTab fiscalData={fiscalData} saveFiscal={saveFiscal} />}
+      {tab === 'gastos' && <GastosTab fiscalData={fiscalData} saveFiscal={saveFiscal} suppliers={suppliers} />}
       {tab === 'liquidacions' && <LiquidacionsTab fiscalData={fiscalData} saveFiscal={saveFiscal} fkpis={fkpis} />}
       {tab === 'config' && <FiscConfigTab fiscalData={fiscalData} saveFiscal={saveFiscal} />}
 
@@ -403,13 +411,27 @@ function IngressosTab({ fiscalData, saveFiscal, carteraRecords = [] }: { fiscalD
 }
 
 /* ─── GASTOS ─── */
-function GastosTab({ fiscalData, saveFiscal }: { fiscalData: FiscalData; saveFiscal: (d: FiscalData) => void }) {
+function GastosTab({ fiscalData, saveFiscal, suppliers }: { fiscalData: FiscalData; saveFiscal: (d: FiscalData) => void; suppliers: SupplierBasic[] }) {
   const [rows, setRows] = useState<GastoFiscal[]>(fiscalData.gastos)
   const [saved, setSaved] = useState(false)
 
   function addRow() {
     const r: GastoFiscal = { id: uid(), data: '', proveidor: '', concepte: '', base: 0, ivaPct: 21, iva: 0, ivaDeduiblePct: 100, ivaDeduible: 0, irpfPct: 0, irpf: 0, total: 0, estat: 'Pendent' }
     setRows(prev => [r, ...prev])
+  }
+
+  function selectSupplier(rowId: string, supplierName: string) {
+    const sup = suppliers.find(s => s.name === supplierName)
+    setRows(prev => prev.map(r => {
+      if (r.id !== rowId) return r
+      const ivaPct = sup?.ivaPct ?? 21
+      const irpfPct = sup?.irpfPct ?? 0
+      const iva = Math.round((r.base * ivaPct / 100) * 100) / 100
+      const ivaDeduible = Math.round((iva * r.ivaDeduiblePct / 100) * 100) / 100
+      const irpf = Math.round((r.base * irpfPct / 100) * 100) / 100
+      const total = Math.round((r.base + iva - irpf) * 100) / 100
+      return { ...r, proveidor: supplierName, ivaPct, irpfPct, iva, ivaDeduible, irpf, total }
+    }))
   }
 
   function updateRow(id: string, field: keyof GastoFiscal, val: string | number) {
@@ -472,7 +494,18 @@ function GastosTab({ fiscalData, saveFiscal }: { fiscalData: FiscalData; saveFis
           {rows.map(r => (
             <div key={r.id} className="fst-row gas-cols">
               <div className="fst-cell"><input className="fst-inp" type="date" value={r.data} onChange={e => updateRow(r.id, 'data', e.target.value)} /></div>
-              <div className="fst-cell"><input className="fst-inp" value={r.proveidor} onChange={e => updateRow(r.id, 'proveidor', e.target.value)} placeholder="Proveïdor..." /></div>
+              <div className="fst-cell">
+                {suppliers.length > 0 ? (
+                  <select className="fst-sel" value={r.proveidor} onChange={e => selectSupplier(r.id, e.target.value)}>
+                    <option value="">Proveïdor...</option>
+                    {suppliers.filter(s => s.name.trim()).sort((a, b) => a.name.localeCompare(b.name)).map(s => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input className="fst-inp" value={r.proveidor} onChange={e => updateRow(r.id, 'proveidor', e.target.value)} placeholder="Proveïdor..." />
+                )}
+              </div>
               <div className="fst-cell"><input className="fst-inp" value={r.concepte} onChange={e => updateRow(r.id, 'concepte', e.target.value)} placeholder="Concepte..." /></div>
               <div className="fst-cell fst-cell--r"><input className="fst-inp fst-inp--num" type="number" min="0" step="0.01" value={r.base || ''} onChange={e => updateRow(r.id, 'base', parseFloat(e.target.value) || 0)} /></div>
               <div className="fst-cell fst-cell--r"><input className="fst-inp fst-inp--num" type="number" min="0" max="100" step="1" value={r.ivaPct} onChange={e => updateRow(r.id, 'ivaPct', parseFloat(e.target.value) || 0)} /></div>

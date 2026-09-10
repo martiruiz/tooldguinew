@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState, useRef } from 'react'
-import { Bell, Check, CheckCheck, X } from 'lucide-react'
+import { Bell, Check, CheckCheck, X, ClipboardList, Edit3, CheckSquare, MessageSquare, AtSign, Clock, User, FolderOpen, Settings2 } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, Notification } from '@/types'
@@ -97,16 +97,21 @@ export function Topbar({ user, title }: Props) {
     setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
   }
 
-  const typeIcon: Record<string, string> = {
-    task_assigned: '📋',
-    task_updated: '✏️',
-    task_completed: '✅',
-    comment: '💬',
-    mention: '🔔',
-    deadline: '⏰',
-    client: '👤',
-    project: '📁',
-    system: '⚙️',
+  const typeIconMap: Record<string, { Icon: React.ElementType; bg: string; color: string }> = {
+    task_assigned: { Icon: ClipboardList, bg: '#EFF6FF', color: '#3B82F6' },
+    task_updated:  { Icon: Edit3,         bg: '#F5F3FF', color: '#7C3AED' },
+    task_completed:{ Icon: CheckSquare,   bg: '#F0FDF4', color: '#16A34A' },
+    comment:       { Icon: MessageSquare, bg: '#FFF7ED', color: '#EA580C' },
+    mention:       { Icon: AtSign,        bg: '#EFF6FF', color: '#2563EB' },
+    deadline:      { Icon: Clock,         bg: '#FEF2F2', color: '#DC2626' },
+    client:        { Icon: User,          bg: '#F0FDF4', color: '#059669' },
+    project:       { Icon: FolderOpen,    bg: '#FEFCE8', color: '#CA8A04' },
+    system:        { Icon: Settings2,     bg: '#F8F8F8', color: '#6B7280' },
+  }
+  const defaultIconDef = { Icon: Bell, bg: '#F8F8F8', color: '#6B7280' }
+
+  function parseNotifBody(body: string): string {
+    return body.replace(/@\[([^\]]+)\]\([^)]+\)/g, '@$1')
   }
 
   return (
@@ -157,10 +162,20 @@ export function Topbar({ user, title }: Props) {
                       className={`notif-item${n.read ? '' : ' notif-item--unread'}`}
                       onClick={() => markOneRead(n.id)}
                     >
-                      <div className="notif-icon">{typeIcon[n.type] || '🔔'}</div>
+                      <div className="notif-icon">
+                        {(() => {
+                          const def = typeIconMap[n.type] || defaultIconDef
+                          const { Icon } = def
+                          return (
+                            <span style={{ width: 32, height: 32, borderRadius: 8, background: def.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <Icon size={15} color={def.color} strokeWidth={1.8} />
+                            </span>
+                          )
+                        })()}
+                      </div>
                       <div className="notif-content">
                         <div className="notif-title">{n.title}</div>
-                        {n.body && <div className="notif-body">{n.body}</div>}
+                        {n.body && <div className="notif-body">{parseNotifBody(n.body)}</div>}
                         <div className="notif-time">{timeAgo(n.created_at)}</div>
                       </div>
                       {!n.read && (
@@ -336,7 +351,7 @@ export function Topbar({ user, title }: Props) {
         .notif-item--unread { background: #F8FAFF; }
         .notif-item--unread:hover { background: #F0F5FF; }
 
-        .notif-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+        .notif-icon { flex-shrink: 0; margin-top: 1px; }
 
         .notif-content { flex: 1; min-width: 0; }
         .notif-title { font-size: 13px; font-weight: 600; color: #0a0a0a; line-height: 1.3; }

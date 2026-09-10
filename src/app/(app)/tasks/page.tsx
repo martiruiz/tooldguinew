@@ -17,7 +17,7 @@ export default async function TasksPage() {
       project:projects(id, name),
       responsible:profiles!tasks_responsible_id_fkey(id, full_name, avatar_url)
     `)
-    .order('deadline', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: false })
 
   const { data: clients } = await supabase.from('clients').select('id, name').eq('status', 'active').order('name')
   const { data: projects } = await supabase.from('projects').select('id, name').eq('status', 'active').order('name')

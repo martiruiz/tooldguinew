@@ -1,8 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdmin } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import { Topbar } from '@/components/layout/Topbar'
 import { DashboardContent } from '@/components/dashboard/DashboardContent'
-import type { Profile } from '@/types'
+import { getCalendarClientWithRefresh } from '@/lib/google'
+import type { Profile, Meeting } from '@/types'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -56,6 +58,66 @@ export default async function DashboardPage() {
     .gte('start_time', todayStart.toISOString())
     .lte('start_time', todayEnd.toISOString())
     .order('start_time', { ascending: true })
+
+  // Google Calendar events today (from all connected team members)
+  let gcalMeetings: Meeting[] = []
+  try {
+    const admin = createAdmin(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    const { data: allTokens } = await admin
+      .from('google_calendar_tokens')
+      .select('user_id, access_token, refresh_token, expiry_date')
+
+    if (allTokens && allTokens.length > 0) {
+      const events = await Promise.all(
+        allTokens.map(async (tokenRow: { user_id: string; access_token: string; refresh_token: string | null; expiry_date: number | null }) => {
+          if (!tokenRow.access_token) return []
+          try {
+            const calendar = await getCalendarClientWithRefresh(tokenRow.user_id, {
+              access_token: tokenRow.access_token,
+              refresh_token: tokenRow.refresh_token,
+              expiry_date: tokenRow.expiry_date,
+            })
+            const res = await calendar.events.list({
+              calendarId: 'primary',
+              timeMin: todayStart.toISOString(),
+              timeMax: todayEnd.toISOString(),
+              singleEvents: true,
+              orderBy: 'startTime',
+              maxResults: 20,
+            })
+            return (res.data.items || []).map((e: any) => ({
+              id: `gcal-${tokenRow.user_id}-${e.id}`,
+              title: e.summary || '(Sense títol)',
+              start_time: e.start?.dateTime || e.start?.date || todayStart.toISOString(),
+              end_time: e.end?.dateTime || e.end?.date || todayEnd.toISOString(),
+              meet_url: e.hangoutLink || undefined,
+              description: e.description || undefined,
+              created_by: tokenRow.user_id,
+              created_at: e.created || new Date().toISOString(),
+            } as Meeting))
+          } catch {
+            return []
+          }
+        })
+      )
+      // Merge + deduplicate by title+start_time, prefer gcal entries
+      const gcalRaw: Meeting[] = events.flat()
+      const seen = new Set<string>()
+      const merged: Meeting[] = []
+      for (const m of [...(todayMeetings || []), ...gcalRaw]) {
+        const key = `${m.title?.toLowerCase()?.trim()}|${m.start_time?.slice(0, 16)}`
+        if (!seen.has(key)) { seen.add(key); merged.push(m) }
+      }
+      gcalMeetings = merged.sort((a, b) => a.start_time.localeCompare(b.start_time))
+    }
+  } catch (err) {
+    console.error('[dashboard] gcal fetch failed:', err)
+  }
+
+  const allTodayMeetings = gcalMeetings.length > 0 ? gcalMeetings : (todayMeetings || [])
 
   // Blocked tasks (any blocked task where user is responsible or created_by)
   const { data: blockedTasks } = await supabase
@@ -135,7 +197,7 @@ export default async function DashboardPage() {
         tasks={myTasks || []}
         projects={myProjects || []}
         activity={activity || []}
-        meetings={todayMeetings || []}
+        meetings={allTodayMeetings}
         profiles={allProfiles || []}
         clients={allClients || []}
         allProjects={allProjects || []}

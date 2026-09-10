@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { TaskDetailModal } from './TaskDetailModal'
@@ -16,15 +16,18 @@ interface Props {
   defaultProjectId?: string
   onClose: () => void
   onCreated: (task: Task) => void
+  onDiscarded?: (taskId: string) => void
+  onPending?: (taskId: string) => void
 }
 
 export function CreateTaskModal({
   clients, projects, profiles, currentUserId,
   defaultStatus, defaultClientId, defaultProjectId,
-  onClose, onCreated,
+  onClose, onCreated, onDiscarded, onPending,
 }: Props) {
   const [task, setTask] = useState<Task | null>(null)
   const [mounted, setMounted] = useState(false)
+  const savedRef = useRef(false)
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -49,7 +52,7 @@ export function CreateTaskModal({
       .single()
       .then(({ data, error }) => {
         if (error) { console.error('[CreateTaskModal]', error.message); onClose(); return }
-        if (data) setTask(data as Task)
+        if (data) { setTask(data as Task); onPending?.(data.id) }
       })
   }, [])
 
@@ -76,6 +79,15 @@ export function CreateTaskModal({
     document.body
   )
 
+  const handleClose = () => {
+    if (!savedRef.current && task) {
+      const supabase = createClient()
+      supabase.from('tasks').delete().eq('id', task.id).then(() => {})
+      onDiscarded?.(task.id)
+    }
+    onClose()
+  }
+
   return (
     <TaskDetailModal
       task={task}
@@ -83,10 +95,10 @@ export function CreateTaskModal({
       clients={clients}
       projects={projects}
       currentUserId={currentUserId}
-      onClose={onClose}
+      onClose={handleClose}
       onUpdated={(updated) => {
+        savedRef.current = true
         onCreated(updated)
-        // Keep modal open so user can fill in details
       }}
     />
   )
