@@ -24,15 +24,14 @@ export async function PATCH(req: NextRequest) {
   const { status, label, color, icon } = body
   if (!status) return NextResponse.json({ error: 'status required' }, { status: 400 })
 
-  const patch: Record<string, string> = { updated_at: new Date().toISOString() }
-  if (label !== undefined) patch.label = label
-  if (color !== undefined) patch.color = color
-  if (icon  !== undefined) patch.icon  = icon
+  const upsertData: Record<string, string> = { status, updated_at: new Date().toISOString() }
+  if (label !== undefined) upsertData.label = label
+  if (color !== undefined) upsertData.color = color
+  if (icon  !== undefined) upsertData.icon  = icon
 
   const { error } = await supabase
     .from('board_columns')
-    .update(patch)
-    .eq('status', status)
+    .upsert(upsertData, { onConflict: 'status' })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })

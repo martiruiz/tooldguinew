@@ -835,13 +835,14 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
   const saveColCustom = (status: string, patch: Partial<{ color: string; icon: string; label: string }>) => {
     const col = columns.find(c => c.status === status)!
     const current = colCustom[status] || { color: col.color, icon: DEFAULT_COL_ICONS[status] || 'RefreshCw', label: col.label }
-    const next = { ...colCustom, [status]: { ...current, ...patch } }
+    const merged = { ...current, ...patch }
+    const next = { ...colCustom, [status]: merged }
     setColCustom(next)
-    // Persist to DB (fire-and-forget)
+    // Persist to DB — always send all three fields so upsert creates row if missing
     fetch('/api/board/columns', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, ...patch }),
+      body: JSON.stringify({ status, label: merged.label, color: merged.color, icon: merged.icon }),
     }).catch(() => {})
     // Also keep localStorage as fallback cache
     localStorage.setItem('kanban-col-custom', JSON.stringify(next))
@@ -1067,7 +1068,7 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
         .kanban {
           display: flex;
           gap: 12px;
-          padding: 4px 28px 32px;
+          padding: 4px 16px 32px;
           overflow-x: auto;
           overflow-y: hidden;
           flex: 1;
@@ -1084,9 +1085,9 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
         }
 
         .kanban-col {
-          width: 260px;
-          min-width: 260px;
-          flex-shrink: 0;
+          flex: 1 1 0;
+          min-width: 200px;
+          max-width: 340px;
           display: flex;
           flex-direction: column;
           background: #F4F4F4;
