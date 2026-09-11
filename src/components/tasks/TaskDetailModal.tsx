@@ -176,19 +176,27 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
     return () => { supabase.removeChannel(channel) }
   }, [task.id, currentUserId])
 
+  const patchTask = async (patch: object): Promise<Task | null> => {
+    const res = await fetch(`/api/tasks/${task.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
+    if (!res.ok) { console.error('[patchTask] error:', await res.text()); return null }
+    return res.json()
+  }
+
   const dirty = (field: string, value: string) => {
     setForm((p) => ({ ...p, [field]: value }))
     setIsDirty(true)
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
-    autoSaveTimer.current = setTimeout(() => {
-      const supabase = createClient()
-      const patch: Record<string, any> = { [field]: value.trim() || null }
+    autoSaveTimer.current = setTimeout(async () => {
       if (field === 'title' && !value.trim()) return
-      supabase.from('tasks').update(patch).eq('id', task.id).then(({ error }) => {
-        if (error) { console.error('[auto-save] error:', error.message); return }
-        setSaved(true); setIsDirty(false); setTimeout(() => setSaved(false), 1500)
-        fetchFullTask()
-      })
+      const patch: Record<string, any> = { [field]: value.trim() || null }
+      const updated = await patchTask(patch)
+      if (!updated) return
+      setSaved(true); setIsDirty(false); setTimeout(() => setSaved(false), 1500)
+      onUpdated(updated)
     }, 1000)
   }
 
@@ -199,34 +207,26 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
     }
     setTitleError(false)
     setSaving(true)
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from('tasks')
-      .update({
-        title: form.title.trim(),
-        description: form.description || null,
-        status: form.status,
-        priority: form.priority,
-        deadline: form.deadline || null,
-        responsible_id: form.responsible_id || null,
-        client_id: form.client_id || null,
-        project_id: form.project_id || null,
-        checklist,
-        subtasks,
-        drive_links: driveLinks,
-        photos,
-        watcher_ids: watcherIds,
-        labels: labelIds,
-        completed_at: form.status === 'done' ? new Date().toISOString() : null,
-      })
-      .eq('id', task.id)
-      .select(`*, client:clients(id,name), project:projects(id,name), responsible:profiles!tasks_responsible_id_fkey(id,full_name)`)
-      .single()
-    if (error) console.error('[saveAll] error:', error.message)
-    if (!error) {
-      onUpdated((data ?? { ...task, ...form }) as Task)
+    const updated = await patchTask({
+      title: form.title.trim(),
+      description: form.description || null,
+      status: form.status,
+      priority: form.priority,
+      deadline: form.deadline || null,
+      responsible_id: form.responsible_id || null,
+      client_id: form.client_id || null,
+      project_id: form.project_id || null,
+      checklist,
+      subtasks,
+      drive_links: driveLinks,
+      photos,
+      watcher_ids: watcherIds,
+      labels: labelIds,
+      completed_at: form.status === 'done' ? new Date().toISOString() : null,
+    })
+    if (updated) {
+      onUpdated(updated)
       setSaved(true); setIsDirty(false); setTimeout(() => setSaved(false), 2500)
-      // Log field changes
       if (form.title !== origForm.current.title) logActivity('title_changed', { title: form.title })
       if (form.description !== origForm.current.description) logActivity('description_changed', {})
       if (form.deadline !== origForm.current.deadline) logActivity('deadline_set', { deadline: form.deadline || null })
@@ -236,23 +236,20 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
   }
 
   const fetchFullTask = async () => {
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('tasks')
-      .select('*, client:clients(id,name), project:projects(id,name), responsible:profiles!tasks_responsible_id_fkey(id,full_name,avatar_url)')
-      .eq('id', task.id)
-      .single()
-    if (data) onUpdated(data as Task)
+    const res = await fetch(`/api/tasks/${task.id}`)
+    if (!res.ok) return
+    const data = await res.json()
+    onUpdated(data as Task)
   }
 
   const saveDropdown = async (field: string, value: string) => {
     const prev = form[field as keyof typeof form]
-    const updated = { ...form, [field]: value }
-    setForm(updated)
-    const supabase = createClient()
-    const { error } = await supabase.from('tasks').update({ [field]: value || null }).eq('id', task.id)
-    if (error) { console.error('[saveDropdown] error:', error.message, field); return }
-    fetchFullTask()
+    setForm(f => ({ ...f, [field]: value }))
+    const patch: Record<string, any> = { [field]: value || null }
+    if (field === 'status' && value === 'done') patch.completed_at = new Date().toISOString()
+    const updated = await patchTask(patch)
+    if (!updated) { setForm(f => ({ ...f, [field]: prev })); return }
+    onUpdated(updated)
     if (field === 'status' && value !== prev) {
       const fromLabel = STATUS_COLS.find(c => c.status === prev)?.label || prev
       const toLabel = STATUS_COLS.find(c => c.status === value)?.label || value
@@ -274,9 +271,8 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
   }
 
   const persist = async (patch: object) => {
-    const supabase = createClient()
-    const { error } = await supabase.from('tasks').update(patch).eq('id', task.id)
-    if (error) console.error('[persist] error:', error.message, patch)
+    const updated = await patchTask(patch)
+    if (updated) onUpdated(updated)
   }
 
   const refreshActivities = async () => {

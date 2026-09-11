@@ -151,11 +151,19 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
     setLocalTasks((prev) =>
       prev.map((t) => t.id === taskId ? { ...t, status: newStatus as Task['status'] } : t)
     )
-    const supabase = createClient()
-    await supabase.from('tasks').update({
-      status: newStatus,
-      completed_at: newStatus === 'done' ? new Date().toISOString() : null,
-    }).eq('id', taskId)
+    const patch: Record<string, any> = { status: newStatus }
+    if (newStatus === 'done') patch.completed_at = new Date().toISOString()
+    const res = await fetch(`/api/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
+    if (!res.ok) {
+      // Revert optimistic update on failure
+      setLocalTasks((prev) =>
+        prev.map((t) => t.id === taskId ? { ...t, status: tasks.find(ot => ot.id === taskId)?.status ?? t.status } : t)
+      )
+    }
   }
 
   const handleTaskCreated = (newTask: Task) => {
@@ -176,14 +184,16 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
   const handleTitleSave = async (taskId: string, title: string) => {
     if (!title.trim()) return
     setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, title } : t))
-    const supabase = createClient()
-    await supabase.from('tasks').update({ title }).eq('id', taskId)
+    fetch(`/api/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title }),
+    }).catch(() => {})
   }
 
   const handleDeleteTask = async (taskId: string) => {
     setLocalTasks((prev) => prev.filter((t) => t.id !== taskId))
-    const supabase = createClient()
-    await supabase.from('tasks').delete().eq('id', taskId)
+    fetch(`/api/tasks/${taskId}`, { method: 'DELETE' }).catch(() => {})
   }
 
   const hasFilters = filterProjects.length > 0 || filterLabels.length > 0 || filterPersonId || filterStatus || filterDeadline || filterWatcher || sortBy !== 'manual'

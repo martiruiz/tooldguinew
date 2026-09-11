@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/serverAdmin'
 
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data, error } = await supabase
+  const admin = createAdminClient()
+  const { data, error } = await admin
     .from('board_columns')
     .select('status, label, color, icon')
     .order('status')
@@ -29,7 +31,8 @@ export async function PATCH(req: NextRequest) {
   if (color !== undefined) upsertData.color = color
   if (icon  !== undefined) upsertData.icon  = icon
 
-  const { error } = await supabase
+  const admin = createAdminClient()
+  const { error } = await admin
     .from('board_columns')
     .upsert(upsertData, { onConflict: 'status' })
 

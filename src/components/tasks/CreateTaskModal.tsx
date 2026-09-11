@@ -28,10 +28,13 @@ export function CreateTaskModal({
   const [task, setTask] = useState<Task | null>(null)
   const [mounted, setMounted] = useState(false)
   const savedRef = useRef(false)
+  const insertedRef = useRef(false)
 
   useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
+    if (insertedRef.current) return
+    insertedRef.current = true
     const supabase = createClient()
     supabase.from('tasks')
       .insert({
@@ -81,8 +84,7 @@ export function CreateTaskModal({
 
   const handleClose = () => {
     if (!savedRef.current && task) {
-      const supabase = createClient()
-      supabase.from('tasks').delete().eq('id', task.id).then(() => {})
+      fetch(`/api/tasks/${task.id}`, { method: 'DELETE' }).catch(() => {})
       onDiscarded?.(task.id)
     }
     onClose()
@@ -97,6 +99,8 @@ export function CreateTaskModal({
       currentUserId={currentUserId}
       onClose={handleClose}
       onUpdated={(updated) => {
+        const title = (updated.title || '').trim().toUpperCase()
+        if (!title || title === 'NOVA TASCA') return
         savedRef.current = true
         onCreated(updated)
       }}
