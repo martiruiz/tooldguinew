@@ -308,6 +308,11 @@ export function Topbar({ user, title }: Props) {
           box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
           overflow: hidden; z-index: 200;
         }
+        @media (max-width: 480px) {
+          .notif-panel {
+            position: fixed; top: 60px; left: 8px; right: 8px; width: auto;
+          }
+        }
 
         .notif-panel-head {
           display: flex; align-items: center; justify-content: space-between;
