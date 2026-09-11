@@ -207,32 +207,20 @@ export function Topbar({ user, title }: Props) {
             </div>
           </button>
           {profileOpen && (
-            <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: 'white', border: '1px solid #ECECEC', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.10)', minWidth: 160, zIndex: 200, padding: 4 }}>
-              <Link href="/profile" onClick={() => setProfileOpen(false)}
-                style={{ display: 'block', padding: '9px 14px', fontSize: 13.5, color: '#0a0a0a', textDecoration: 'none', borderRadius: 7, transition: 'background 0.12s' }}
-                onMouseEnter={e => (e.currentTarget.style.background = '#F5F5F5')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+            <div className="profile-dropdown">
+              <Link href="/profile" className="profile-dropdown-item" onClick={() => setProfileOpen(false)}>
                 Perfil
               </Link>
               {user.role === 'superadmin' && (
                 <>
-                  <div style={{ height: 1, background: '#F0F0F0', margin: '4px 0' }} />
-                  <Link href="/crm" onClick={() => setProfileOpen(false)}
-                    style={{ display: 'block', padding: '9px 14px', fontSize: 13.5, fontWeight: 600, color: '#1B2B4B', textDecoration: 'none', borderRadius: 7 }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#EEF2FF')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                  <div className="profile-dropdown-divider" />
+                  <Link href="/crm" className="profile-dropdown-item profile-dropdown-item--admin" onClick={() => setProfileOpen(false)}>
                     CRM
                   </Link>
-                  <Link href="/contracts" onClick={() => setProfileOpen(false)}
-                    style={{ display: 'block', padding: '9px 14px', fontSize: 13.5, fontWeight: 600, color: '#1B2B4B', textDecoration: 'none', borderRadius: 7 }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#EEF2FF')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                  <Link href="/contracts" className="profile-dropdown-item profile-dropdown-item--admin" onClick={() => setProfileOpen(false)}>
                     Contractes
                   </Link>
-                  <Link href="/finances" onClick={() => setProfileOpen(false)}
-                    style={{ display: 'block', padding: '9px 14px', fontSize: 13.5, fontWeight: 600, color: '#1B2B4B', textDecoration: 'none', borderRadius: 7 }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#EEF2FF')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                  <Link href="/finances" className="profile-dropdown-item profile-dropdown-item--admin" onClick={() => setProfileOpen(false)}>
                     Finances
                   </Link>
                 </>
@@ -400,6 +388,9 @@ export function Topbar({ user, title }: Props) {
         .topbar-user-info { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; }
         .topbar-user-name { font-size: 12.5px; font-weight: 600; color: #0a0a0a; white-space: nowrap; }
         .topbar-user-role { font-size: 10.5px; color: #9A9A9A; white-space: nowrap; text-transform: capitalize; }
+        @media (max-width: 640px) {
+          .topbar-user-info { display: none; }
+        }
 
         /* Profile dropdown */
         .topbar-profile-wrap { position: relative; display: flex; align-items: center; }
@@ -412,8 +403,13 @@ export function Topbar({ user, title }: Props) {
         .profile-dropdown {
           position: absolute; top: calc(100% + 8px); right: 0;
           background: white; border: 1px solid #ECECEC; border-radius: 10px;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.10); min-width: 160px;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.10); min-width: 180px;
           z-index: 200; overflow: hidden; padding: 4px;
+        }
+        @media (max-width: 480px) {
+          .profile-dropdown {
+            position: fixed; top: 60px; right: 8px; left: auto; min-width: 200px;
+          }
         }
         .profile-dropdown-item {
           display: block; padding: 9px 14px; font-size: 13.5px; color: #0a0a0a;
