@@ -205,7 +205,7 @@ export const TRANSLATIONS: TranslationMap = {
   accountManager:  { ca: 'Gestor de compte',      es: 'Gestor de cuenta',      en: 'Account manager' },
 
   // Projects
-  newProject:      { ca: 'Nou projecte',       es: 'Nuevo proyecto',    en: 'New project' },
+  newProject:      { ca: 'Nova campanya',       es: 'Nueva campaña',    en: 'New campaign' },
   projectName:     { ca: 'Nom del projecte',   es: 'Nombre del proyecto', en: 'Project name' },
   projectNameReq:  { ca: 'Nom del projecte *', es: 'Nombre del proyecto *', en: 'Project name *' },
 

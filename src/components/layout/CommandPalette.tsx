@@ -32,7 +32,7 @@ export function CommandPalette({ onNewTask, onNewClient, onNewProject }: Props) 
   const actions: Action[] = [
     { id: 'new-task', label: 'Nova tasca', description: 'Crear una nova tasca', icon: <CheckSquare size={15} />, action: () => { onNewTask?.(); setOpen(false) }, category: 'create' },
     { id: 'new-client', label: 'Nou client', description: 'Afegir un client nou', icon: <Users size={15} />, action: () => { onNewClient?.(); setOpen(false) }, category: 'create' },
-    { id: 'new-project', label: 'Nou projecte', description: 'Crear un nou projecte', icon: <FolderKanban size={15} />, action: () => { onNewProject?.(); setOpen(false) }, category: 'create' },
+    { id: 'new-project', label: 'Nova campanya', description: 'Crear un nou projecte', icon: <FolderKanban size={15} />, action: () => { onNewProject?.(); setOpen(false) }, category: 'create' },
     { id: 'nav-dashboard', label: 'Anar al Dashboard', icon: <ArrowRight size={15} />, action: () => { router.push('/dashboard'); setOpen(false) }, category: 'navigate' },
     { id: 'nav-tasks', label: 'Anar a Tasques', icon: <CheckSquare size={15} />, action: () => { router.push('/tasks'); setOpen(false) }, category: 'navigate' },
     { id: 'nav-clients', label: 'Anar a Clients', icon: <Users size={15} />, action: () => { router.push('/clients'); setOpen(false) }, category: 'navigate' },

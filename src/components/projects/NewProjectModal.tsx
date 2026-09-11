@@ -53,7 +53,7 @@ export function NewProjectModal({ clients, profiles, currentUserId, onClose, onC
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         <div className="modal-header">
-          <h2>Nou projecte</h2>
+          <h2>Nova campanya</h2>
           <button className="modal-close" onClick={onClose}><X size={16} /></button>
         </div>
 

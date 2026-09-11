@@ -98,7 +98,7 @@ export function ProjectsContent({ projects, clients, profiles, userRole }: Props
 
         <button className="btn-primary" onClick={() => setShowNewCampaign(true)}>
           <Plus size={14} strokeWidth={2.5} />
-          Nou projecte
+          Nova campanya
         </button>
       </div>
 
@@ -110,7 +110,7 @@ export function ProjectsContent({ projects, clients, profiles, userRole }: Props
           <p>Cap projecte trobat.</p>
           <button className="btn-primary" style={{ marginTop: '12px' }} onClick={() => setShowNewCampaign(true)}>
             <Plus size={14} strokeWidth={2.5} />
-            Nou projecte
+            Nova campanya
           </button>
         </div>
       ) : (

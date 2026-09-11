@@ -534,7 +534,7 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
               <h3 className="section-title">Projectes</h3>
               <button className="btn-primary" onClick={() => setShowNewProject(v => !v)}>
                 {showNewProject ? <X size={13} /> : <Plus size={13} />}
-                {showNewProject ? 'Cancel·lar' : 'Nou projecte'}
+                {showNewProject ? 'Cancel·lar' : 'Nova campanya'}
               </button>
             </div>
 
@@ -592,7 +592,7 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
             )}
 
             {localProjects.length === 0 && !showNewProject ? (
-              <EmptyState icon={<FolderKanban size={28} />} text="Sense projectes." action="Nou projecte" onAction={() => setShowNewProject(true)} />
+              <EmptyState icon={<FolderKanban size={28} />} text="Sense projectes." action="Nova campanya" onAction={() => setShowNewProject(true)} />
             ) : (
               <div className="project-table" style={{ marginTop: showNewProject ? '16px' : '0' }}>
                 {localProjects.map((p) => {
