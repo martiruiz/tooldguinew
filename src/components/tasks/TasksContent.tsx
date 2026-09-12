@@ -1182,7 +1182,11 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
           scrollbar-width: thin;
         }
         @media (max-width: 1023px) {
-          .kanban-col-body { max-height: calc(100svh - 180px); }
+          .tasks-body { overflow: visible; min-height: 0; }
+          .tasks-main { overflow: visible; }
+          .kanban { overflow-x: auto; overflow-y: visible; flex: none; min-height: 0; }
+          .kanban-col { max-height: none; }
+          .kanban-col-body { max-height: none; overflow-y: visible; }
         }
 
         .kanban-empty {
