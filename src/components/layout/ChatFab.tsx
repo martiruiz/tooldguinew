@@ -226,11 +226,19 @@ export function ChatFab({ currentUserId, profiles = [] }: Props) {
   const [dmPreviews, setDmPreviews] = useState<DmPreview[]>([])
   const [convPreviews, setConvPreviews] = useState<ConvPreview[]>([])
   const [search, setSearch] = useState('')
+  const [isMobile, setIsMobile] = useState(false)
   const supabaseRef = useRef(createClient())
   const supabase = supabaseRef.current
   const profilesRef = useRef(profiles)
   profilesRef.current = profiles
   const profileMap = useMemo(() => Object.fromEntries(profiles.map(p => [p.id, p])), [profiles])
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 1024)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   // Listen for team chat + open-fab-chat events
   useEffect(() => {
@@ -359,7 +367,11 @@ export function ChatFab({ currentUserId, profiles = [] }: Props) {
       {/* Floating panel */}
       {open && currentUserId && (
         <div style={{
-          position: 'fixed', bottom: 84, right: 20, width: 340, height: 480,
+          position: 'fixed',
+          bottom: isMobile ? 88 : 84,
+          right: isMobile ? 8 : 20,
+          width: isMobile ? 'calc(100vw - 16px)' : 340,
+          height: isMobile ? 'calc(100dvh - 160px)' : 480,
           background: 'white', borderRadius: 18, boxShadow: '0 8px 40px rgba(0,0,0,0.18), 0 2px 12px rgba(0,0,0,0.08)',
           zIndex: 190, display: 'flex', flexDirection: 'column', overflow: 'hidden',
           border: '1px solid rgba(0,0,0,0.08)',
@@ -481,7 +493,7 @@ export function ChatFab({ currentUserId, profiles = [] }: Props) {
 
       {/* FAB button */}
       <button onClick={toggleFab} title="Missatgeria" style={{
-        position: 'fixed', bottom: 24, right: 24, width: 52, height: 52, borderRadius: '50%', border: 'none',
+        position: 'fixed', bottom: isMobile ? 76 : 24, right: isMobile ? 16 : 24, width: 52, height: 52, borderRadius: '50%', border: 'none',
         background: open ? 'linear-gradient(135deg,#1B3A6B,#1E4080)' : 'linear-gradient(135deg,#1B4B82,#2563EB)',
         color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
         zIndex: 200, boxShadow: open ? '0 4px 20px rgba(27,75,130,0.5)' : '0 4px 20px rgba(37,99,235,0.45)',
