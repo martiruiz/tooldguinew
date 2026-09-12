@@ -2,15 +2,15 @@
 
 import { NavigationLink as Link } from '@/components/ui/NavigationLink'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, CheckSquare, Users, Calendar, MoreHorizontal } from 'lucide-react'
+import { LayoutDashboard, CheckSquare, Users, Megaphone, Camera } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const mobileNav = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/tasks', icon: CheckSquare, label: 'Tasques' },
   { href: '/clients', icon: Users, label: 'Clients' },
-  { href: '/calendar', icon: Calendar, label: 'Calendari' },
-  { href: '/more', icon: MoreHorizontal, label: 'Més' },
+  { href: '/projects', icon: Megaphone, label: 'Campanyes' },
+  { href: '/check', icon: Camera, label: 'Sessions' },
 ]
 
 export function MobileNav() {
