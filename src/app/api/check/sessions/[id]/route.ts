@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/serverAdmin'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -8,6 +9,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const admin = createAdminClient()
     const body = await req.json()
     const {
       client_id, session_date, session_types, responsible, hours, notes, start_time, end_time,
@@ -34,7 +36,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (post_material_name !== undefined) updateFields.post_material_name = post_material_name || null
     if (post_data !== undefined) updateFields.post_data = post_data || null
 
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from('content_sessions')
       .update(updateFields)
       .eq('id', id)
@@ -55,7 +57,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { error } = await supabase.from('content_sessions').delete().eq('id', id)
+    const admin = createAdminClient()
+    const { error } = await admin.from('content_sessions').delete().eq('id', id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })
   } catch (err: any) {

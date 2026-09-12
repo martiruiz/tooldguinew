@@ -70,10 +70,9 @@ function MiniChat({ target, currentUserId, profiles, onBack }: {
       return () => { supabase.removeChannel(ch) }
     } else if (target.kind === 'dm') {
       const peerId = target.peer.id
-      supabase.from('direct_messages').select('*')
-        .or(`and(from_user_id.eq.${currentUserId},to_user_id.eq.${peerId}),and(from_user_id.eq.${peerId},to_user_id.eq.${currentUserId})`)
-        .order('created_at', { ascending: true }).limit(60)
-        .then(({ data }) => { setMessages(data || []); scrollBottom() })
+      fetch(`/api/chat/dm-messages?peerId=${peerId}`)
+        .then(r => r.json())
+        .then(json => { setMessages(json.messages || []); scrollBottom() })
       const ch = supabase.channel(`fab-dm-${[currentUserId, peerId].sort().join('-')}`)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages' }, (p: any) => {
           const { from_user_id, to_user_id } = p.new
@@ -109,9 +108,10 @@ function MiniChat({ target, currentUserId, profiles, onBack }: {
     } else if (target.kind === 'dm') {
       const opt = { id: optId, from_user_id: currentUserId, to_user_id: target.peer.id, content: text, created_at: new Date().toISOString() }
       setMessages(prev => [...prev, opt]); scrollBottom()
-      const { data, error } = await supabase.from('direct_messages').insert({ from_user_id: currentUserId, to_user_id: target.peer.id, content: text }).select('*').single()
-      insertErr = error
-      if (data) setMessages(prev => prev.map(m => m.id === optId ? data : m))
+      const res = await fetch('/api/chat/dm-messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ peerId: target.peer.id, content: text }) })
+      const json = await res.json()
+      insertErr = json.error ? { message: json.error } : null
+      if (json.message) setMessages(prev => prev.map(m => m.id === optId ? json.message : m))
     } else {
       const opt = { id: optId, conversation_id: target.convId, user_id: currentUserId, content: text, created_at: new Date().toISOString() }
       setMessages(prev => [...prev, opt]); scrollBottom()
@@ -278,11 +278,10 @@ export function ChatFab({ currentUserId, profiles = [] }: Props) {
     if (!currentUserId) return
     const pm = Object.fromEntries(profilesRef.current.map(p => [p.id, p]))
 
-    // DM previews
-    const { data: dms } = await supabase.from('direct_messages')
-      .select('from_user_id, to_user_id, content, created_at')
-      .or(`from_user_id.eq.${currentUserId},to_user_id.eq.${currentUserId}`)
-      .order('created_at', { ascending: false }).limit(200)
+    // DM previews via admin API (bypasses RLS)
+    const previewRes = await fetch('/api/chat/previews')
+    const previewJson = await previewRes.json()
+    const dms = previewJson.dms || null
 
     if (dms) {
       const map: Record<string, DmPreview> = {}
@@ -414,6 +413,27 @@ export function ChatFab({ currentUserId, profiles = [] }: Props) {
                       <div style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 1 }}>Xat global · Tots els membres</div>
                     </div>
                   </button>
+                )}
+
+                {/* Quick user suggestions */}
+                {!search && others.length > 0 && (
+                  <div style={{ padding: '10px 14px 8px', borderBottom: '1px solid #F0F2F5' }}>
+                    <div style={{ fontSize: 10.5, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Escriu a</div>
+                    <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
+                      {others.map(p => (
+                        <button key={p.id} onClick={() => setTarget({ kind: 'dm', peer: p })}
+                          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, padding: '2px 0' }}>
+                          <div style={{ position: 'relative' }}>
+                            <Av name={p.full_name} avatar={p.avatar_url} size={44} />
+                            <span style={{ position: 'absolute', bottom: 1, right: 1, width: 10, height: 10, borderRadius: '50%', background: '#22C55E', border: '2px solid white' }} />
+                          </div>
+                          <span style={{ fontSize: 10.5, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', maxWidth: 52, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {p.full_name.split(' ')[0]}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 )}
 
                 {/* Conversations + DMs */}

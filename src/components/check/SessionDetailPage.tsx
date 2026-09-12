@@ -88,6 +88,14 @@ const SESSION_TYPES = [
 
 type Phase = 'previa' | 'durant' | 'post'
 
+interface FileItem { url: string; name: string }
+
+function parseFiles(url: string | null, name: string | null): FileItem[] {
+  if (!url) return []
+  if (url.startsWith('[')) { try { return JSON.parse(url) } catch { return [] } }
+  return [{ url, name: name || 'Document' }]
+}
+
 const PHASES: { key: Phase; label: string; num: number }[] = [
   { key: 'previa', label: 'Prèvia', num: 1 },
   { key: 'durant', label: 'Durant', num: 2 },
@@ -113,8 +121,9 @@ export function SessionDetailPage({ session: initialSession }: { session: Sessio
   }))
   const [briefingSaving, setBriefingSaving] = useState(false)
 
-  const [previaPdfUrl, setPreviaPdfUrl] = useState(session.previa_pdf_url || null)
-  const [previaPdfName, setPreviaPdfName] = useState(session.previa_pdf_name || null)
+  const [previaFiles, setPreviaFiles] = useState<FileItem[]>(() =>
+    parseFiles(session.previa_pdf_url || null, session.previa_pdf_name || null)
+  )
   const [durantNotes, setDurantNotes] = useState(session.durant_notes || '')
   const [postMaterialUrl, setPostMaterialUrl] = useState(session.post_material_url || null)
   const [postMaterialName, setPostMaterialName] = useState(session.post_material_name || null)
@@ -139,9 +148,9 @@ export function SessionDetailPage({ session: initialSession }: { session: Sessio
       const json = await res.json()
       if (json.error) { setError(json.error); return }
       if (phase === 'previa') {
-        setPreviaPdfUrl(json.url)
-        setPreviaPdfName(json.name)
-        await savePhase('previa', { previa_pdf_url: json.url, previa_pdf_name: json.name })
+        const updated = [...previaFiles, { url: json.url, name: json.name }]
+        setPreviaFiles(updated)
+        await savePhase('previa', { previa_pdf_url: JSON.stringify(updated), previa_pdf_name: null })
       } else {
         setPostMaterialUrl(json.url)
         setPostMaterialName(json.name)
@@ -152,11 +161,12 @@ export function SessionDetailPage({ session: initialSession }: { session: Sessio
     }
   }
 
-  const removeFile = async (phase: 'previa' | 'post') => {
+  const removeFile = async (phase: 'previa' | 'post', index?: number) => {
     if (phase === 'previa') {
-      setPreviaPdfUrl(null)
-      setPreviaPdfName(null)
-      await savePhase('previa', { previa_pdf_url: null, previa_pdf_name: null })
+      const updated = previaFiles.filter((_, i) => i !== index)
+      setPreviaFiles(updated)
+      const val = updated.length > 0 ? JSON.stringify(updated) : null
+      await savePhase('previa', { previa_pdf_url: val, previa_pdf_name: null })
     } else {
       setPostMaterialUrl(null)
       setPostMaterialName(null)
@@ -191,7 +201,10 @@ export function SessionDetailPage({ session: initialSession }: { session: Sessio
     try {
       const body: Record<string, any> = { ...overrides }
       if (!overrides) {
-        if (phase === 'previa') { body.previa_pdf_url = previaPdfUrl; body.previa_pdf_name = previaPdfName }
+        if (phase === 'previa') {
+          body.previa_pdf_url = previaFiles.length > 0 ? JSON.stringify(previaFiles) : null
+          body.previa_pdf_name = null
+        }
         if (phase === 'durant') { body.durant_notes = durantNotes || null }
         if (phase === 'post') { body.post_material_url = postMaterialUrl; body.post_material_name = postMaterialName }
       }
@@ -341,42 +354,62 @@ export function SessionDetailPage({ session: initialSession }: { session: Sessio
           {activePhase === 'previa' && (
             <div className="sdp-section">
 
-              {/* Pla de contingut PDF */}
+              {/* Documents prèvia */}
               <div className="sdp-subsection">
-                <div className="sdp-section-title">Pla de contingut</div>
-                <p className="sdp-section-desc">Adjunta el PDF amb el pla de contingut de la sessió.</p>
-                {previaPdfUrl ? (
-                  <div className="sdp-file-row">
-                    <FileText size={20} className="sdp-file-icon" />
-                    <button className="sdp-file-name-btn" onClick={() => setPreviewPdf({ url: previaPdfUrl!, name: previaPdfName || 'Document PDF' })}>
-                      {previaPdfName || 'Document PDF'}
-                    </button>
-                    <a href={previaPdfUrl} download className="sdp-file-dl" title="Descarregar">
-                      <Download size={14} />
-                    </a>
-                    <button className="sdp-file-remove" onClick={() => removeFile('previa')} title="Eliminar">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="sdp-upload-area" onClick={() => previaInputRef.current?.click()}>
-                    {uploading ? <Loader2 size={24} className="sdp-spin" /> : <Upload size={24} />}
-                    <span>{uploading ? 'Pujant...' : 'Selecciona un PDF'}</span>
-                    <span className="sdp-upload-hint">Màx. 50 MB</span>
+                <div className="sdp-section-title">Documents</div>
+                <p className="sdp-section-desc">Adjunta els documents de la sessió (PDFs, arxius, etc.)</p>
+                {previaFiles.length > 0 && (
+                  <div className="sdp-files-list">
+                    {previaFiles.map((f, i) => (
+                      <div key={i} className="sdp-file-row">
+                        <FileText size={18} className="sdp-file-icon" />
+                        <button className="sdp-file-name-btn" onClick={() => setPreviewPdf({ url: f.url, name: f.name })}>
+                          {f.name}
+                        </button>
+                        <a href={f.url} download className="sdp-file-dl" title="Descarregar">
+                          <Download size={14} />
+                        </a>
+                        <button className="sdp-file-remove" onClick={() => removeFile('previa', i)} title="Eliminar">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
+                <div className="sdp-upload-area" onClick={() => previaInputRef.current?.click()}>
+                  {uploading ? <Loader2 size={24} className="sdp-spin" /> : <Upload size={24} />}
+                  <span>{uploading ? 'Pujant...' : 'Afegir document'}</span>
+                  <span className="sdp-upload-hint">PDF, Word, Excel… Màx. 50 MB</span>
+                </div>
                 <input
                   ref={previaInputRef}
                   type="file"
-                  accept=".pdf,application/pdf"
+                  multiple
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.*,image/*"
                   style={{ display: 'none' }}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) uploadFile(f, 'previa'); e.target.value = '' }}
+                  onChange={async e => {
+                    const files = Array.from(e.target.files || [])
+                    if (!files.length) return
+                    setUploading(true)
+                    setError(null)
+                    let accumulated = [...previaFiles]
+                    for (const file of files) {
+                      const form = new FormData()
+                      form.append('file', file)
+                      form.append('sessionId', session.id)
+                      form.append('phase', 'previa')
+                      const res = await fetch('/api/check/sessions/upload', { method: 'POST', body: form })
+                      const json = await res.json()
+                      if (json.error) { setError(json.error); break }
+                      accumulated = [...accumulated, { url: json.url, name: json.name }]
+                    }
+                    setPreviaFiles(accumulated)
+                    const val = accumulated.length > 0 ? JSON.stringify(accumulated) : null
+                    await savePhase('previa', { previa_pdf_url: val, previa_pdf_name: null })
+                    setUploading(false)
+                    e.target.value = ''
+                  }}
                 />
-                {previaPdfUrl && (
-                  <button className="sdp-replace-btn" onClick={() => previaInputRef.current?.click()}>
-                    <Upload size={12} /> Substituir PDF
-                  </button>
-                )}
               </div>
 
               <div className="sdp-divider" />
@@ -471,7 +504,7 @@ export function SessionDetailPage({ session: initialSession }: { session: Sessio
           {activePhase === 'durant' && (
             <DurantPanel
               sessionId={session.id}
-              previaPdfUrl={previaPdfUrl}
+              previaPdfUrl={previaFiles[0]?.url || null}
               initialData={{
                 ...DEFAULT_DURANT_DATA,
                 ...session.durant_data,
@@ -679,10 +712,14 @@ export function SessionDetailPage({ session: initialSession }: { session: Sessio
         .sdp-upload-area span { font-size: 14px; font-weight: 600; }
         .sdp-upload-hint { font-size: 12px; color: #C0C0C0; font-weight: 400; }
 
+        .sdp-files-list {
+          display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;
+        }
+
         .sdp-file-row {
           display: flex; align-items: center; gap: 12px;
           background: #F8F9FB; border: 1px solid #E8E8E8; border-radius: 12px;
-          padding: 14px 16px;
+          padding: 12px 14px;
         }
 
         .sdp-file-icon { color: #4A7FC1; flex-shrink: 0; }
