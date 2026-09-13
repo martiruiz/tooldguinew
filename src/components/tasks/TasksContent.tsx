@@ -1,5 +1,5 @@
 'use client'
-
+// tasks content component
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { Plus, List, Columns, Search, SlidersHorizontal, X, RefreshCw, AtSign, HelpCircle, AlertTriangle, Home, Laptop, Camera, Music, Monitor, ChevronRight, Zap, Star, Flag, Clock, Bell, Bookmark, BarChart2, Settings, Users, Mail, Phone, Globe, Package, Truck, Target, Layers, CheckSquare, FileText, Inbox, ArrowRight, Pencil, Heart, Smile, Coffee, Sun, Moon, Cloud, Flame, Leaf, Eye, Lock, Unlock, Key, Shield, Award, Gift, Lightbulb, MessageCircle, MessageSquare, Send, Rss, Wifi, Battery, Cpu, Database, Server, Code, Terminal, GitBranch, GitMerge, Scissors, Crop, PenTool, Palette, Image, Video, Headphones, Radio, Tv, Printer, Scan, Download, Upload, Link, ExternalLink, Anchor, Compass, Map, Navigation, Plane, Car, Bike, Bus, Train, Ship, Umbrella, Wind, Snowflake, Thermometer, Activity, Stethoscope, Pill, Apple, ShoppingCart, ShoppingBag, CreditCard, DollarSign, TrendingUp, TrendingDown, PieChart, Calendar, Grid, Layout, Maximize, Minimize, Move, Copy, Archive, Trash2, FolderOpen, Folder, HardDrive, Paperclip, Clipboard, Toolbox, Wrench, Hammer, Sliders, ToggleLeft, ToggleRight, ChevronUp, ChevronDown, ChevronsRight, ArrowUp, ArrowDown, RotateCcw, Repeat, Shuffle, Play, Pause, Square, Circle, Triangle, Hexagon, Octagon, AlignLeft, AlignCenter, Type, Hash, Percent, PlusCircle, MinusCircle, XCircle, AlertCircle, Info, ThumbsUp, ThumbsDown, Mic, Volume2, UserCheck, UserPlus, UserMinus, Briefcase, BookOpen, Book, GraduationCap, Feather, Edit3, ClipboardList, ClipboardCheck, MoreHorizontal, Sidebar, Tag } from 'lucide-react'
 import { cn, taskStatusLabels, taskPriorityLabels, getInitials } from '@/lib/utils'
@@ -815,17 +815,18 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
   })
   const [editingCol, setEditingCol] = useState<string | null>(null)
   const [editingLabelStatus, setEditingLabelStatus] = useState<string | null>(null)
-  const [colCustom, setColCustom] = useState<Record<string, { color: string; icon: string; label?: string }>>(() => {
-    if (typeof window === 'undefined') return {}
-    try { return JSON.parse(localStorage.getItem('kanban-col-custom') || '{}') } catch { return {} }
-  })
+  const [colCustom, setColCustom] = useState<Record<string, { color: string; icon: string; label?: string }>>({})
   const boardRef = useRef<HTMLDivElement>(null)
   const isMouseScrolling = useRef(false)
   const startX = useRef(0)
   const scrollLeft = useRef(0)
 
-  // Load column customizations from DB on mount
+  // Load column customizations from DB on mount (localStorage read deferred to useEffect to avoid hydration mismatch)
   useEffect(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem('kanban-col-custom') || '{}')
+      if (Object.keys(cached).length > 0) setColCustom(cached)
+    } catch {}
     fetch('/api/board/columns')
       .then(r => r.json())
       .then((rows: { status: string; label: string; color: string; icon: string }[]) => {

@@ -17,7 +17,12 @@ export async function POST(req: NextRequest) {
     const buffer = await pdfRes.arrayBuffer()
     const base64 = Buffer.from(buffer).toString('base64')
 
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+      defaultHeaders: process.env.ANTHROPIC_WORKSPACE_ID
+        ? { 'anthropic-workspace-id': process.env.ANTHROPIC_WORKSPACE_ID }
+        : {},
+    })
 
     const message = await anthropic.messages.create({
       model: 'claude-opus-4-5',

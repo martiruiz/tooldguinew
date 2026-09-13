@@ -12,6 +12,7 @@ import {
 } from 'recharts'
 import { getInitials, clientTypeLabels } from '@/lib/utils'
 import { NewClientModal } from '@/components/clients/NewClientModal'
+import { DateInput } from '@/components/ui/DateInput'
 
 // ─── Types ───────────────────────────────────────
 interface Client {
@@ -895,6 +896,15 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
                             ))}
                           </div>
                         )}
+                        {!isTerminal && (
+                          <button
+                            className="op-won-btn"
+                            title="Marcar com a guanyat"
+                            onClick={e => { e.stopPropagation(); moveStage(op, 'tancat_guanyat') }}
+                          >
+                            <Plus size={12} strokeWidth={2.5} />
+                          </button>
+                        )}
                       </div>
                     )
                   })}
@@ -1291,7 +1301,7 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
               <div className="form-row-2">
                 <div className="form-field">
                   <label>Data de tancament</label>
-                  <input className="form-input" type="date" value={form.close_date} onChange={f('close_date')} />
+                  <DateInput value={form.close_date} onChange={f('close_date')} />
                 </div>
                 <div className="form-field">
                   <label>Responsable</label>
@@ -1312,7 +1322,7 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
                 </div>
                 <div className="form-field">
                   <label>Data next step</label>
-                  <input className="form-input" type="date" value={form.next_step_date} onChange={f('next_step_date')} />
+                  <DateInput value={form.next_step_date} onChange={f('next_step_date')} />
                 </div>
               </div>
 
@@ -1534,7 +1544,7 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
           min-height: 400px;
         }
         .pipeline-col {
-          flex: 0 0 215px;
+          flex: 1 1 280px;
           background: white;
           border: 1px solid rgba(0,0,0,0.06);
           border-radius: 18px;
@@ -1601,7 +1611,7 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
           padding: 12px 13px;
           display: flex; flex-direction: column; gap: 6px;
           transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease, opacity 0.15s;
-          cursor: grab;
+          cursor: grab; position: relative;
         }
         .op-card:hover {
           box-shadow: 0 4px 14px rgba(0,0,0,0.09);
@@ -1625,6 +1635,16 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
           font-size: 8px; font-weight: 700; display: flex; align-items: center; justify-content: center;
         }
         .op-stale-label { font-size: 10px; color: #DC2626; font-weight: 600; }
+        .op-won-btn {
+          position: absolute; top: 10px; right: 10px;
+          width: 22px; height: 22px; border-radius: 50%;
+          background: #F0FDF4; border: 1.5px solid #86EFAC;
+          display: flex; align-items: center; justify-content: center;
+          color: #16A34A; cursor: pointer;
+          transition: background 0.12s, border-color 0.12s, transform 0.1s;
+          flex-shrink: 0;
+        }
+        .op-won-btn:hover { background: #DCFCE7; border-color: #4ADE80; transform: scale(1.1); }
         .op-next-step {
           font-size: 10.5px; color: #5A70A0; background: rgba(37,64,103,0.07);
           border-radius: 6px; padding: 2px 7px; display: inline-block; font-weight: 500;

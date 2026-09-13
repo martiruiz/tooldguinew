@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, FolderKanban, CheckSquare,
   Calendar, Shield, LogOut, ChevronLeft, ChevronRight, ClipboardList,
   TrendingUp, BarChart3, Truck, Building2, PieChart, Plus, X, Pencil, Check,
-  Target, FileText, LineChart, Scale, Inbox,
+  Target, FileText, LineChart, Scale, Inbox, Search,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -253,10 +253,8 @@ export function Sidebar({ user }: Props) {
     <aside className={cn('sb', c && 'sb--collapsed')}>
       {/* Header: avatar + user */}
       <div className="sb-header">
-        <button className="sb-avatar-btn" onClick={toggle} title={c ? 'Expandir menú' : 'Col·lapsar menú'} style={{ background: avatarColor }}>
-          {user.avatar_url
-            ? <img src={user.avatar_url} alt="" className="sb-avatar-img" width={38} height={38} />
-            : initials}
+        <button className="sb-avatar-btn sb-avatar-btn--logo" onClick={toggle} title={c ? 'Expandir menú' : 'Col·lapsar menú'}>
+          <img src="/logo-gw.png" alt="Guinew" className="sb-avatar-img sb-avatar-img--logo" width={38} height={38} />
         </button>
         {!c && (
           <div className="sb-user">
@@ -303,56 +301,26 @@ export function Sidebar({ user }: Props) {
             <div className="sb-divider" />
             {!c && (
               <button className="sb-section-lbl sb-section-toggle" onClick={() => toggleSection('vendes')}>
-                Vendes · 3
+                Vendes · 4
                 <span className="sb-toggle-arrow">{hiddenSections.has('vendes') ? '›' : '‹'}</span>
               </button>
             )}
-            {!hiddenSections.has('vendes') && (
+            {(c || !hiddenSections.has('vendes')) && (
               <nav className="sb-nav">
                 {[
-                  { href: '/crm',        icon: Target,     label: 'CRM Guinew' },
-                  { href: '/analisi',    icon: LineChart,  label: 'Anàlisi'    },
-                  { href: '/plantilles', icon: FileText,   label: 'Plantilles' },
+                  { href: '/crm',          icon: Target,     label: 'CRM Guinew', crm: true },
+                  { href: '/sports-crm',   icon: TrendingUp, label: 'CRM SCP', scp: true },
+                  { href: '/prospeccio',   icon: Search,     label: 'Prospecció'  },
+                  { href: '/analisi',      icon: LineChart,  label: 'Anàlisi'     },
                 ].map(item => {
                   const active = pathname.startsWith(item.href)
+                  const isCrmActive = (item as any).crm && active
+                  const isScpActive = (item as any).scp && active
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={cn('sb-item', active && 'sb-item--active', c && 'sb-item--icon')}
-                      title={c ? item.label : undefined}
-                    >
-                      <item.icon size={c ? 20 : 17} strokeWidth={active ? 2.2 : 1.8} />
-                      {!c && <span>{item.label}</span>}
-                    </Link>
-                  )
-                })}
-              </nav>
-            )}
-          </>
-        )}
-
-        {/* Sports Content Playbook section */}
-        {user.role === 'superadmin' && (
-          <>
-            <div className="sb-divider" />
-            {!c && (
-              <button className="sb-section-lbl sb-section-toggle" onClick={() => toggleSection('scp')}>
-                Sports Content Playbook · 1
-                <span className="sb-toggle-arrow">{hiddenSections.has('scp') ? '›' : '‹'}</span>
-              </button>
-            )}
-            {!hiddenSections.has('scp') && (
-              <nav className="sb-nav">
-                {[
-                  { href: '/sports-crm', icon: TrendingUp, label: 'CRM SCP' },
-                ].map(item => {
-                  const active = pathname.startsWith(item.href)
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={cn('sb-item', active && 'sb-item--active', c && 'sb-item--icon')}
+                      className={cn('sb-item', isCrmActive ? 'sb-item--crm-active' : isScpActive ? 'sb-item--scp-active' : active && 'sb-item--active', c && 'sb-item--icon')}
                       title={c ? item.label : undefined}
                     >
                       <item.icon size={c ? 20 : 17} strokeWidth={active ? 2.2 : 1.8} />
@@ -376,7 +344,7 @@ export function Sidebar({ user }: Props) {
                 <span className="sb-toggle-arrow">{hiddenSections.has('finances') ? '›' : '‹'}</span>
               </button>
             )}
-            {!hiddenSections.has('finances') && (
+            {(c || !hiddenSections.has('finances')) && (
               <nav className="sb-nav">
                 {financeNavDefs.map(item => {
                   const label = t(item.labelKey)
@@ -633,7 +601,10 @@ export function Sidebar({ user }: Props) {
           transition: opacity 0.15s, box-shadow 0.15s;
         }
         .sb-avatar-btn:hover { opacity: 0.85; box-shadow: 0 0 0 3px rgba(0,0,0,0.08); }
+        .sb-avatar-btn--logo { background: white !important; border-radius: 8px; border: 1.5px solid #E0E8F0; overflow: visible; padding: 2px; }
+        .sb-avatar-btn--logo:hover { box-shadow: 0 0 0 3px rgba(37,64,103,0.1); opacity: 1; }
         .sb-avatar-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .sb-avatar-img--logo { object-fit: contain; border-radius: 6px; }
         .sb-user { flex: 1; min-width: 0; overflow: hidden; }
         .sb-greeting { font-size: 10.5px; color: #9CA3AF; font-weight: 500; white-space: nowrap; }
         .sb-name { font-size: 14.5px; font-weight: 700; color: #111827; white-space: nowrap; letter-spacing: -0.02em; }
@@ -684,6 +655,24 @@ export function Sidebar({ user }: Props) {
           color: #FFFFFF !important;
           font-weight: 600;
         }
+        :global(.sb-item--crm-active) {
+          background: linear-gradient(135deg, #1B2B4B 0%, #2D4B8E 60%, #1e3a7a 100%) !important;
+          color: #FFFFFF !important;
+          font-weight: 700;
+          box-shadow: 0 2px 10px rgba(27,43,75,0.35), inset 0 1px 0 rgba(255,255,255,0.12) !important;
+          border: none !important;
+          letter-spacing: 0.01em;
+        }
+        :global(.sb-item--crm-active svg) { filter: drop-shadow(0 0 4px rgba(255,255,255,0.3)); }
+        :global(.sb-item--scp-active) {
+          background: linear-gradient(135deg, #0f3460 0%, #1a6bb5 50%, #c9a84c 100%) !important;
+          color: #FFFFFF !important;
+          font-weight: 700;
+          box-shadow: 0 2px 10px rgba(15,52,96,0.4), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+          border: none !important;
+          letter-spacing: 0.01em;
+        }
+        :global(.sb-item--scp-active svg) { filter: drop-shadow(0 0 4px rgba(201,168,76,0.5)); }
         :global(.sb-item--sub) { font-size: 13px; padding: 7px 10px; }
         :global(.sb-item--sub.sb-item--icon) { padding: 9px 10px; }
         :global(.sb-item--scp:hover):not(:global(.sb-item--active-scp)) { background: #F5F3FF; color: #6D28D9; }

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/serverAdmin'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -9,10 +8,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const admin = createAdminClient()
     const body = await req.json()
     const {
       client_id, session_date, session_types, responsible, hours, notes, start_time, end_time,
+      status,
       previa_pdf_url, previa_pdf_name, previa_briefing,
       durant_notes, durant_data,
       post_material_url, post_material_name, post_data,
@@ -23,6 +22,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (session_date !== undefined) updateFields.session_date = session_date
     if (session_types !== undefined) updateFields.session_types = session_types || []
     if (responsible !== undefined) updateFields.responsible = responsible || null
+    if (status !== undefined) updateFields.status = status || null
     if (hours !== undefined) updateFields.hours = parseFloat(hours) || 0
     if (notes !== undefined) updateFields.notes = notes || null
     if (start_time !== undefined) updateFields.start_time = start_time || null
@@ -36,15 +36,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (post_material_name !== undefined) updateFields.post_material_name = post_material_name || null
     if (post_data !== undefined) updateFields.post_data = post_data || null
 
-    const { data, error } = await admin
+    const { data, error } = await supabase
       .from('content_sessions')
       .update(updateFields)
       .eq('id', id)
-      .select('*, client:clients(id, name)')
+      .select('*')
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ session: data })
+
+    let client = null
+    if (data?.client_id) {
+      const { data: clientData } = await supabase.from('clients').select('id, name').eq('id', data.client_id).single()
+      client = clientData
+    }
+
+    return NextResponse.json({ session: { ...data, client } })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
@@ -57,8 +64,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const admin = createAdminClient()
-    const { error } = await admin.from('content_sessions').delete().eq('id', id)
+    // Delete linked tasks before the session (avoids FK constraint)
+    await supabase.from('tasks').delete().eq('session_id', id)
+
+    const { error } = await supabase.from('content_sessions').delete().eq('id', id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })
   } catch (err: any) {

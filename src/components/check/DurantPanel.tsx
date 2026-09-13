@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { Plus, Sparkles, Loader2, Trash2, GripVertical, Lightbulb } from 'lucide-react'
+import { useState, useCallback, useEffect, useRef, useImperativeHandle, forwardRef } from 'react'
+import { Plus, Sparkles, Loader2, Trash2, GripVertical, Lightbulb, Check, FileUp, ExternalLink } from 'lucide-react'
 
 export interface ShotItem {
   id: string
@@ -9,6 +9,8 @@ export interface ShotItem {
   format: string
   prioritat: 'Alta' | 'Mitjana' | 'Baixa'
   estat: 'pendent' | 'gravant' | 'fet' | 'revisat'
+  exemple?: string
+  guio?: string
 }
 
 export interface DurantData {
@@ -46,6 +48,10 @@ const PRIORITAT_CONFIG: Record<'Alta'|'Mitjana'|'Baixa', { bg: string; color: st
   Baixa:   { bg: '#F0FDF4', color: '#16A34A' },
 }
 
+export interface DurantPanelHandle {
+  addShots: (shots: ShotItem[]) => void
+}
+
 interface Props {
   sessionId: string
   previaPdfUrl: string | null
@@ -53,9 +59,16 @@ interface Props {
   onSaved: (data: DurantData) => void
 }
 
-export function DurantPanel({ sessionId, previaPdfUrl, initialData, onSaved }: Props) {
+export const DurantPanel = forwardRef<DurantPanelHandle, Props>(function DurantPanel(
+  { sessionId, previaPdfUrl, initialData, onSaved }: Props,
+  ref
+) {
   const [data, setData] = useState<DurantData>(initialData)
   const [saving, setSaving] = useState(false)
+  const [autoSave, setAutoSave] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const firstRender = useRef(true)
+  const dataRef = useRef(data)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [newIdea, setNewIdea] = useState('')
@@ -77,6 +90,27 @@ export function DurantPanel({ sessionId, previaPdfUrl, initialData, onSaved }: P
   }, [sessionId, onSaved])
 
   const saveNow = () => save(data)
+
+  useEffect(() => { dataRef.current = data })
+
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return }
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    setAutoSave('idle')
+    saveTimerRef.current = setTimeout(async () => {
+      setAutoSave('saving')
+      try {
+        const res = await fetch(`/api/check/sessions/${sessionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ durant_data: dataRef.current }),
+        })
+        const json = await res.json()
+        if (!json.error) { onSaved(dataRef.current); setAutoSave('saved'); setTimeout(() => setAutoSave('idle'), 2000) }
+        else setAutoSave('idle')
+      } catch { setAutoSave('idle') }
+    }, 1200)
+  }, [data])
 
   const updateData = (updater: (d: DurantData) => DurantData) => {
     setData(prev => updater(prev))
@@ -137,6 +171,17 @@ export function DurantPanel({ sessionId, previaPdfUrl, initialData, onSaved }: P
     } finally { setGenerating(false) }
   }
 
+  // Exposed handle for parent components
+  useImperativeHandle(ref, () => ({
+    addShots: (shots: ShotItem[]) => {
+      setData(d => {
+        const newData = { ...d, shot_list: [...d.shot_list, ...shots] }
+        save(newData)
+        return newData
+      })
+    },
+  }))
+
   // Incidències helper
   const setInc = (key: keyof DurantData['incidencies'], val: string) => {
     setData(d => ({ ...d, incidencies: { ...d.incidencies, [key]: val } }))
@@ -189,10 +234,8 @@ export function DurantPanel({ sessionId, previaPdfUrl, initialData, onSaved }: P
 
         {data.shot_list.length === 0 ? (
           <div className="dp-empty">
-            {previaPdfUrl
-              ? <><Sparkles size={20} /><span>Clica "Generar des del PDF" per crear la shot list automàticament</span></>
-              : <><Plus size={20} /><span>Afegeix els elements de contingut a capturar</span></>
-            }
+            <FileUp size={20} />
+            <span>Importa un pla de continguts des de la pestanya <strong>Prèvia</strong>, o afegeix elements manualment</span>
           </div>
         ) : (
           <div className="dp-table-wrap">
@@ -228,12 +271,18 @@ export function DurantPanel({ sessionId, previaPdfUrl, initialData, onSaved }: P
                             placeholder="Descripció..."
                           />
                         ) : (
-                          <span
-                            className={`dp-contingut-text${item.estat === 'revisat' ? ' dp-contingut-text--done' : ''}`}
-                            onClick={() => setEditingId(item.id)}
-                          >
-                            {item.contingut || <span className="dp-placeholder">Descripció...</span>}
-                          </span>
+                          <div className="dp-contingut-wrap">
+                            <span
+                              className={`dp-contingut-text${item.estat === 'revisat' ? ' dp-contingut-text--done' : ''}`}
+                              onClick={() => setEditingId(item.id)}
+                            >
+                              {item.contingut || <span className="dp-placeholder">Descripció...</span>}
+                            </span>
+                            <div className="dp-item-links">
+                              {item.exemple && <a href={item.exemple} target="_blank" rel="noopener" className="dp-link-btn" title="Exemple"><ExternalLink size={11} /> Ex</a>}
+                              {item.guio && <a href={item.guio} target="_blank" rel="noopener" className="dp-link-btn dp-link-btn--guio" title="Guió"><ExternalLink size={11} /> Guió</a>}
+                            </div>
+                          </div>
                         )}
                       </td>
                       <td className="dp-td">
@@ -333,11 +382,14 @@ export function DurantPanel({ sessionId, previaPdfUrl, initialData, onSaved }: P
         </div>
       </div>
 
-      {/* Save */}
-      <button className="dp-save-btn" onClick={saveNow} disabled={saving}>
-        {saving ? <Loader2 size={13} className="dp-spin" /> : null}
-        Desar panell
-      </button>
+      {/* Autosave indicator */}
+      {autoSave !== 'idle' && (
+        <div className="dp-autosave">
+          {autoSave === 'saving'
+            ? <><Loader2 size={12} className="dp-spin" /> Guardant...</>
+            : <><Check size={12} /> Guardat</>}
+        </div>
+      )}
 
       <style jsx>{`
         .dp-wrap { display: flex; flex-direction: column; gap: 24px; }
@@ -374,6 +426,28 @@ export function DurantPanel({ sessionId, previaPdfUrl, initialData, onSaved }: P
         }
 
         /* Buttons */
+        .dp-contingut-wrap { display: flex; flex-direction: column; gap: 3px; }
+        .dp-item-links { display: flex; gap: 5px; }
+        .dp-link-btn {
+          display: inline-flex; align-items: center; gap: 3px;
+          font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px;
+          text-decoration: none; color: #254067; background: #EFF6FF; border: 1px solid #C5D3E8;
+          transition: background 0.12s;
+        }
+        .dp-link-btn--guio { color: #5B21B6; background: #F5F3FF; border-color: #C4B5FD; }
+        .dp-link-btn:hover { background: #DBEAFE; }
+        .dp-link-btn--guio:hover { background: #EDE9FE; }
+
+        .dp-btn-import {
+          display: flex; align-items: center; gap: 6px;
+          height: 34px; padding: 0 14px;
+          background: #F0F5FF; color: #254067;
+          border: 1.5px solid #C5D3E8; border-radius: 8px; font-size: 12.5px; font-weight: 600;
+          cursor: pointer; font-family: inherit; transition: all 0.15s;
+        }
+        .dp-btn-import:hover:not(:disabled) { background: #E0ECFF; border-color: #254067; }
+        .dp-btn-import:disabled { opacity: 0.6; cursor: not-allowed; }
+
         .dp-btn-generate {
           display: flex; align-items: center; gap: 6px;
           height: 34px; padding: 0 14px;
@@ -519,6 +593,10 @@ export function DurantPanel({ sessionId, previaPdfUrl, initialData, onSaved }: P
         .dp-btn-add-idea:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* Save */
+        .dp-autosave {
+          display: inline-flex; align-items: center; gap: 5px;
+          font-size: 12px; font-weight: 500; color: #5C6B80; padding: 4px 0;
+        }
         .dp-save-btn {
           display: flex; align-items: center; gap: 6px; align-self: flex-start;
           height: 38px; padding: 0 20px; background: #1B2B4B; color: white;
@@ -533,4 +611,4 @@ export function DurantPanel({ sessionId, previaPdfUrl, initialData, onSaved }: P
       `}</style>
     </div>
   )
-}
+})

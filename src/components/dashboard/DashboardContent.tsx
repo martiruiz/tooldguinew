@@ -98,10 +98,13 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
   // Dashboard widget reorder with up/down buttons
   const LEFT_WIDGETS = ['tasks-today', 'upcoming', 'active-projects', 'daily-checklist', 'chat-pending']
   const RIGHT_WIDGETS = ['attention', 'today-at-guinew', 'inbox', 'blocked', 'activity']
-  const [widgetOrder, setWidgetOrder] = useState<Record<string, number>>(() => {
-    if (typeof window === 'undefined') return {}
-    try { return JSON.parse(localStorage.getItem('dash-widget-order') || '{}') } catch { return {} }
-  })
+  const [widgetOrder, setWidgetOrder] = useState<Record<string, number>>({})
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('dash-widget-order') || '{}')
+      if (Object.keys(saved).length > 0) setWidgetOrder(saved)
+    } catch {}
+  }, [])
 
   const getSortedCol = (col: 'left' | 'right') => {
     const list = col === 'left' ? LEFT_WIDGETS : RIGHT_WIDGETS

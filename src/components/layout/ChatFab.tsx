@@ -419,7 +419,7 @@ export function ChatFab({ currentUserId, profiles = [] }: Props) {
                 {!search && others.length > 0 && (
                   <div style={{ padding: '10px 14px 8px', borderBottom: '1px solid #F0F2F5' }}>
                     <div style={{ fontSize: 10.5, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Escriu a</div>
-                    <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
+                    <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', touchAction: 'pan-x' } as React.CSSProperties}>
                       {others.map(p => (
                         <button key={p.id} onClick={() => setTarget({ kind: 'dm', peer: p })}
                           style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, padding: '2px 0' }}>

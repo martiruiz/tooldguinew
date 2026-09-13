@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState, useRef } from 'react'
-import { Bell, Check, CheckCheck, X, ClipboardList, Edit3, CheckSquare, MessageSquare, AtSign, Clock, User, FolderOpen, Settings2 } from 'lucide-react'
+import { Bell, Check, CheckCheck, X, ClipboardList, Edit3, CheckSquare, MessageSquare, AtSign, Clock, User, FolderOpen, Settings2, Briefcase, FileSignature, Banknote } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, Notification } from '@/types'
@@ -208,23 +208,38 @@ export function Topbar({ user, title }: Props) {
           </button>
           {profileOpen && (
             <div className="profile-dropdown">
-              <Link href="/profile" className="profile-dropdown-item" onClick={() => setProfileOpen(false)}>
-                Perfil
-              </Link>
-              {user.role === 'superadmin' && (
-                <>
-                  <div className="profile-dropdown-divider" />
-                  <Link href="/crm" className="profile-dropdown-item profile-dropdown-item--admin" onClick={() => setProfileOpen(false)}>
-                    CRM
-                  </Link>
-                  <Link href="/contracts" className="profile-dropdown-item profile-dropdown-item--admin" onClick={() => setProfileOpen(false)}>
-                    Contractes
-                  </Link>
-                  <Link href="/finances" className="profile-dropdown-item profile-dropdown-item--admin" onClick={() => setProfileOpen(false)}>
-                    Finances
-                  </Link>
-                </>
-              )}
+              <div className="pd-body">
+                <Link href="/profile" className="pd-item" onClick={() => setProfileOpen(false)}>
+                  <span className="pd-item-inner">
+                    <User size={14} strokeWidth={1.8} color="#9A9A9A" />
+                    El meu perfil
+                  </span>
+                </Link>
+
+                {user.role === 'superadmin' && (
+                  <>
+                    <div className="pd-divider pd-divider--inner" />
+                    <Link href="/crm" className="pd-item" onClick={() => setProfileOpen(false)}>
+                      <span className="pd-item-inner">
+                        <Briefcase size={14} strokeWidth={1.8} color="#9A9A9A" />
+                        CRM
+                      </span>
+                    </Link>
+                    <Link href="/contracts" className="pd-item" onClick={() => setProfileOpen(false)}>
+                      <span className="pd-item-inner">
+                        <FileSignature size={14} strokeWidth={1.8} color="#9A9A9A" />
+                        Contractes
+                      </span>
+                    </Link>
+                    <Link href="/finances" className="pd-item" onClick={() => setProfileOpen(false)}>
+                      <span className="pd-item-inner">
+                        <Banknote size={14} strokeWidth={1.8} color="#9A9A9A" />
+                        Finances
+                      </span>
+                    </Link>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -369,6 +384,13 @@ export function Topbar({ user, title }: Props) {
           border: 2px solid #1B2B4B20;
         }
         .topbar-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .topbar-avatar--logo {
+          background: white;
+          border: 1.5px solid #E0E8F0;
+          border-radius: 8px;
+          padding: 2px;
+        }
+        .topbar-avatar--logo img { object-fit: contain; }
 
         /* Profile link (name + role + chevron) */
         .topbar-profile {
@@ -400,25 +422,36 @@ export function Topbar({ user, title }: Props) {
           border-radius: 8px; transition: background 0.15s;
         }
         .topbar-profile-btn:hover { background: #F5F5F5; }
+
         .profile-dropdown {
-          position: absolute; top: calc(100% + 8px); right: 0;
-          background: white; border: 1px solid #ECECEC; border-radius: 10px;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.10); min-width: 180px;
-          z-index: 200; overflow: hidden; padding: 4px;
+          position: absolute; top: calc(100% + 10px); right: 0;
+          background: white; border: 1px solid #E8E8E8; border-radius: 14px;
+          box-shadow: 0 12px 40px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.06);
+          min-width: 210px; z-index: 200; overflow: hidden;
         }
         @media (max-width: 480px) {
-          .profile-dropdown {
-            position: fixed; top: 60px; right: 8px; left: auto; min-width: 200px;
-          }
+          .profile-dropdown { position: fixed; top: 60px; right: 8px; left: auto; min-width: 210px; }
         }
-        .profile-dropdown-item {
-          display: block; padding: 9px 14px; font-size: 13.5px; color: #0a0a0a;
-          text-decoration: none; border-radius: 7px; transition: background 0.12s;
+
+        /* Body */
+        .pd-body { padding: 4px; }
+        .pd-divider { height: 1px; background: #F0F0F0; }
+        .pd-divider--inner { margin: 4px 0; }
+
+        .pd-item {
+          display: block; width: 100%; padding: 3px 4px;
+          text-decoration: none; background: none; border: none;
+          cursor: pointer; font-family: inherit; text-align: left;
         }
-        .profile-dropdown-item:hover { background: #F5F5F5; }
-        .profile-dropdown-item--admin { font-weight: 600; color: #1B2B4B; }
-        .profile-dropdown-item--admin:hover { background: #EEF2FF; }
-        .profile-dropdown-divider { height: 1px; background: #F0F0F0; margin: 4px 0; }
+        .pd-item-inner {
+          display: flex; align-items: center; gap: 9px;
+          padding: 7px 8px; border-radius: 8px;
+          font-size: 13.5px; font-weight: 500; color: #1a1a1a;
+          transition: background 0.12s; line-height: 1;
+        }
+        .pd-item:hover .pd-item-inner { background: #F5F5F5; }
+        .pd-item--danger .pd-item-inner { color: #DC2626; }
+        .pd-item--danger:hover .pd-item-inner { background: #FEF2F2; }
 
       `}</style>
     </header>

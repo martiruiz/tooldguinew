@@ -4,8 +4,9 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Plus, X, ChevronLeft, ChevronRight, Camera, Video, FileText,
-  Image, Mic, Loader2, Trash2, Clock, Pencil, CalendarCheck,
+  Image, Mic, Loader2, Trash2, Clock, Pencil,
 } from 'lucide-react'
+import { DateInput } from '@/components/ui/DateInput'
 
 const SESSION_TYPES = [
   { value: 'foto', label: 'Foto', icon: Camera, color: '#254067' },
@@ -55,23 +56,149 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
   const [sessions, setSessions] = useState<Session[]>(initialSessions)
   const [showAdd, setShowAdd] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [form, setForm] = useState({
     client_id: '',
     session_date: '',
     session_types: [] as string[],
-    hours: '0',
     notes: '',
     start_time: '',
     end_time: '',
   })
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [editingHoursClient, setEditingHoursClient] = useState<string | null>(null)
+  const [editingHoursValue, setEditingHoursValue] = useState('')
+  const [savingHours, setSavingHours] = useState(false)
+  const [editingSessionsClient, setEditingSessionsClient] = useState<string | null>(null)
+  const [editingSessionsValue, setEditingSessionsValue] = useState('')
+  const [savingSessions, setSavingSessions] = useState(false)
   const [editSession, setEditSession] = useState<Session | null>(null)
   const [editForm, setEditForm] = useState({
-    client_id: '', session_date: '', session_types: [] as string[], hours: '0', notes: '', start_time: '', end_time: '',
+    client_id: '', session_date: '', session_types: [] as string[], notes: '', start_time: '', end_time: '',
   })
-  const [addCalendar, setAddCalendar] = useState(false)
-  const [calendarConnected, setCalendarConnected] = useState(true)
+
+
+  const HOURS_PER_SESSION = 4
+
+  const saveClientSessions = async (clientId: string, newCount: number) => {
+    const clamped = Math.max(0, Math.min(10, newCount))
+    const clientSessions = monthSessions.filter(s => s.client_id === clientId)
+    const currentCount = clientSessions.length
+    setSavingSessions(true)
+    const now = new Date()
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    try {
+      if (clamped > currentCount) {
+        const diff = clamped - currentCount
+        // update existing sessions to 4h each
+        const updateResults = await Promise.all(
+          clientSessions.map(s =>
+            fetch(`/api/check/sessions/${s.id}`, {
+              method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ hours: HOURS_PER_SESSION }),
+            }).then(r => r.json())
+          )
+        )
+        // create new sessions
+        const createResults = await Promise.all(
+          Array.from({ length: diff }, () =>
+            fetch('/api/check/sessions', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ client_id: clientId, session_date: dateStr, session_types: [], notes: '', start_time: '', end_time: '' }),
+            }).then(r => r.json()).then(j => j.session)
+          )
+        )
+        setSessions(prev => {
+          let updated = prev.map(s => {
+            const r = updateResults.find(r => r.session?.id === s.id)
+            return r?.session ? r.session as Session : s
+          })
+          const newSessions = createResults.filter(Boolean) as Session[]
+          // patch newly created sessions to 4h
+          newSessions.forEach(ns => { ns.hours = HOURS_PER_SESSION })
+          return [...updated, ...newSessions]
+        })
+      } else if (clamped < currentCount) {
+        // delete the most recent sessions first
+        const toDelete = [...clientSessions]
+          .sort((a, b) => b.created_at.localeCompare(a.created_at))
+          .slice(0, currentCount - clamped)
+        await Promise.all(toDelete.map(s =>
+          fetch(`/api/check/sessions/${s.id}`, { method: 'DELETE' })
+        ))
+        const deletedIds = new Set(toDelete.map(s => s.id))
+        if (clamped === 0) {
+          // 0 sessions = no longer a client; mark inactive
+          await fetch(`/api/clients/${clientId}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'inactive' }),
+          })
+          setSessions(prev => prev.filter(s => !deletedIds.has(s.id)))
+        } else {
+          // update remaining sessions to 4h
+          const remaining = clientSessions.filter(s => !deletedIds.has(s.id))
+          const updateResults = await Promise.all(
+            remaining.map(s =>
+              fetch(`/api/check/sessions/${s.id}`, {
+                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ hours: HOURS_PER_SESSION }),
+              }).then(r => r.json())
+            )
+          )
+          setSessions(prev => {
+            let filtered = prev.filter(s => !deletedIds.has(s.id))
+            return filtered.map(s => {
+              const r = updateResults.find(r => r.session?.id === s.id)
+              return r?.session ? r.session as Session : s
+            })
+          })
+        }
+      } else {
+        // same count, just update hours to 4h each
+        const results = await Promise.all(
+          clientSessions.map(s =>
+            fetch(`/api/check/sessions/${s.id}`, {
+              method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ hours: HOURS_PER_SESSION }),
+            }).then(r => r.json())
+          )
+        )
+        setSessions(prev => prev.map(s => {
+          const r = results.find(r => r.session?.id === s.id)
+          return r?.session ? r.session as Session : s
+        }))
+      }
+    } finally {
+      setSavingSessions(false)
+      setEditingSessionsClient(null)
+    }
+  }
+
+  const saveClientHours = async (clientId: string, newTotal: number) => {
+    const clientSessions = monthSessions.filter(s => s.client_id === clientId)
+    if (clientSessions.length === 0) return
+    setSavingHours(true)
+    const perSession = Math.round((newTotal / clientSessions.length) * 10) / 10
+    try {
+      const results = await Promise.all(
+        clientSessions.map(s =>
+          fetch(`/api/check/sessions/${s.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ hours: perSession }),
+          }).then(r => r.json())
+        )
+      )
+      setSessions(prev => prev.map(s => {
+        const updated = results.find(r => r.session?.id === s.id)
+        return updated?.session ? updated.session as Session : s
+      }))
+    } finally {
+      setSavingHours(false)
+      setEditingHoursClient(null)
+    }
+  }
 
   const prevMonth = () => {
     if (month === 0) { setMonth(11); setYear(y => y - 1) }
@@ -138,17 +265,12 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
       const res = await fetch('/api/check/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, add_to_calendar: addCalendar }),
+        body: JSON.stringify({ ...form }),
       })
       const json = await res.json()
       if (json.error) { setSaveError(json.error); return }
       if (json.session) {
-        setSessions(prev => [json.session as Session, ...prev])
-        const d = new Date(form.session_date + 'T12:00:00')
-        setYear(d.getFullYear())
-        setMonth(d.getMonth())
-        setShowAdd(false)
-        setForm({ client_id: '', session_date: '', session_types: [], hours: '0', notes: '', start_time: '', end_time: '' })
+        router.push(`/check/${json.session.id}`)
       }
     } finally { setSaving(false) }
   }
@@ -159,7 +281,6 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
       client_id: session.client_id,
       session_date: session.session_date,
       session_types: Array.isArray(session.session_types) ? session.session_types : [],
-      hours: String(session.hours || 0),
       notes: session.notes || '',
       start_time: session.start_time || '',
       end_time: session.end_time || '',
@@ -188,9 +309,14 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
 
   const handleDelete = async (id: string) => {
     setDeleting(id)
-    await fetch(`/api/check/sessions/${id}`, { method: 'DELETE' })
-    setSessions(prev => prev.filter(s => s.id !== id))
-    setDeleting(null)
+    setDeleteError(null)
+    try {
+      const res = await fetch(`/api/check/sessions/${id}`, { method: 'DELETE' })
+      const json = await res.json()
+      if (json.error) { setDeleteError(json.error); return }
+      setSessions(prev => prev.filter(s => s.id !== id))
+    } catch { setDeleteError('Error de connexió') }
+    finally { setDeleting(null) }
   }
 
   const getTypeInfo = (val: string) => SESSION_TYPES.find(t => t.value === val) || SESSION_TYPES[SESSION_TYPES.length - 1]
@@ -202,131 +328,168 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
 
   return (
     <div className="check-page">
-      {/* Header bar */}
+      {deleteError && (
+        <div style={{ background: '#FEF2F2', color: '#DC2626', padding: '10px 16px', borderRadius: 8, margin: '0 0 12px', fontSize: 13 }}>
+          Error en esborrar la sessió: {deleteError}
+        </div>
+      )}
+      {/* Top bar */}
       <div className="check-header">
         <div className="month-nav">
           <button className="nav-btn" onClick={prevMonth}><ChevronLeft size={16} /></button>
           <span className="month-label">{MONTHS_CA[month]} {year}</span>
           <button className="nav-btn" onClick={nextMonth}><ChevronRight size={16} /></button>
         </div>
-
-        <div className="header-filters">
-          <select className="filter-select" value={filterClient} onChange={e => setFilterClient(e.target.value)}>
-            <option value="all">Tots els clients</option>
-            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </div>
-
-        <button className="btn-add" onClick={() => setShowAdd(true)}>
+        <button className="btn-add" onClick={() => { setForm(f => ({ ...f, client_id: filterClient !== 'all' ? filterClient : '' })); setShowAdd(true) }}>
           <Plus size={14} />
           Nova sessió
         </button>
       </div>
 
-      {/* Stats row */}
-      <div className="stats-row">
-        <div className="stat-card">
-          <div className="stat-value">{stats.totalSessions}</div>
-          <div className="stat-label">Sessions</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-value">{stats.totalHours.toFixed(1)}h</div>
-          <div className="stat-label">Hores totals</div>
-        </div>
-        <div className="stat-card stat-card--wide">
-          <div className="stat-label" style={{ marginBottom: 8 }}>Per client</div>
-          <div className="client-breakdown">
-            {Object.values(stats.byClient).length === 0
-              ? <span className="no-data">Cap sessió</span>
-              : Object.values(stats.byClient).sort((a, b) => b.count - a.count).map((c, i) => (
-                <div key={i} className="breakdown-row">
-                  <span className="breakdown-name">{c.name}</span>
-                  <span className="breakdown-count">{c.count} sess.</span>
-                  {c.hours > 0 && <span className="breakdown-hours">{c.hours.toFixed(1)}h</span>}
+      {/* Two-column layout */}
+      <div className="check-body">
+        {/* Left: session list */}
+        <div className="sessions-col">
+          {grouped.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-icon">📋</div>
+              <div className="empty-title">Cap sessió registrada</div>
+              <div className="empty-sub">Afegeix la primera sessió d&apos;aquest mes.</div>
+              <button className="btn-add" onClick={() => setShowAdd(true)}><Plus size={14} /> Nova sessió</button>
+            </div>
+          ) : (
+            grouped.map(([date, daySessions]) => (
+              <div key={date} className="day-group">
+                <div className="day-header">{fmtDate(date)}</div>
+                <div className="day-sessions">
+                  {daySessions.map(session => {
+                    const types = Array.isArray(session.session_types) ? session.session_types : []
+                    return (
+                      <div key={session.id} className="session-row" onClick={() => router.push(`/check/${session.id}`)}>
+                        <div className="session-main">
+                          <div className="session-client-name">{session.client?.name || '—'}</div>
+                          <div className="session-types-wrap">
+                            {types.length === 0
+                              ? <span className="session-no-types">Sense complements</span>
+                              : types.map(t => {
+                                const ti = getTypeInfo(t)
+                                return (
+                                  <span key={t} className="session-type-chip" style={{ background: ti.color + '18', color: ti.color }}>
+                                    <ti.icon size={11} />
+                                    {ti.label}
+                                  </span>
+                                )
+                              })
+                            }
+                          </div>
+                          {session.notes && <div className="session-notes">{session.notes}</div>}
+                        </div>
+                        <div className="session-meta">
+                          {session.start_time && (
+                            <div className="session-time"><Clock size={11} /> {session.start_time.slice(0,5)}{session.end_time ? `–${session.end_time.slice(0,5)}` : ''}</div>
+                          )}
+                          {session.hours > 0 && <div className="session-hours-badge">{session.hours}h</div>}
+                        </div>
+                        <div className="session-actions">
+                          <button className="session-edit" onClick={e => { e.stopPropagation(); openEdit(session) }} title="Editar"><Pencil size={13} /></button>
+                          <button className="session-del" onClick={e => { e.stopPropagation(); handleDelete(session.id) }} disabled={deleting === session.id} title="Eliminar">
+                            {deleting === session.id ? <Loader2 size={13} className="spin" /> : <Trash2 size={13} />}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-              ))
-            }
-          </div>
+              </div>
+            ))
+          )}
         </div>
-        <div className="stat-card stat-card--wide">
-          <div className="stat-label" style={{ marginBottom: 8 }}>Per complement</div>
-          <div className="type-breakdown">
-            {Object.entries(stats.byType).length === 0
-              ? <span className="no-data">Cap sessió</span>
-              : Object.entries(stats.byType).sort((a, b) => b[1] - a[1]).map(([type, count]) => {
+
+        {/* Right: sticky stats panel */}
+        <aside className="stats-panel">
+          {/* Client filter */}
+          <select className="panel-filter" value={filterClient} onChange={e => setFilterClient(e.target.value)}>
+            <option value="all">Tots els clients</option>
+            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+
+          {/* Totals */}
+          <div className="panel-totals">
+            <div className="panel-kpi">
+              <span className="panel-kpi-value">{stats.totalSessions}</span>
+              <span className="panel-kpi-label">sessions</span>
+            </div>
+            <div className="panel-kpi-divider" />
+            <div className="panel-kpi">
+              <span className="panel-kpi-value">{stats.totalHours.toFixed(1)}<span className="panel-kpi-unit">h</span></span>
+              <span className="panel-kpi-label">hores</span>
+            </div>
+          </div>
+
+          {/* Per client */}
+          {Object.entries(stats.byClient).length > 0 && (
+            <div className="panel-section">
+              <div className="panel-section-title">Per client</div>
+              {Object.entries(stats.byClient).sort((a, b) => b[1].count - a[1].count).map(([clientId, c]) => (
+                <div key={clientId} className={`panel-client-row${filterClient === clientId ? ' panel-client-row--active' : ''}`}>
+                  <button className="panel-client-name" onClick={() => router.push(`/clients/${clientId}`)} title="Veure client">
+                    {c.name}
+                  </button>
+                  <div className="panel-client-stats">
+                    {editingSessionsClient === clientId ? (
+                      <span className="hours-edit-wrap" onClick={e => e.stopPropagation()}>
+                        <input
+                          className="hours-inline-input"
+                          type="number" min="0" max="10" step="1"
+                          value={editingSessionsValue}
+                          autoFocus
+                          onChange={e => setEditingSessionsValue(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') saveClientSessions(clientId, parseInt(editingSessionsValue) || c.count)
+                            if (e.key === 'Escape') setEditingSessionsClient(null)
+                          }}
+                        />
+                        <button className="hours-save-btn" disabled={savingSessions} onClick={() => saveClientSessions(clientId, parseInt(editingSessionsValue) || c.count)}>✓</button>
+                      </span>
+                    ) : (
+                      <button
+                        className="panel-stat-btn"
+                        onClick={() => { setEditingSessionsClient(clientId); setEditingSessionsValue(String(c.count)) }}
+                        title="Editar sessions (màx 10)"
+                      >
+                        {c.count}<span className="panel-stat-unit">s</span>
+                      </button>
+                    )}
+                    <span className="panel-hours-display">
+                      {(c.count * HOURS_PER_SESSION)}<span className="panel-stat-unit">h</span>
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Per complement */}
+          {Object.entries(stats.byType).length > 0 && (
+            <div className="panel-section">
+              <div className="panel-section-title">Per complement</div>
+              {Object.entries(stats.byType).sort((a, b) => b[1] - a[1]).map(([type, count]) => {
                 const ti = getTypeInfo(type)
+                const pct = stats.totalSessions > 0 ? Math.round((count / stats.totalSessions) * 100) : 0
                 return (
-                  <div key={type} className="type-chip" style={{ background: ti.color + '18', color: ti.color }}>
-                    <ti.icon size={11} />
-                    {ti.label}: {count}
+                  <div key={type} className="panel-type-row">
+                    <span className="panel-type-dot" style={{ background: ti.color }} />
+                    <span className="panel-type-label">{ti.label}</span>
+                    <div className="panel-type-bar">
+                      <div className="panel-type-fill" style={{ width: `${pct}%`, background: ti.color + 'CC' }} />
+                    </div>
+                    <span className="panel-type-count">{count}</span>
                   </div>
                 )
-              })
-            }
-          </div>
-        </div>
-      </div>
-
-      {/* Session list */}
-      <div className="sessions-list">
-        {grouped.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">📋</div>
-            <div className="empty-title">Cap sessió registrada</div>
-            <div className="empty-sub">Afegeix la primera sessió d&apos;aquest mes.</div>
-            <button className="btn-add" onClick={() => setShowAdd(true)}><Plus size={14} /> Nova sessió</button>
-          </div>
-        ) : (
-          grouped.map(([date, daySessions]) => (
-            <div key={date} className="day-group">
-              <div className="day-header">{fmtDate(date)}</div>
-              <div className="day-sessions">
-                {daySessions.map(session => {
-                  const types = Array.isArray(session.session_types) ? session.session_types : []
-                  return (
-                    <div key={session.id} className="session-row" onClick={() => router.push(`/check/${session.id}`)} style={{ cursor: 'pointer' }}>
-                      <div className="session-main">
-                        <div className="session-client-name">{session.client?.name || '—'}</div>
-                        <div className="session-types-wrap">
-                          {types.length === 0
-                            ? <span className="session-no-types">Sense complements</span>
-                            : types.map(t => {
-                              const ti = getTypeInfo(t)
-                              return (
-                                <span key={t} className="session-type-chip" style={{ background: ti.color + '18', color: ti.color }}>
-                                  <ti.icon size={11} />
-                                  {ti.label}
-                                </span>
-                              )
-                            })
-                          }
-                        </div>
-                        {session.notes && <div className="session-notes">{session.notes}</div>}
-                      </div>
-                      <div className="session-meta">
-                        {session.start_time && (
-                          <div className="session-hours"><Clock size={11} /> {session.start_time.slice(0,5)}{session.end_time ? `–${session.end_time.slice(0,5)}` : ''}</div>
-                        )}
-                        {session.hours > 0 && <div className="session-hours">{session.hours}h</div>}
-                      </div>
-                      <div className="session-actions">
-                        <button className="session-edit" onClick={e => { e.stopPropagation(); openEdit(session) }} title="Editar"><Pencil size={13} /></button>
-                        <button
-                          className="session-del"
-                          onClick={e => { e.stopPropagation(); handleDelete(session.id) }}
-                          disabled={deleting === session.id}
-                          title="Eliminar"
-                        >
-                          {deleting === session.id ? <Loader2 size={13} className="spin" /> : <Trash2 size={13} />}
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+              })}
             </div>
-          ))
-        )}
+          )}
+        </aside>
       </div>
 
       {/* Add modal */}
@@ -348,7 +511,7 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
               <div className="form-row">
                 <div className="form-field">
                   <label>Data *</label>
-                  <input type="date" className="form-input" value={form.session_date} onChange={e => setForm(f => ({ ...f, session_date: e.target.value }))} />
+                  <DateInput value={form.session_date} onChange={e => setForm(f => ({ ...f, session_date: e.target.value }))} />
                 </div>
                 <div className="form-field">
                   <label>Hora inici</label>
@@ -357,10 +520,6 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
                 <div className="form-field">
                   <label>Hora fi</label>
                   <input type="time" className="form-input" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} />
-                </div>
-                <div className="form-field">
-                  <label>Hores</label>
-                  <input type="number" step="0.5" min="0" max="24" className="form-input" value={form.hours} onChange={e => setForm(f => ({ ...f, hours: e.target.value }))} />
                 </div>
               </div>
               <div className="form-field">
@@ -390,16 +549,6 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
                 <label>Notes</label>
                 <textarea className="form-textarea" rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Observacions..." />
               </div>
-              <label className="cal-check-row">
-                <input
-                  type="checkbox"
-                  checked={addCalendar}
-                  onChange={e => setAddCalendar(e.target.checked)}
-                  className="cal-check"
-                />
-                <CalendarCheck size={14} />
-                Afegir al Google Calendar
-              </label>
             </div>
             {saveError && <div className="save-error">{saveError}</div>}
             <div className="modal-footer">
@@ -432,7 +581,7 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
               <div className="form-row">
                 <div className="form-field">
                   <label>Data *</label>
-                  <input type="date" className="form-input" value={editForm.session_date} onChange={e => setEditForm(f => ({ ...f, session_date: e.target.value }))} />
+                  <DateInput value={editForm.session_date} onChange={e => setEditForm(f => ({ ...f, session_date: e.target.value }))} />
                 </div>
                 <div className="form-field">
                   <label>Hora inici</label>
@@ -441,10 +590,6 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
                 <div className="form-field">
                   <label>Hora fi</label>
                   <input type="time" className="form-input" value={editForm.end_time} onChange={e => setEditForm(f => ({ ...f, end_time: e.target.value }))} />
-                </div>
-                <div className="form-field">
-                  <label>Hores</label>
-                  <input type="number" step="0.5" min="0" max="24" className="form-input" value={editForm.hours} onChange={e => setEditForm(f => ({ ...f, hours: e.target.value }))} />
                 </div>
               </div>
               <div className="form-field">
@@ -490,210 +635,223 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
       )}
 
       <style jsx>{`
+        /* ── Page shell ── */
         .check-page {
-          flex: 1;
-          padding: 24px 28px 40px;
-          overflow-y: auto;
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
+          flex: 1; overflow-y: auto;
+          display: flex; flex-direction: column;
+          padding: 20px 24px 40px; gap: 16px;
+          background: #F7F8FA;
         }
 
-        @media (max-width: 767px) {
-          .check-page { padding: 14px 12px 80px; }
-          .check-header { flex-direction: column; align-items: flex-start; gap: 10px; }
-          .header-filters { margin-left: 0; flex-wrap: wrap; }
-          .stats-row { gap: 8px; }
-          .stat-card { min-width: calc(50% - 4px); flex: 1; padding: 14px 14px 12px; }
-          .session-meta { display: none; }
-        }
-        @media (min-width: 768px) and (max-width: 1023px) {
-          .check-page { padding: 16px 16px 40px; }
-        }
-
+        /* ── Header ── */
         .check-header {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          flex-wrap: wrap;
+          display: flex; align-items: center; gap: 12px;
+          flex-shrink: 0;
         }
-
-        .month-nav {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
+        .month-nav { display: flex; align-items: center; gap: 6px; }
         .nav-btn {
-          width: 34px; height: 34px;
-          border: 1px solid rgba(0,0,0,0.08); background: white; border-radius: 10px;
-          cursor: pointer; display: flex; align-items: center; justify-content: center;
-          color: #5C6B80; transition: all 0.2s ease;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+          width: 32px; height: 32px; border: 1px solid #E4E8EF; background: white; border-radius: 8px;
+          cursor: pointer; display: flex; align-items: center; justify-content: center; color: #5C6B80;
+          transition: all 0.15s;
         }
-        .nav-btn:hover { background: #F5F8FF; color: #1B2B4B; border-color: rgba(37,64,103,0.2); box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
-
-        .month-label {
-          font-size: 17px; font-weight: 700; color: #0a0a0a;
-          min-width: 160px; text-align: center;
-        }
-
-        .header-filters { display: flex; gap: 8px; margin-left: auto; }
-
-        .filter-select {
-          height: 34px; padding: 0 10px;
-          border: 1px solid #E8E8E8; border-radius: 8px;
-          font-size: 13px; color: #0a0a0a; background: white;
-          font-family: inherit; cursor: pointer; outline: none;
-        }
-        .filter-select:focus { border-color: #1B2B4B60; }
+        .nav-btn:hover { background: #F0F5FF; color: #1B2B4B; border-color: #C5D3E8; }
+        .month-label { font-size: 16px; font-weight: 700; color: #0a0a0a; min-width: 154px; text-align: center; }
 
         .btn-add {
-          display: flex; align-items: center; gap: 6px;
-          height: 38px; padding: 0 16px;
-          background: linear-gradient(135deg, #1B2B4B, #254067); color: white; border: none; border-radius: 10px;
+          display: flex; align-items: center; gap: 6px; margin-left: auto;
+          height: 36px; padding: 0 16px;
+          background: #1B2B4B; color: white; border: none; border-radius: 9px;
           font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
-          transition: all 0.2s ease; white-space: nowrap;
-          box-shadow: 0 2px 8px rgba(37,64,103,0.3);
+          transition: background 0.15s; white-space: nowrap;
         }
-        .btn-add:hover { background: linear-gradient(135deg, #0F1E33, #1a2e4a); box-shadow: 0 4px 14px rgba(37,64,103,0.38); transform: translateY(-1px); }
+        .btn-add:hover { background: #254067; }
 
-        /* Stats */
-        .stats-row { display: flex; gap: 14px; flex-wrap: wrap; }
-
-        .stat-card {
-          background: white; border: 1px solid rgba(0,0,0,0.06); border-radius: 18px;
-          padding: 18px 22px; min-width: 100px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
-          transition: box-shadow 0.2s ease, transform 0.2s ease;
+        /* ── Two-column body ── */
+        .check-body {
+          display: grid;
+          grid-template-columns: 1fr 260px;
+          gap: 16px;
+          align-items: start;
+          flex: 1;
         }
-        .stat-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.08); transform: translateY(-1px); }
-        .stat-card--wide { flex: 1; min-width: 200px; }
+        @media (max-width: 900px) {
+          .check-body { grid-template-columns: 1fr; }
+          .stats-panel { position: static; }
+          .check-page { padding: 14px 14px 80px; }
+        }
 
-        .stat-value { font-size: 28px; font-weight: 700; color: #0a0a0a; letter-spacing: -0.02em; }
-        .stat-label { font-size: 11px; font-weight: 700; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
-
-        .client-breakdown { display: flex; flex-direction: column; gap: 5px; }
-        .breakdown-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
-        .breakdown-name { flex: 1; font-weight: 600; color: #0a0a0a; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .breakdown-count { color: #1B2B4B; font-weight: 700; font-size: 12px; }
-        .breakdown-hours { color: #9A9A9A; font-size: 11px; }
-
-        .type-breakdown { display: flex; flex-wrap: wrap; gap: 6px; }
-        .type-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
-
-        .no-data { font-size: 12px; color: #C0C0C0; }
-
-        /* Session list */
-        .sessions-list { display: flex; flex-direction: column; gap: 20px; }
+        /* ── Session list ── */
+        .sessions-col { display: flex; flex-direction: column; gap: 18px; }
 
         .day-header {
           font-size: 11px; font-weight: 700; color: #9A9A9A;
-          text-transform: uppercase; letter-spacing: 0.06em;
-          margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #F0F0F0;
+          text-transform: uppercase; letter-spacing: 0.07em;
+          margin-bottom: 8px; padding-bottom: 7px; border-bottom: 1px solid #EAECF0;
         }
-
         .day-sessions { display: flex; flex-direction: column; gap: 6px; }
 
         .session-row {
-          display: flex; align-items: center; gap: 12px;
-          background: white; border: 1px solid rgba(0,0,0,0.06); border-radius: 14px;
-          padding: 12px 16px;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-          transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s;
+          display: flex; align-items: center; gap: 12px; cursor: pointer;
+          background: white; border: 1px solid #EAECF0; border-radius: 12px;
+          padding: 12px 14px;
+          transition: border-color 0.15s, box-shadow 0.15s;
         }
-        .session-row:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.08); border-color: rgba(37,64,103,0.14); transform: translateY(-1px); }
+        .session-row:hover { border-color: #C5D3E8; box-shadow: 0 2px 12px rgba(27,43,75,0.08); }
 
-        .session-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-        .session-client-name { font-size: 13.5px; font-weight: 600; color: #0a0a0a; }
-
-        .session-types-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
-
+        .session-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+        .session-client-name { font-size: 14px; font-weight: 700; color: #0a0a0a; }
+        .session-types-wrap { display: flex; flex-wrap: wrap; gap: 4px; }
         .session-type-chip {
           display: inline-flex; align-items: center; gap: 4px;
-          font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 20px;
-          white-space: nowrap;
+          font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; white-space: nowrap;
+        }
+        .session-no-types { font-size: 11.5px; color: #C0C0C0; }
+        .session-notes { font-size: 12px; color: #9A9A9A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        .session-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+        .session-time { display: flex; align-items: center; gap: 3px; font-size: 11px; color: #8A96A8; }
+        .session-hours-badge {
+          font-size: 12px; font-weight: 700; color: #1B2B4B;
+          background: #EFF5FF; border-radius: 6px; padding: 2px 7px;
         }
 
-        .session-no-types { font-size: 12px; color: #C0C0C0; }
-
-        .session-meta { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-
-        .session-hours {
-          display: flex; align-items: center; gap: 4px;
-          font-size: 12px; color: #5C5C5C; white-space: nowrap;
-        }
-
-        .session-notes {
-          font-size: 12px; color: #9A9A9A;
-          overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-
-        .session-actions { display: flex; gap: 4px; flex-shrink: 0; }
-
-        .session-edit {
+        .session-actions { display: flex; gap: 3px; flex-shrink: 0; }
+        .session-edit, .session-del {
           width: 28px; height: 28px; border: none; background: transparent;
-          border-radius: 6px; cursor: pointer; display: flex; align-items: center;
+          border-radius: 7px; cursor: pointer; display: flex; align-items: center;
           justify-content: center; color: #C0C0C0; transition: all 0.15s;
         }
         .session-edit:hover { background: #EFF6FF; color: #1B2B4B; }
-
-        .session-del {
-          width: 28px; height: 28px; border: none; background: transparent;
-          border-radius: 6px; cursor: pointer; display: flex; align-items: center;
-          justify-content: center; color: #C0C0C0; transition: all 0.15s; flex-shrink: 0;
-        }
         .session-del:hover { background: #FEF2F2; color: #DC2626; }
-        .session-del:disabled { opacity: 0.5; cursor: default; }
+        .session-del:disabled { opacity: 0.4; cursor: default; }
 
-        /* Empty */
+        /* ── Stats panel ── */
+        .stats-panel {
+          position: sticky; top: 20px;
+          background: white; border: 1px solid #EAECF0; border-radius: 14px;
+          padding: 16px; display: flex; flex-direction: column; gap: 16px;
+        }
+
+        .panel-filter {
+          width: 100%; height: 34px; padding: 0 10px;
+          border: 1px solid #E4E8EF; border-radius: 8px;
+          font-size: 13px; color: #0a0a0a; background: #FAFBFC;
+          font-family: inherit; cursor: pointer; outline: none;
+        }
+        .panel-filter:focus { border-color: #1B2B4B60; }
+
+        .panel-totals {
+          display: flex; align-items: center; gap: 0;
+          background: #F4F7FB; border-radius: 10px; overflow: hidden;
+        }
+        .panel-kpi {
+          flex: 1; display: flex; flex-direction: column; align-items: center; padding: 12px 8px;
+        }
+        .panel-kpi-divider { width: 1px; background: #E4E8EF; align-self: stretch; }
+        .panel-kpi-value { font-size: 22px; font-weight: 800; color: #0a0a0a; letter-spacing: -0.02em; line-height: 1; }
+        .panel-kpi-unit { font-size: 14px; font-weight: 600; color: #5C6B80; }
+        .panel-kpi-label { font-size: 10px; font-weight: 600; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 3px; }
+
+        .panel-section { display: flex; flex-direction: column; gap: 3px; }
+        .panel-section-title {
+          font-size: 10px; font-weight: 800; color: #B0B8C8;
+          text-transform: uppercase; letter-spacing: 0.08em;
+          margin-bottom: 5px;
+        }
+
+        /* Per client */
+        .panel-client-row {
+          display: flex; align-items: center; gap: 6px;
+          padding: 5px 6px; border-radius: 8px; border: 1px solid transparent;
+          transition: all 0.12s;
+        }
+        .panel-client-row:hover { background: #F5F8FF; border-color: #DDE5F5; }
+        .panel-client-row--active { background: #EEF4FF; border-color: #C5D3E8; }
+
+        .panel-client-name {
+          flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+          font-size: 12.5px; font-weight: 600; color: #1B2B4B;
+          background: none; border: none; padding: 0; cursor: pointer; text-align: left; font-family: inherit;
+        }
+        .panel-client-name:hover { text-decoration: underline; color: #4A82C6; }
+
+        .panel-client-stats { display: flex; gap: 4px; flex-shrink: 0; }
+        .panel-stat-btn {
+          display: inline-flex; align-items: baseline; gap: 1px;
+          font-size: 12px; font-weight: 700; color: #5C6B80;
+          background: none; border: 1px solid transparent; border-radius: 5px;
+          padding: 1px 5px; cursor: pointer; font-family: inherit; transition: all 0.12s;
+        }
+        .panel-stat-btn:hover { background: #EEF4FF; border-color: #C5D3E8; color: #1B2B4B; }
+        .panel-stat-btn--hours { color: #7A9AC0; }
+        .panel-hours-display {
+          display: inline-flex; align-items: baseline; gap: 1px;
+          font-size: 12px; font-weight: 600; color: #7A9AC0;
+          padding: 1px 5px;
+        }
+        .panel-stat-unit { font-size: 10px; font-weight: 500; color: #9AA4AF; margin-left: 1px; }
+
+        .hours-edit-wrap { display: inline-flex; align-items: center; gap: 3px; }
+        .hours-inline-input {
+          width: 44px; height: 22px; padding: 0 4px;
+          border: 1.5px solid #1B2B4B; border-radius: 5px;
+          font-size: 11px; font-family: inherit; outline: none;
+          background: white; color: #0a0a0a; text-align: right;
+        }
+        .hours-save-btn {
+          width: 20px; height: 20px; border: none; border-radius: 4px;
+          background: #1B2B4B; color: white; cursor: pointer;
+          font-size: 10px; display: flex; align-items: center; justify-content: center; padding: 0;
+        }
+        .hours-save-btn:hover:not(:disabled) { background: #4A82C6; }
+        .hours-save-btn:disabled { opacity: 0.5; cursor: default; }
+
+        /* Per complement */
+        .panel-type-row { display: flex; align-items: center; gap: 7px; }
+        .panel-type-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+        .panel-type-label { font-size: 12px; font-weight: 600; color: #444; white-space: nowrap; min-width: 52px; }
+        .panel-type-bar { flex: 1; height: 4px; background: #F0F0F0; border-radius: 2px; overflow: hidden; }
+        .panel-type-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+        .panel-type-count { font-size: 11px; font-weight: 700; color: #6C757D; min-width: 16px; text-align: right; }
+
+        /* ── Empty state ── */
         .empty-state { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 60px 20px; text-align: center; }
         .empty-icon { font-size: 36px; }
         .empty-title { font-size: 15px; font-weight: 600; color: #0a0a0a; }
         .empty-sub { font-size: 13px; color: #9A9A9A; margin-bottom: 8px; }
 
-        /* Modal */
+        /* ── Modals ── */
         .modal-overlay {
-          position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-          display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 24px;
+          position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+          display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px;
         }
-
         .modal {
           background: white; border-radius: 14px; width: 100%; max-width: 500px;
-          display: flex; flex-direction: column;
-          box-shadow: 0 24px 64px rgba(0,0,0,0.2); overflow: hidden;
+          display: flex; flex-direction: column; box-shadow: 0 24px 64px rgba(0,0,0,0.18); overflow: hidden;
         }
-
         .modal-header {
           display: flex; align-items: center; justify-content: space-between;
           padding: 16px 20px; border-bottom: 1px solid #F0F0F0;
         }
         .modal-header h2 { font-size: 15px; font-weight: 700; color: #0a0a0a; }
-
         .close-btn {
           width: 28px; height: 28px; border: none; background: #F0F0F0; border-radius: 6px;
           cursor: pointer; display: flex; align-items: center; justify-content: center; color: #5C5C5C;
         }
         .close-btn:hover { background: #E8E8E8; }
-
         .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
         .save-error { margin: 0 20px; padding: 8px 12px; background: #FEF2F2; color: #DC2626; font-size: 12px; border-radius: 6px; border: 1px solid #FECACA; }
         .modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid #F0F0F0; }
-
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
         .form-field { display: flex; flex-direction: column; gap: 5px; }
         .form-field label { font-size: 11px; font-weight: 700; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.06em; }
-
         .form-select, .form-input, .form-textarea {
           border: 1.5px solid #E8E8E8; border-radius: 8px; padding: 8px 10px;
           font-size: 13.5px; font-family: inherit; outline: none;
           background: #FAFAFA; color: #0a0a0a; transition: border-color 0.15s;
         }
         .form-select:focus, .form-input:focus, .form-textarea:focus { border-color: #1B2B4B; background: white; }
-
         .type-grid { display: flex; flex-wrap: wrap; gap: 6px; }
-
         .type-btn {
           display: flex; align-items: center; gap: 5px;
           padding: 6px 12px; border: 1.5px solid #E8E8E8; border-radius: 20px;
@@ -701,16 +859,13 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
           cursor: pointer; font-family: inherit; transition: all 0.15s;
         }
         .type-btn:hover { border-color: #D0D0D0; color: #0a0a0a; background: #F8F8F8; }
-
         .selected-hint { font-size: 11px; color: #9A9A9A; margin-top: 2px; }
-
         .btn-cancel {
           height: 36px; padding: 0 14px; border: 1px solid #E8E8E8; border-radius: 8px;
           background: white; font-size: 13px; color: #5C5C5C; cursor: pointer;
           font-family: inherit; transition: all 0.15s;
         }
         .btn-cancel:hover { border-color: #D0D0D0; color: #0a0a0a; }
-
         .btn-confirm {
           display: flex; align-items: center; gap: 6px;
           height: 36px; padding: 0 16px; background: #1B2B4B; color: white; border: none;
@@ -722,16 +877,6 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
 
         :global(.spin) { animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        .cal-check-row {
-          display: flex; align-items: center; gap: 7px;
-          font-size: 13px; color: #1B2B4B; font-weight: 500; cursor: pointer;
-          padding: 8px 10px; background: #F0F5FF; border-radius: 8px;
-          border: 1px solid #C7D8F8; transition: background 0.15s;
-          user-select: none;
-        }
-        .cal-check-row:hover { background: #E5EFFF; }
-        .cal-check { accent-color: #1B2B4B; width: 14px; height: 14px; cursor: pointer; }
       `}</style>
 
     </div>

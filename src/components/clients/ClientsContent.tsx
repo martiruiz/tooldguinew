@@ -645,7 +645,7 @@ function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete, onUpdat
                   else onDelete()
                 }}
                 title={client.status === 'active' ? 'Marcar com No client' : client.status === 'inactive' ? 'Marcar com Client' : 'Esborrar client'}
-                style={{ width: 8, height: 8, borderRadius: '50%', background: client.status === 'active' ? '#16A34A' : client.status === 'paused' ? '#D97706' : '#DC2626', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'background 0.15s' }}
+                style={{ width: 8, height: 8, borderRadius: '50%', background: health.dot, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'background 0.15s' }}
               />
             ) : (
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: health.dot, display: 'inline-block', flexShrink: 0 }} />
@@ -695,7 +695,15 @@ function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete, onUpdat
           <span><CheckSquare size={12} />{taskCount} tasques</span>
         </div>
       </Link>
-      {isSuperadmin && (
+      {client.status === 'inactive' && canManage && (
+        <button
+          onClick={e => { e.stopPropagation(); onUpdate(client.id, { status: 'active' }) }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 5, margin: '4px 16px 10px', padding: '5px 12px', background: '#F0FDF4', border: '1.5px solid #86EFAC', borderRadius: 8, fontSize: 12, fontWeight: 700, color: '#16A34A', cursor: 'pointer', fontFamily: 'inherit', width: 'fit-content', transition: 'background 0.12s', position: 'relative', zIndex: 5 }}
+        >
+          <Plus size={13} /> Fer client
+        </button>
+      )}
+      {isSuperadmin && client.status !== 'inactive' && (
         <button
           onClick={e => { e.stopPropagation(); window.location.href = '/finances?s=cartera' }}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 4, margin: '4px 16px 10px', padding: '3px 10px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 6, fontSize: 11.5, fontWeight: 600, color: '#254067', cursor: 'pointer', fontFamily: 'inherit', width: 'fit-content', transition: 'background 0.12s', position: 'relative', zIndex: 5 }}
@@ -809,6 +817,7 @@ function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete, onUpdat
           display: flex;
           align-items: flex-start;
           gap: 12px;
+          padding-right: 26px;
         }
 
         .client-avatar {
@@ -962,7 +971,7 @@ function ClientRow({ client, canManage, onEdit, onDelete, onUpdate }: CardProps)
                 else onDelete()
               }}
               title={client.status === 'active' ? 'Marcar com No client' : client.status === 'inactive' ? 'Marcar com Client' : 'Esborrar client'}
-              style={{ width: 8, height: 8, borderRadius: '50%', background: client.status === 'active' ? '#16A34A' : client.status === 'paused' ? '#D97706' : '#DC2626', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'background 0.15s' }}
+              style={{ width: 8, height: 8, borderRadius: '50%', background: health.dot, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'background 0.15s' }}
             />
           ) : (
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: health.dot, display: 'inline-block', flexShrink: 0 }} />
@@ -1201,7 +1210,7 @@ function ClientTable({ clients, canManage, onEdit, onDelete, onUpdate }: {
                           else onDelete(client)
                         }}
                         title={client.status === 'active' ? 'Marcar com No client' : client.status === 'inactive' ? 'Marcar com Client' : 'Esborrar client'}
-                        style={{ width: 7, height: 7, borderRadius: '50%', background: client.status === 'active' ? '#16A34A' : client.status === 'paused' ? '#D97706' : '#DC2626', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'background 0.15s' }}
+                        style={{ width: 7, height: 7, borderRadius: '50%', background: health.dot, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'background 0.15s' }}
                       />
                     ) : (
                       <span style={{ width: 5, height: 5, borderRadius: '50%', background: health.dot, display: 'inline-block', flexShrink: 0 }} />

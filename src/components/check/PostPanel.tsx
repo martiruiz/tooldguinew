@@ -84,14 +84,14 @@ export function PostPanel({ sessionId, initialData, onSaved }: Props) {
     material: { ...DEFAULT_POST_DATA.material, ...initialData.material },
     postproduccio: { ...DEFAULT_POST_DATA.postproduccio, ...initialData.postproduccio },
   }))
-  const [saving, setSaving] = useState(false)
+  const [autoSave, setAutoSave] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [error, setError] = useState<string | null>(null)
 
   // Inline add-link state per material type
   const [addingLink, setAddingLink] = useState<{ key: string; url: string; name: string } | null>(null)
 
   const save = async (d: PostData) => {
-    setSaving(true)
+    setAutoSave('saving')
     setError(null)
     try {
       const res = await fetch(`/api/check/sessions/${sessionId}`, {
@@ -100,9 +100,11 @@ export function PostPanel({ sessionId, initialData, onSaved }: Props) {
         body: JSON.stringify({ post_data: d }),
       })
       const json = await res.json()
-      if (json.error) { setError(json.error); return }
+      if (json.error) { setError(json.error); setAutoSave('idle'); return }
       onSaved(d)
-    } finally { setSaving(false) }
+      setAutoSave('saved')
+      setTimeout(() => setAutoSave('idle'), 2000)
+    } catch { setAutoSave('idle') }
   }
 
   const toggleCheck = (key: string) => {
@@ -121,7 +123,11 @@ export function PostPanel({ sessionId, initialData, onSaved }: Props) {
   const confirmAddLink = () => {
     if (!addingLink || !addingLink.url.trim()) return
     const url = addingLink.url.trim()
-    const name = addingLink.name.trim() || new URL(url.startsWith('http') ? url : `https://${url}`).hostname
+    let parsedName = addingLink.name.trim()
+    if (!parsedName) {
+      try { parsedName = new URL(url.startsWith('http') ? url : `https://${url}`).hostname } catch { parsedName = url }
+    }
+    const name = parsedName
     const newLink: MaterialLink = { id: `${Date.now()}`, url: url.startsWith('http') ? url : `https://${url}`, name }
     const next: PostData = {
       ...data,
@@ -255,9 +261,11 @@ export function PostPanel({ sessionId, initialData, onSaved }: Props) {
         </div>
       </div>
 
-      {saving && (
+      {autoSave !== 'idle' && (
         <div className="pp-saving">
-          <Loader2 size={12} className="pp-spin" /> Desant...
+          {autoSave === 'saving'
+            ? <><Loader2 size={12} className="pp-spin" /> Guardant...</>
+            : <><Check size={12} /> Guardat</>}
         </div>
       )}
 
