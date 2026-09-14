@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createAdmin } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/serverAdmin'
 import { getCalendarClientWithRefresh } from '@/lib/google'
 import { notifyUser, getProfileForNotif } from '@/lib/notifications'
 
@@ -17,7 +17,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'client_id i session_date són obligatoris' }, { status: 400 })
     }
 
-    const { data, error } = await supabase
+    const admin = createAdminClient()
+    const { data, error } = await admin
       .from('content_sessions')
       .insert({
         client_id,
@@ -38,10 +39,6 @@ export async function POST(req: NextRequest) {
 
     if (add_to_calendar) {
       try {
-        const admin = createAdmin(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        )
         const { data: tokenRow } = await admin
           .from('google_calendar_tokens')
           .select('access_token, refresh_token, expiry_date')

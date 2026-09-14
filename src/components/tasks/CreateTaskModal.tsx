@@ -99,9 +99,9 @@ export function CreateTaskModal({
       currentUserId={currentUserId}
       onClose={handleClose}
       onUpdated={(updated) => {
+        savedRef.current = true
         const title = (updated.title || '').trim().toUpperCase()
         if (!title || title === 'NOVA TASCA') return
-        savedRef.current = true
         onCreated(updated)
       }}
     />

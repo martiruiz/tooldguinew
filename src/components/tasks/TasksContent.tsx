@@ -870,7 +870,7 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
 
   const onMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     const el = boardRef.current
-    if (!el || (e.target as HTMLElement).closest('.kanban-card')) return
+    if (!el || (e.target as HTMLElement).closest('.kcard')) return
     isMouseScrolling.current = true
     startX.current = e.pageX - el.offsetLeft
     scrollLeft.current = el.scrollLeft
