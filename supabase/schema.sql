@@ -448,10 +448,10 @@ CREATE POLICY "Responsible users and managers can update tasks"
     get_user_role() IN ('superadmin', 'manager')
   );
 
-CREATE POLICY "Managers and admins can delete tasks"
+CREATE POLICY "Authenticated users can delete tasks"
   ON tasks FOR DELETE
   TO authenticated
-  USING (get_user_role() IN ('superadmin', 'manager'));
+  USING (true);
 
 -- TASK COMMENTS
 CREATE POLICY "Users can view task comments"

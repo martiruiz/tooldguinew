@@ -193,11 +193,12 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
   }
 
   const handleDeleteTask = async (taskId: string) => {
-    const res = await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' })
-    if (res.ok) {
+    const supabase = createClient()
+    const { error } = await supabase.from('tasks').delete().eq('id', taskId)
+    if (!error) {
       setLocalTasks((prev) => prev.filter((t) => t.id !== taskId))
     } else {
-      console.error('[handleDeleteTask] DELETE failed', res.status, await res.text().catch(() => ''))
+      console.error('[handleDeleteTask]', error.message)
     }
   }
 
