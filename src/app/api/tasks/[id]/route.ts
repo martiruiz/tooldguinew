@@ -25,7 +25,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await req.json()
   const admin = createAdminClient()
 
-  // Update via admin to bypass RLS, then select via user client to allow JOINs
+  // Update via admin to bypass RLS
   const { error: updateError } = await admin
     .from('tasks')
     .update({ ...body, updated_at: new Date().toISOString() })
@@ -33,9 +33,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
 
-  const { data, error: selectError } = await supabase
+  // Return only basic fields (no JOINs) — frontend merges with existing joined data
+  const { data, error: selectError } = await admin
     .from('tasks')
-    .select(TASK_SELECT)
+    .select('*')
     .eq('id', id)
     .single()
 
