@@ -64,10 +64,10 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
   const [openPop, setOpenPop] = useState<string | null>(null)
   const [watcherSearch, setWatcherSearch] = useState('')
 
-  // Realtime: escolta inserts de tasques noves (des de qualsevol lloc: sidebar, altres usuaris...)
+  // Realtime: escolta inserts i deletes de tasques (des de qualsevol lloc: sidebar, altres usuaris...)
   useEffect(() => {
     const supabase = createClient()
-    const ch = supabase.channel('tasks-board-inserts')
+    const ch = supabase.channel('tasks-board-changes')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, async payload => {
         const { data } = await supabase
           .from('tasks')
@@ -77,6 +77,9 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
         if (!data) return
         if (pendingTaskIdRef.current === data.id) return
         setLocalTasks(prev => prev.some(t => t.id === data.id) ? prev : [data as Task, ...prev])
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tasks' }, payload => {
+        setLocalTasks(prev => prev.filter(t => t.id !== payload.old.id))
       })
       .subscribe()
     return () => { supabase.removeChannel(ch) }
@@ -190,8 +193,12 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
   }
 
   const handleDeleteTask = async (taskId: string) => {
-    setLocalTasks((prev) => prev.filter((t) => t.id !== taskId))
-    fetch(`/api/tasks/${taskId}`, { method: 'DELETE' }).catch(() => {})
+    const res = await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' })
+    if (res.ok) {
+      setLocalTasks((prev) => prev.filter((t) => t.id !== taskId))
+    } else {
+      console.error('[handleDeleteTask] DELETE failed', res.status, await res.text().catch(() => ''))
+    }
   }
 
   const hasFilters = filterProjects.length > 0 || filterLabels.length > 0 || filterPersonId || filterStatus || filterDeadline || filterWatcher || sortBy !== 'manual'
