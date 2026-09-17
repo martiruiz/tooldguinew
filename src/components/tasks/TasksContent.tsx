@@ -544,7 +544,7 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
           currentUserId={currentUserId}
           defaultStatus={newTaskStatus}
           onClose={() => { setShowNew(false); pendingTaskIdRef.current = null }}
-          onCreated={(t) => { pendingTaskIdRef.current = null; handleTaskCreated(t); setShowNew(false) }}
+          onCreated={(t) => { pendingTaskIdRef.current = null; handleTaskCreated(t) }}
           onDiscarded={handleTaskDiscarded}
           onPending={(id) => { pendingTaskIdRef.current = id }}
         />
