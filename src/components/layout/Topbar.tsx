@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState, useRef } from 'react'
-import { Bell, Check, CheckCheck, X, ClipboardList, Edit3, CheckSquare, MessageSquare, AtSign, Clock, User, FolderOpen, Settings2, Briefcase, FileSignature, Banknote } from 'lucide-react'
+import { Bell, Check, CheckCheck, X, ClipboardList, Edit3, CheckSquare, MessageSquare, AtSign, Clock, User, FolderOpen, Settings2, Briefcase, FileSignature, Banknote, Menu } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, Notification } from '@/types'
@@ -117,6 +117,13 @@ export function Topbar({ user, title }: Props) {
   return (
     <header className="topbar">
       <div className="topbar-left">
+        <button
+          className="topbar-hamburger"
+          onClick={() => window.dispatchEvent(new Event('toggle-mobile-sidebar'))}
+          aria-label="Obrir menú"
+        >
+          <Menu size={20} strokeWidth={1.8} />
+        </button>
         {title && <h1 className="topbar-title">{title}</h1>}
       </div>
 
@@ -262,6 +269,14 @@ export function Topbar({ user, title }: Props) {
         }
 
         .topbar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+
+        .topbar-hamburger {
+          display: none; align-items: center; justify-content: center;
+          width: 36px; height: 36px; border: none; background: none;
+          cursor: pointer; color: #374151; border-radius: 8px; flex-shrink: 0;
+        }
+        .topbar-hamburger:hover { background: #F3F4F6; }
+        @media (max-width: 1023px) { .topbar-hamburger { display: flex; } }
 
         .topbar-title {
           font-size: 15px; font-weight: 700; color: #0a0a0a;

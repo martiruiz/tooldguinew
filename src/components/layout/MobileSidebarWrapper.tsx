@@ -13,26 +13,25 @@ export function MobileSidebarWrapper({ user }: Props) {
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
 
+  // Listen for open event dispatched by the hamburger button in Topbar
+  useEffect(() => {
+    const onToggle = () => setOpen(o => !o)
+    window.addEventListener('toggle-mobile-sidebar', onToggle)
+    return () => window.removeEventListener('toggle-mobile-sidebar', onToggle)
+  }, [])
+
+  // Swipe LEFT on open sidebar → close (no swipe-right to open)
   useEffect(() => {
     const onTouchStart = (e: TouchEvent) => {
       touchStartX.current = e.touches[0].clientX
       touchStartY.current = e.touches[0].clientY
     }
-
     const onTouchEnd = (e: TouchEvent) => {
+      if (!open) return
       const dx = e.changedTouches[0].clientX - touchStartX.current
       const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current)
-
-      // Swipe right from left edge (<= 40px) → open
-      if (!open && touchStartX.current <= 40 && dx > 60 && dy < 80) {
-        setOpen(true)
-      }
-      // Swipe left on open sidebar → close
-      if (open && dx < -60 && dy < 80) {
-        setOpen(false)
-      }
+      if (dx < -60 && dy < 80) setOpen(false)
     }
-
     document.addEventListener('touchstart', onTouchStart, { passive: true })
     document.addEventListener('touchend', onTouchEnd, { passive: true })
     return () => {
@@ -49,15 +48,9 @@ export function MobileSidebarWrapper({ user }: Props) {
 
   return (
     <>
-      {/* Overlay */}
       {open && (
-        <div
-          className="mobile-sidebar-overlay"
-          onClick={() => setOpen(false)}
-        />
+        <div className="mobile-sidebar-overlay" onClick={() => setOpen(false)} />
       )}
-
-      {/* Sidebar drawer */}
       <div className={`mobile-sidebar-drawer${open ? ' open' : ''}`}>
         <Sidebar user={user} />
       </div>
@@ -67,18 +60,13 @@ export function MobileSidebarWrapper({ user }: Props) {
           position: fixed; inset: 0; background: rgba(0,0,0,0.4);
           z-index: 199; backdrop-filter: blur(2px);
         }
-
         .mobile-sidebar-drawer {
           position: fixed; top: 0; left: 0; bottom: 0;
           z-index: 200; transform: translateX(-100%);
           transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
           will-change: transform;
         }
-
-        .mobile-sidebar-drawer.open {
-          transform: translateX(0);
-        }
-
+        .mobile-sidebar-drawer.open { transform: translateX(0); }
         @media (min-width: 1024px) {
           .mobile-sidebar-drawer { display: none; }
           .mobile-sidebar-overlay { display: none; }
