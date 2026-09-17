@@ -13,6 +13,7 @@ import {
 import { getInitials, clientTypeLabels } from '@/lib/utils'
 import { NewClientModal } from '@/components/clients/NewClientModal'
 import { DateInput } from '@/components/ui/DateInput'
+import { ClientSearchSelect } from '@/components/ui/ClientSearchSelect'
 
 // ─── Types ───────────────────────────────────────
 interface Client {
@@ -1266,14 +1267,11 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
                       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18, borderRadius: '50%', border: '1.5px solid #254067', background: 'transparent', color: '#254067', fontSize: 14, lineHeight: 1, cursor: 'pointer', padding: 0, flexShrink: 0 }}
                     >+</button>
                   </label>
-                  <select className="form-select" value={form.client_id}
-                    onChange={e => {
-                      const cl = clientOptions.find(c => c.id === e.target.value)
-                      setForm(p => ({ ...p, client_id: e.target.value, client_name: cl?.name || p.client_name }))
-                    }}>
-                    <option value="">Selecciona o escriu manualment...</option>
-                    {clientOptions.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <ClientSearchSelect
+                    clients={clientsList.map(c => ({ id: c.id, name: c.name, logo_url: c.logo_url }))}
+                    value={form.client_id}
+                    onChange={(id, name) => setForm(p => ({ ...p, client_id: id, client_name: name || p.client_name }))}
+                  />
                 </div>
                 <div className="form-field">
                   <label>Nom del client *</label>
@@ -1891,6 +1889,22 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
           padding: 8px 10px; border: 1px solid #E8E8E8; border-radius: 8px;
           font-size: 13.5px; color: #0a0a0a; font-family: inherit; outline: none; resize: vertical; background: white;
         }
+        /* ── Client search selector ── */
+        .client-sel-trigger { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; border: 1px solid #E8E8E8; border-radius: 8px; background: white; cursor: pointer; font-size: 13.5px; color: #0a0a0a; transition: border-color 0.15s; }
+        .client-sel-trigger:hover { border-color: #1B2B4B60; }
+        .client-sel-logo { width: 22px; height: 22px; border-radius: 5px; object-fit: cover; flex-shrink: 0; }
+        .client-sel-av { width: 22px; height: 22px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: white; flex-shrink: 0; letter-spacing: -0.5px; }
+        .client-sel-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .client-sel-placeholder { flex: 1; color: #9CA3AF; font-size: 13px; }
+        .client-sel-drop { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: white; border: 1px solid #E8E8E8; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 200; overflow: hidden; }
+        .client-sel-search-wrap { display: flex; align-items: center; gap: 7px; padding: 8px 10px; border-bottom: 1px solid #F3F4F6; }
+        .client-sel-search { flex: 1; border: none; outline: none; font-size: 13px; color: #111827; font-family: inherit; background: none; }
+        .client-sel-clear { background: none; border: none; cursor: pointer; color: #9CA3AF; font-size: 16px; padding: 0 2px; line-height: 1; }
+        .client-sel-list { max-height: 220px; overflow-y: auto; padding: 4px; }
+        .client-sel-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border: none; background: none; cursor: pointer; border-radius: 7px; text-align: left; transition: background 0.1s; font-family: inherit; }
+        .client-sel-item:hover { background: #F8F9FB; }
+        .client-sel-item.selected { background: #EFF6FF; }
+        .client-sel-item-name { font-size: 13px; color: #111827; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .analysis-section {
           border: 1px solid #E8E8E8; border-radius: 10px; padding: 14px;
           background: #FAFAFA; display: flex; flex-direction: column; gap: 12px;

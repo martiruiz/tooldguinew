@@ -10,6 +10,7 @@ import { LabelsManagerModal, type Label } from './LabelsManagerModal'
 import { DrivePickerModal } from './DrivePickerModal'
 import { DateTimePicker } from '@/components/ui/DateTimePicker'
 import { RichTextEditor } from '@/components/ui/RichTextEditor'
+import { ClientSearchSelect } from '@/components/ui/ClientSearchSelect'
 
 const STATUS_COLS = [
   { status: 'inbox', label: 'Inbox', color: '#9A9A9A' },
@@ -794,10 +795,11 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
                 />
               </div>
               <div className="field"><label>Client</label>
-                <select value={form.client_id} onChange={e => saveDropdown('client_id', e.target.value)}>
-                  <option value="">Sense client</option>
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <ClientSearchSelect
+                  clients={clients}
+                  value={form.client_id}
+                  onChange={(id) => saveDropdown('client_id', id)}
+                />
               </div>
               <div className="field"><label>Projecte</label>
                 <select value={form.project_id} onChange={e => saveDropdown('project_id', e.target.value)}>

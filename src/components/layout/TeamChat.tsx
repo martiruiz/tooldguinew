@@ -19,6 +19,9 @@ interface ChatMessage {
   attachment?: Attachment | null
   created_at: string
   profile?: { full_name: string; avatar_url?: string }
+  reply_to_id?: string | null
+  reply_to_content?: string | null
+  reply_to_sender?: string | null
 }
 
 interface Props {
@@ -169,6 +172,14 @@ export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
   const [dmMessages, setDmMessages] = useState<ChatMessage[]>([])
   const [dmInput, setDmInput] = useState('')
   const [dmSending, setDmSending] = useState(false)
+  const [dmReplyingTo, setDmReplyingTo] = useState<{id: string; content: string; sender: string} | null>(null)
+  const [dmShowEmoji, setDmShowEmoji] = useState(false)
+  const [dmShowGif, setDmShowGif] = useState(false)
+  const [dmGifQuery, setDmGifQuery] = useState('')
+  const [dmGifs, setDmGifs] = useState<{preview: string; url: string; title: string}[]>([])
+  const [dmGifsLoading, setDmGifsLoading] = useState(false)
+  const [dmHoveredId, setDmHoveredId] = useState<string | null>(null)
+  const dmInputRef = useRef<HTMLTextAreaElement>(null)
   const [uploading, setUploading] = useState(false)
   const [typingUsers, setTypingUsers] = useState<{ id: string; name: string }[]>([])
   const [sendError, setSendError] = useState<string | null>(null)
@@ -489,21 +500,42 @@ export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
     return () => { supabase.removeChannel(dmCh) }
   }, [dmPeer, currentUserId, scrollBottom])
 
-  const sendDm = async () => {
-    const text = dmInput.trim()
+  const loadDmGifs = useCallback(async (q: string) => {
+    setDmGifsLoading(true)
+    try {
+      const res = await fetch(`/api/chat/gifs${q ? `?q=${encodeURIComponent(q)}` : ''}`)
+      setDmGifs((await res.json()).results || [])
+    } catch { setDmGifs([]) } finally { setDmGifsLoading(false) }
+  }, [])
+
+  useEffect(() => { if (dmShowGif) loadDmGifs('') }, [dmShowGif, loadDmGifs])
+
+  const sendDm = async (overrideContent?: string) => {
+    const text = (overrideContent ?? dmInput).trim()
     if (!text || !dmPeer || dmSending) return
     setDmSending(true)
-    const supabase = createClient()
+    if (!overrideContent) setDmInput('')
+    const currentReply = dmReplyingTo
+    setDmReplyingTo(null); setDmShowEmoji(false); setDmShowGif(false)
     const optimisticId = crypto.randomUUID()
-    const optimistic: ChatMessage = { id: optimisticId, user_id: currentUserId, content: text, attachment: null, created_at: new Date().toISOString(), profile: profileMap[currentUserId] }
+    const optimistic: any = { id: optimisticId, user_id: currentUserId, content: text, attachment: null, created_at: new Date().toISOString(), profile: profileMap[currentUserId], reply_to_id: currentReply?.id || null, reply_to_content: currentReply?.content || null, reply_to_sender: currentReply?.sender || null }
     setDmMessages(prev => [...prev, optimistic])
-    setDmInput('')
     scrollBottom()
-    const res = await fetch('/api/chat/dm-messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ peerId: dmPeer.id, content: text }) })
+    const body: any = { peerId: dmPeer.id, content: text }
+    if (currentReply) { body.reply_to_id = currentReply.id; body.reply_to_content = currentReply.content; body.reply_to_sender = currentReply.sender }
+    const res = await fetch('/api/chat/dm-messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     const json = await res.json()
     const data = json.message
-    if (data) setDmMessages(prev => prev.map(m => m.id === optimisticId ? { ...data, user_id: data.from_user_id, profile: profileMap[data.from_user_id] } : m))
+    if (data) setDmMessages(prev => prev.map(m => m.id === optimisticId ? { ...data, user_id: data.from_user_id, profile: profileMap[data.from_user_id], reply_to_id: data.reply_to_id, reply_to_content: data.reply_to_content, reply_to_sender: data.reply_to_sender } : m))
     setDmSending(false)
+  }
+
+  const handleDmReply = (msg: any) => {
+    const senderName = msg.user_id === currentUserId ? 'Tu' : (msg.profile?.full_name || dmPeer?.full_name || '?')
+    const content = msg.content?.startsWith('__gif__:') ? '🖼 GIF' : (msg.content?.slice(0, 80) || '')
+    setDmReplyingTo({ id: msg.id, content, sender: senderName })
+    setDmShowEmoji(false); setDmShowGif(false)
+    setTimeout(() => dmInputRef.current?.focus(), 50)
   }
 
   return (
@@ -608,27 +640,101 @@ export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
                 const name = msg.profile?.full_name || 'Usuari'
                 const ownBg = 'linear-gradient(135deg, #1B3A6B 0%, #1E4080 100%)'
                 const otherBg = '#1A2236'
+                const isGif = msg.content?.startsWith('__gif__:')
+                const hovered = dmHoveredId === msg.id
                 return (
-                  <div key={msg.id} style={{ display: 'flex', flexDirection: isOwn ? 'row-reverse' : 'row', alignItems: 'flex-end', gap: 8, marginBottom: isLastOfGroup ? 6 : 2 }}>
-                    {!isOwn && <div style={{ flexShrink: 0, visibility: isLastOfGroup ? 'visible' : 'hidden' }}><Avatar profile={msg.profile} size={30} /></div>}
+                  <div key={msg.id} style={{ display: 'flex', flexDirection: isOwn ? 'row-reverse' : 'row', alignItems: 'center', gap: 6, marginBottom: isLastOfGroup ? 6 : 2 }}
+                    onMouseEnter={() => setDmHoveredId(msg.id)}
+                    onMouseLeave={() => setDmHoveredId(null)}
+                  >
+                    {!isOwn && <div style={{ flexShrink: 0, visibility: isLastOfGroup ? 'visible' : 'hidden', alignSelf: 'flex-end' }}><Avatar profile={msg.profile} size={30} /></div>}
                     <div style={{ maxWidth: '78%', display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start', gap: 1 }}>
                       {!isOwn && isFirstOfGroup && <span style={{ fontSize: 11.5, fontWeight: 700, color, paddingLeft: 2, marginBottom: 2 }}>{name}</span>}
                       <div style={{ position: 'relative' }}>
-                        <div style={{ background: isOwn ? ownBg : otherBg, borderRadius: isOwn ? (isFirstOfGroup ? '18px 18px 4px 18px' : '18px 4px 4px 18px') : (isFirstOfGroup ? '18px 18px 18px 4px' : '4px 18px 18px 4px'), padding: '8px 12px 6px', boxShadow: isOwn ? '0 1px 6px rgba(27,75,130,0.3)' : '0 1px 4px rgba(0,0,0,0.3)', border: isOwn ? '1px solid rgba(96,165,250,0.12)' : '1px solid rgba(255,255,255,0.06)' }}>
-                          {msg.content && <div style={{ fontSize: 13.5, lineHeight: 1.5, color: isOwn ? '#CBD5E1' : '#D1D5DB', wordBreak: 'break-word' }}>{renderContent(msg.content, currentUserId)}</div>}
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 3, marginTop: 3 }}>
+                        <div style={{ background: isGif ? 'transparent' : (isOwn ? ownBg : otherBg), borderRadius: isOwn ? (isFirstOfGroup ? '18px 18px 4px 18px' : '18px 4px 4px 18px') : (isFirstOfGroup ? '18px 18px 18px 4px' : '4px 18px 18px 4px'), padding: isGif ? 0 : '8px 12px 6px', boxShadow: isGif ? 'none' : (isOwn ? '0 1px 6px rgba(27,75,130,0.3)' : '0 1px 4px rgba(0,0,0,0.3)'), border: isGif ? 'none' : (isOwn ? '1px solid rgba(96,165,250,0.12)' : '1px solid rgba(255,255,255,0.06)') }}>
+                          {msg.reply_to_content && (
+                            <div style={{ background: 'rgba(255,255,255,0.08)', borderLeft: '3px solid rgba(255,255,255,0.3)', borderRadius: 6, padding: '4px 8px', marginBottom: 6 }}>
+                              <div style={{ fontSize: 10.5, fontWeight: 700, color: '#93C5FD', marginBottom: 2 }}>{msg.reply_to_sender}</div>
+                              <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{msg.reply_to_content}</div>
+                            </div>
+                          )}
+                          {isGif
+                            ? <img src={msg.content.slice(8)} alt="GIF" style={{ maxWidth: 200, borderRadius: 10, display: 'block' }} loading="lazy" />
+                            : msg.content && <div style={{ fontSize: 13.5, lineHeight: 1.5, color: isOwn ? '#CBD5E1' : '#D1D5DB', wordBreak: 'break-word' }}>{renderContent(msg.content, currentUserId)}</div>
+                          }
+                          {!isGif && <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 3, marginTop: 3 }}>
                             <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', whiteSpace: 'nowrap' }}>{fmtTime(msg.created_at)}</span>
-                          </div>
+                          </div>}
                         </div>
                       </div>
                     </div>
+                    {hovered && (
+                      <button onClick={() => handleDmReply(msg)} title="Respondre"
+                        style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '4px 6px', cursor: 'pointer', color: '#94A3B8', display: 'flex', alignItems: 'center', flexShrink: 0, transition: 'all 0.12s' }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#93C5FD'; e.currentTarget.style.borderColor = 'rgba(147,197,253,0.3)' }}
+                        onMouseLeave={e => { e.currentTarget.style.color = '#94A3B8'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)' }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+                      </button>
+                    )}
                   </div>
                 )
               })}
             </div>
+            {/* Emoji picker */}
+            {dmShowEmoji && (
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: '#0D1527', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '6px 10px 2px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  {['😊','👍','🎉','🍕','✅'].map((cat, ci) => {
+                    const cats = [['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','😉','😍','🥰','😘','😋','😛','😜','🤪','😎','🥳','😏','😢','😭','😤','😠','🤬','😳','😱','🤗','🤔','😶','😐','😑','😬','🙄','😮','🥱','😴','😷'],['👍','👎','👌','✌️','🤞','🤙','👋','✋','👏','🙌','🤝','🙏','💪','❤️','🧡','💛','💚','💙','💜','🖤','💕','💯','🫶'],['🎉','🎊','🎈','🎁','🏆','🥇','🎯','🎮','🔥','⚡','🌟','⭐','🌈','☀️','🌙','❄️','💥','✨','🎵','🎶','📸','📱','💻','💡'],['🍕','🍔','🍟','🌮','🌯','🍣','🍜','🍝','☕','🧋','🍺','🥂','🥤','🧃','🍎','🍊','🍋','🍇','🍓'],['✅','❌','⭕','❓','❗','💬','💭','📢','🔔','⏰','📌','💡','🔴','🟠','🟡','🟢','🔵','🟣']]
+                    return <button key={cat} onClick={() => { const el = document.getElementById(`dm-emoji-grid-${ci}`); el?.scrollIntoView() }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, padding: '3px 5px', borderRadius: 7, opacity: 0.6 }} onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }} onMouseLeave={e => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.background = 'none' }}>{cat}</button>
+                  })}
+                  <button onClick={() => setDmShowEmoji(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#475569', display: 'flex', alignItems: 'center', padding: '4px 5px', borderRadius: 7 }}><X size={12} /></button>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 1, padding: '4px 8px 8px', maxHeight: 130, overflowY: 'auto' }}>
+                  {['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','😉','😍','🥰','😘','😋','😛','😜','🤪','😎','🥳','😏','😢','😭','😤','😠','🤬','😳','😱','🤗','🤔','😶','😐','😑','😬','🙄','😮','🥱','😴','😷','👍','👎','👌','✌️','🤞','🤙','👋','✋','👏','🙌','🤝','🙏','💪','❤️','🧡','💛','💚','💙','💜','🖤','💕','💯','🫶','🎉','🎊','🎈','🎁','🏆','🥇','🎯','🎮','🔥','⚡','🌟','⭐','🌈','☀️','🌙','❄️','💥','✨','🎵','🎶','📸','📱','💻','💡','✅','❌','⭕','❓','❗','💬','🔔','⏰','📌','🔴','🟠','🟡','🟢','🔵','🟣'].map(e => (
+                    <button key={e} onClick={() => { setDmInput(p => p + e); setTimeout(() => dmInputRef.current?.focus(), 0) }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 21, padding: '3px 4px', borderRadius: 7, lineHeight: 1 }} onMouseEnter={ev => (ev.currentTarget.style.background = 'rgba(255,255,255,0.08)')} onMouseLeave={ev => (ev.currentTarget.style.background = 'none')}>{e}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* GIF picker */}
+            {dmShowGif && (
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: '#0D1527', flexShrink: 0, display: 'flex', flexDirection: 'column', height: 230 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <input value={dmGifQuery} onChange={e => { setDmGifQuery(e.target.value); loadDmGifs(e.target.value) }} placeholder="Cerca GIFs..." autoFocus style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 9, padding: '7px 11px', color: '#E2E8F0', fontSize: 13, outline: 'none', fontFamily: 'inherit' }} />
+                  <button onClick={() => setDmShowGif(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', display: 'flex', alignItems: 'center', padding: '5px' }}><X size={13} /></button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 4, padding: '6px 8px 8px', overflowY: 'auto', flex: 1 }}>
+                  {dmGifsLoading ? <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 13, padding: 20 }}>Carregant...</div>
+                    : dmGifs.length === 0 ? <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 13, padding: 20 }}>{dmGifQuery ? 'Cap resultat' : 'Cerca un GIF'}</div>
+                    : dmGifs.map((g, i) => (
+                      <img key={i} src={g.preview} alt={g.title} onClick={() => sendDm(`__gif__:${g.url}`)} loading="lazy"
+                        style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 8, cursor: 'pointer', transition: 'opacity 0.15s, transform 0.15s' }}
+                        onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = 'scale(1.03)' }}
+                        onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = '' }}
+                      />
+                    ))}
+                </div>
+              </div>
+            )}
+            {/* Reply bar */}
+            {dmReplyingTo && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', background: 'rgba(37,99,235,0.12)', borderTop: '1px solid rgba(37,99,235,0.2)', flexShrink: 0 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: '#60A5FA', marginBottom: 1 }}>{dmReplyingTo.sender}</div>
+                  <div style={{ fontSize: 12, color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dmReplyingTo.content}</div>
+                </div>
+                <button onClick={() => setDmReplyingTo(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', display: 'flex', alignItems: 'center', padding: 4, borderRadius: 6 }}><X size={13} /></button>
+              </div>
+            )}
             <div style={{ padding: '10px 12px 14px', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0, background: '#0D1527' }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                <button type="button" onClick={() => { setDmShowEmoji(e => !e); setDmShowGif(false) }} style={{ width: 34, height: 34, borderRadius: 10, border: 'none', background: dmShowEmoji ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0, transition: 'background 0.14s' }}>😊</button>
+                <button type="button" onClick={() => { setDmShowGif(g => !g); setDmShowEmoji(false) }} style={{ width: 34, height: 34, borderRadius: 10, border: 'none', background: dmShowGif ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#94A3B8', fontFamily: 'inherit', letterSpacing: '0.05em', flexShrink: 0, transition: 'background 0.14s' }}>GIF</button>
                 <textarea
+                  ref={dmInputRef}
                   value={dmInput}
                   onChange={e => setDmInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendDm() } }}
@@ -638,9 +744,9 @@ export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
                   onInput={e => { const t = e.target as HTMLTextAreaElement; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 100) + 'px' }}
                 />
                 <button
-                  onClick={sendDm}
+                  onClick={() => sendDm()}
                   disabled={!dmInput.trim() || dmSending}
-                  style={{ width: 40, height: 40, borderRadius: 12, border: 'none', background: dmInput.trim() ? 'linear-gradient(135deg, #1B4B82, #2563EB)' : 'rgba(255,255,255,0.05)', color: dmInput.trim() ? '#fff' : '#374151', cursor: dmInput.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.18s cubic-bezier(0.34,1.56,0.64,1)', boxShadow: dmInput.trim() ? '0 4px 14px rgba(37,99,235,0.4)' : 'none' }}
+                  style={{ width: 36, height: 36, borderRadius: 11, border: 'none', background: dmInput.trim() ? 'linear-gradient(135deg, #1B4B82, #2563EB)' : 'rgba(255,255,255,0.05)', color: dmInput.trim() ? '#fff' : '#374151', cursor: dmInput.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.18s cubic-bezier(0.34,1.56,0.64,1)', boxShadow: dmInput.trim() ? '0 4px 14px rgba(37,99,235,0.4)' : 'none' }}
                   onMouseEnter={e => { if (dmInput.trim()) { e.currentTarget.style.transform = 'translateY(-1px) scale(1.05)'; e.currentTarget.style.boxShadow = '0 6px 18px rgba(37,99,235,0.5)' }}}
                   onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = dmInput.trim() ? '0 4px 14px rgba(37,99,235,0.4)' : 'none' }}
                   onMouseDown={e => { if (dmInput.trim()) e.currentTarget.style.transform = 'scale(0.95)' }}

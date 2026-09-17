@@ -1,11 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { MessageCircle, Bell, AtSign, CheckSquare, MessageSquare, ExternalLink, Check, Users, Send, ArrowLeft, Plus, Globe, Search, X, Hash, CornerUpLeft } from 'lucide-react'
+import { MessageCircle, AtSign, CheckSquare, MessageSquare, ExternalLink, Users, Send, ArrowLeft, Plus, Globe, Search, X, Hash, CornerUpLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getInitials } from '@/lib/utils'
-import type { Notification } from '@/types'
-
 interface ChatMsg {
   id: string; user_id: string; content: string; created_at: string
   profiles?: { id: string; full_name: string; avatar_url?: string }
@@ -20,7 +18,7 @@ interface ConvMessage {
   id: string; conversation_id: string; user_id: string; content: string; created_at: string
 }
 interface Props {
-  currentUserId: string; notifications: Notification[]
+  currentUserId: string
   chatMessages: ChatMsg[]; profiles: Profile[]
 }
 
@@ -624,78 +622,26 @@ function MessagingPanel({ currentUserId, profiles, profileMap }: {
   )
 }
 
-// ── Notification icon map ──
-const typeIcon: Record<string, { icon: typeof Bell; bg: string; color: string }> = {
-  task_assigned: { icon: CheckSquare, bg: '#EFF6FF', color: '#3B82F6' },
-  mention: { icon: AtSign, bg: '#EFF6FF', color: '#2563EB' },
-  comment: { icon: MessageSquare, bg: '#FFF7ED', color: '#EA580C' },
-  default: { icon: Bell, bg: '#F3F4F6', color: '#6B7280' },
-}
-
 // ── Root component ──
-export function InboxContent({ currentUserId, notifications, chatMessages, profiles }: Props) {
-  const [activeTab, setActiveTab] = useState<'notifs' | 'msgs' | 'chat'>('notifs')
-  const [readIds, setReadIds] = useState<Set<string>>(new Set(notifications.filter(n => n.read).map(n => n.id)))
+export function InboxContent({ currentUserId, chatMessages, profiles }: Props) {
+  const [activeTab, setActiveTab] = useState<'msgs' | 'chat'>('msgs')
   const profileMap = Object.fromEntries(profiles.map(p => [p.id, p]))
-
-  const markRead = async (id: string) => {
-    setReadIds(prev => new Set(prev).add(id))
-    await createClient().from('notifications').update({ read: true }).eq('id', id)
-  }
-  const markAllRead = async () => {
-    const ids = notifications.filter(n => !readIds.has(n.id)).map(n => n.id)
-    setReadIds(new Set(notifications.map(n => n.id)))
-    if (!ids.length) return
-    await createClient().from('notifications').update({ read: true }).in('id', ids)
-  }
-  const unreadCount = notifications.filter(n => !readIds.has(n.id)).length
 
   return (
     <div className="inbox-root">
       {/* ── Header ── */}
       <div className="inbox-topbar">
         <div className="inbox-tabs">
-          {([['notifs', Bell, 'Notificacions'], ['msgs', MessageCircle, 'Missatgeria'], ['chat', Globe, 'Chat global']] as const).map(([tab, Icon, label]) => (
+          {([['msgs', MessageCircle, 'Missatgeria'], ['chat', Globe, 'Chat global']] as const).map(([tab, Icon, label]) => (
             <button key={tab} className={`itab${activeTab === tab ? ' itab--on' : ''}`} onClick={() => setActiveTab(tab as any)}>
               <Icon size={13} />{label}
-              {tab === 'notifs' && unreadCount > 0 && <span className="itab-badge">{unreadCount}</span>}
             </button>
           ))}
         </div>
-        {activeTab === 'notifs' && unreadCount > 0 && (
-          <button className="mark-all-btn" onClick={markAllRead}><Check size={11} />Tot llegit</button>
-        )}
       </div>
 
       {/* ── Content ── */}
       <div className="inbox-body">
-        {activeTab === 'notifs' && (
-          <div className="notif-list">
-            {notifications.length === 0 && <div className="empty-state"><Bell size={32} strokeWidth={1.2} style={{ color: '#D1D5DB' }} /><p>Cap notificació</p></div>}
-            {notifications.map(notif => {
-              const isRead = readIds.has(notif.id)
-              const { icon: Icon, bg, color } = typeIcon[notif.type] ?? typeIcon.default
-              const body = (notif.body ?? '').replace(/@\[([^\]]+)\]\([^)]+\)/g, '@$1')
-              return (
-                <div key={notif.id} className={`notif-row${!isRead ? ' notif-row--unread' : ''}`} onClick={() => markRead(notif.id)}>
-                  <div className="notif-icon" style={{ background: bg }}>
-                    <Icon size={14} color={color} />
-                    {!isRead && <span className="notif-dot" />}
-                  </div>
-                  <div className="notif-body">
-                    <div className="notif-title">{notif.title}</div>
-                    {body && <div className="notif-sub">{body}</div>}
-                  </div>
-                  <div className="notif-meta">
-                    <span className="notif-time">{fmtRelative(notif.created_at)}</span>
-                    {notif.link && <a href={notif.link} className="notif-link" target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}><ExternalLink size={11} /></a>}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
         {activeTab === 'msgs' && (
           <MessagingPanel currentUserId={currentUserId} profiles={profiles} profileMap={profileMap} />
         )}

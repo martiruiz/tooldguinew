@@ -17,13 +17,6 @@ export default async function InboxPage() {
 
   if (!profile) redirect('/login')
 
-  const { data: notifications } = await supabase
-    .from('notifications')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(100)
-
   const { data: chatMessages } = await supabase
     .from('team_chat')
     .select('id, user_id, content, created_at, profiles:profiles!team_chat_user_id_fkey(id, full_name, avatar_url)')
@@ -39,10 +32,9 @@ export default async function InboxPage() {
 
   return (
     <>
-      <Topbar user={profile as Profile} title="Bandeja d'entrada" />
+      <Topbar user={profile as Profile} title="Inbox" />
       <InboxContent
         currentUserId={user.id}
-        notifications={notifications ?? []}
         chatMessages={(chatMessages ?? []) as any}
         profiles={(allProfiles ?? []) as any}
       />
