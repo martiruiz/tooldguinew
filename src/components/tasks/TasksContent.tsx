@@ -159,7 +159,8 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
       body: JSON.stringify(patch),
     })
     if (!res.ok) {
-      // Revert optimistic update on failure
+      const errText = await res.text().catch(() => 'unknown')
+      console.error('[handleStatusChange] PATCH failed', res.status, errText)
       setLocalTasks((prev) =>
         prev.map((t) => t.id === taskId ? { ...t, status: tasks.find(ot => ot.id === taskId)?.status ?? t.status } : t)
       )
