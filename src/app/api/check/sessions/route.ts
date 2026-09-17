@@ -90,6 +90,17 @@ export async function POST(req: NextRequest) {
     const sessionTypesStr = Array.isArray(session_types) && session_types.length > 0
       ? ` (${(session_types as string[]).join(', ')})`
       : ''
+
+    // Build a descriptive body for the notification
+    const [year, month, day] = session_date.split('-')
+    const dateFormatted = `${day}/${month}/${year}`
+    const timeStr = start_time ? ` a les ${start_time}${end_time ? `–${end_time}` : ''}` : ''
+    const hoursStr = hours && parseFloat(hours) > 0 ? ` · ${parseFloat(hours)}h` : ''
+    const notifBody = [
+      `${dateFormatted}${timeStr}${hoursStr}`,
+      notes || null,
+    ].filter(Boolean).join(' · ')
+
     const creatorProfile = await getProfileForNotif(user.id)
     if (creatorProfile) {
       await notifyUser({
@@ -98,7 +109,7 @@ export async function POST(req: NextRequest) {
         name: creatorProfile.name,
         type: 'session_assigned',
         title: `Sessió creada: ${clientName}${sessionTypesStr}`,
-        body: `Sessió el ${session_date}${notes ? ` · ${notes}` : ''}.`,
+        body: notifBody,
         link: `/check/${data.id}`,
       })
     }

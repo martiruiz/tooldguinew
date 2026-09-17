@@ -259,6 +259,13 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
     if (field === 'responsible_id' && value !== prev) {
       const name = profiles.find(p => p.id === value)?.full_name || 'Ningú'
       logActivity('assigned', { name: value ? name : null })
+      if (value) {
+        fetch('/api/tasks/notify-assigned', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ taskId: task.id, taskTitle: form.title || task.title, assignedUserId: value }),
+        }).catch(() => {})
+      }
     }
     if (field === 'client_id' && value !== prev) {
       const name = clients.find(c => c.id === value)?.name || null

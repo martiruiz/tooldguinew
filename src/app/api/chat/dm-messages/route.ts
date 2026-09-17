@@ -33,13 +33,15 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { peerId, content } = await req.json()
+    const { peerId, content, reply_to_id, reply_to_content, reply_to_sender } = await req.json()
     if (!peerId || !content?.trim()) return NextResponse.json({ error: 'peerId and content required' }, { status: 400 })
 
     const admin = createAdminClient()
+    const row: Record<string, any> = { from_user_id: user.id, to_user_id: peerId, content: content.trim() }
+    if (reply_to_id) { row.reply_to_id = reply_to_id; row.reply_to_content = reply_to_content || null; row.reply_to_sender = reply_to_sender || null }
     const { data, error } = await admin
       .from('direct_messages')
-      .insert({ from_user_id: user.id, to_user_id: peerId, content: content.trim() })
+      .insert(row)
       .select('*')
       .single()
 

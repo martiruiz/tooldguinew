@@ -1257,7 +1257,15 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
               {/* Client */}
               <div className="form-row-2">
                 <div className="form-field">
-                  <label>Client existent</label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Client existent
+                    <button
+                      type="button"
+                      title="Crear client ràpid"
+                      onClick={() => setShowNewClient(true)}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18, borderRadius: '50%', border: '1.5px solid #254067', background: 'transparent', color: '#254067', fontSize: 14, lineHeight: 1, cursor: 'pointer', padding: 0, flexShrink: 0 }}
+                    >+</button>
+                  </label>
                   <select className="form-select" value={form.client_id}
                     onChange={e => {
                       const cl = clientOptions.find(c => c.id === e.target.value)
@@ -1993,6 +2001,9 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
         onCreated={(newClient) => {
           setClientsList(prev => [newClient, ...prev])
           setShowNewClient(false)
+          if (showModal) {
+            setForm(p => ({ ...p, client_id: newClient.id, client_name: newClient.name }))
+          }
         }}
       />
     )}

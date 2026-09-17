@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { MessageCircle, Bell, AtSign, CheckSquare, MessageSquare, ExternalLink, Check, Users, Send, ArrowLeft, Plus, Globe, Search, X, Hash } from 'lucide-react'
+import { MessageCircle, Bell, AtSign, CheckSquare, MessageSquare, ExternalLink, Check, Users, Send, ArrowLeft, Plus, Globe, Search, X, Hash, CornerUpLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getInitials } from '@/lib/utils'
 import type { Notification } from '@/types'
@@ -116,6 +116,56 @@ function ConvChat({ conv, currentUserId, profileMap, onBack }: {
   />
 }
 
+// ── Emoji picker ──
+const EMOJI_CATS: Record<string, string[]> = {
+  '😊': ['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','😉','😍','🥰','😘','😋','😛','😜','🤪','😎','🥳','😏','😒','😢','😭','😤','😠','🤬','😳','😱','🤗','🤔','😶','😐','😑','😬','🙄','😮','🥱','😴','😷','🤒','🤢','🤧'],
+  '👍': ['👍','👎','👌','✌️','🤞','🤙','👋','✋','👏','🙌','🤝','🙏','💪','❤️','🧡','💛','💚','💙','💜','🖤','💕','💯','🫶'],
+  '🎉': ['🎉','🎊','🎈','🎁','🏆','🥇','🎯','🎮','🔥','⚡','🌟','⭐','🌈','☀️','🌙','❄️','💥','✨','🎵','🎶','📸','📱','💻','💡','🔑'],
+  '🍕': ['🍕','🍔','🍟','🌮','🌯','🍣','🍜','🍝','☕','🧋','🍺','🥂','🥤','🧃','🍎','🍊','🍋','🍇','🍓','🥑'],
+  '✅': ['✅','❌','⭕','❓','❗','💬','💭','📢','🔔','⏰','📌','💡','🔴','🟠','🟡','🟢','🔵','🟣','⚫','⚪'],
+}
+function EmojiPicker({ onPick, onClose }: { onPick: (e: string) => void; onClose: () => void }) {
+  const [cat, setCat] = useState(Object.keys(EMOJI_CATS)[0])
+  return (
+    <div className="emoji-picker">
+      <div className="emoji-cats">
+        {Object.keys(EMOJI_CATS).map(c => (
+          <button key={c} className={`emoji-cat-btn${cat === c ? ' active' : ''}`} onClick={() => setCat(c)}>{c}</button>
+        ))}
+        <button className="emoji-close-btn" onClick={onClose}><X size={12} /></button>
+      </div>
+      <div className="emoji-grid">
+        {(EMOJI_CATS[cat] || []).map(e => (
+          <button key={e} className="emoji-btn" onClick={() => onPick(e)}>{e}</button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── GIF picker ──
+function GifPicker({ query, setQuery, gifs, loading, onPick, onClose }: {
+  query: string; setQuery: (q: string) => void; gifs: any[]; loading: boolean
+  onPick: (url: string) => void; onClose: () => void
+}) {
+  return (
+    <div className="gif-picker">
+      <div className="gif-search-row">
+        <input className="gif-search-input" placeholder="Cerca GIFs..." value={query}
+          onChange={e => setQuery(e.target.value)} autoFocus />
+        <button className="gif-close-btn" onClick={onClose}><X size={13} /></button>
+      </div>
+      <div className="gif-grid">
+        {loading ? <div className="gif-loading">Carregant...</div>
+          : gifs.length === 0 ? <div className="gif-loading">{query ? 'Cap resultat' : 'Cerca un GIF'}</div>
+          : gifs.map((g, i) => (
+            <img key={i} src={g.preview} alt={g.title} className="gif-item" onClick={() => onPick(g.url)} />
+          ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Chat panel for direct_messages table ──
 function DmChat({ peer, currentUserId, profileMap, onBack }: {
   peer: Profile; currentUserId: string; profileMap: Record<string, Profile>; onBack: () => void
@@ -124,7 +174,14 @@ function DmChat({ peer, currentUserId, profileMap, onBack }: {
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [replyingTo, setReplyingTo] = useState<{id: string; content: string; sender: string} | null>(null)
+  const [showEmoji, setShowEmoji] = useState(false)
+  const [showGif, setShowGif] = useState(false)
+  const [gifQuery, setGifQuery] = useState('')
+  const [gifs, setGifs] = useState<any[]>([])
+  const [gifsLoading, setGifsLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const supabase = createClient()
   const scrollBottom = useCallback(() => setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50), [])
 
@@ -141,7 +198,6 @@ function DmChat({ peer, currentUserId, profileMap, onBack }: {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages' }, (payload: any) => {
         const { from_user_id, to_user_id } = payload.new
         if ((from_user_id === peer.id && to_user_id === currentUserId) || (from_user_id === currentUserId && to_user_id === peer.id)) {
-          // Own messages are already handled by the insert .then() optimistic replace
           if (from_user_id === currentUserId) return
           setMessages(prev => prev.some(m => m.id === payload.new.id) ? prev : [...prev, payload.new]); scrollBottom()
         }
@@ -149,16 +205,37 @@ function DmChat({ peer, currentUserId, profileMap, onBack }: {
     return () => { supabase.removeChannel(ch) }
   }, [peer.id, currentUserId])
 
-  const send = async () => {
-    const text = input.trim(); if (!text || sending) return
-    setSending(true); setInput('')
-    const opt = { id: `opt-${Date.now()}`, from_user_id: currentUserId, to_user_id: peer.id, content: text, created_at: new Date().toISOString() }
+  const loadGifs = useCallback(async (q: string) => {
+    setGifsLoading(true)
+    try {
+      const res = await fetch(`/api/chat/gifs${q ? `?q=${encodeURIComponent(q)}` : ''}`)
+      setGifs((await res.json()).results || [])
+    } catch { setGifs([]) } finally { setGifsLoading(false) }
+  }, [])
+
+  useEffect(() => { if (showGif) loadGifs('') }, [showGif, loadGifs])
+
+  const send = async (overrideContent?: string) => {
+    const text = (overrideContent ?? input).trim(); if (!text || sending) return
+    setSending(true)
+    if (!overrideContent) setInput('')
+    const currentReply = replyingTo
+    setReplyingTo(null); setShowEmoji(false); setShowGif(false)
+    const opt: any = {
+      id: `opt-${Date.now()}`, from_user_id: currentUserId, to_user_id: peer.id,
+      content: text, created_at: new Date().toISOString(),
+      reply_to_id: currentReply?.id || null,
+      reply_to_content: currentReply?.content || null,
+      reply_to_sender: currentReply?.sender || null,
+    }
     setMessages(prev => [...prev, opt]); scrollBottom()
-    const res = await fetch('/api/chat/dm-messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ peerId: peer.id, content: text }) })
+    const body: any = { peerId: peer.id, content: text }
+    if (currentReply) { body.reply_to_id = currentReply.id; body.reply_to_content = currentReply.content; body.reply_to_sender = currentReply.sender }
+    const res = await fetch('/api/chat/dm-messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     const json = await res.json()
     if (json.error) {
       setMessages(prev => prev.filter(m => m.id !== opt.id))
-      setInput(text)
+      if (!overrideContent) setInput(text)
       setError(json.error)
     } else if (json.message) {
       setMessages(prev => prev.map(m => m.id === opt.id ? json.message : m))
@@ -166,21 +243,49 @@ function DmChat({ peer, currentUserId, profileMap, onBack }: {
     setSending(false)
   }
 
+  const handleReply = (msg: any) => {
+    const senderName = msg.from_user_id === currentUserId ? 'Tu' : (profileMap[msg.from_user_id]?.full_name || peer.full_name)
+    const content = msg.content?.startsWith('__gif__:') ? '🖼 GIF' : (msg.content?.slice(0, 80) || '')
+    setReplyingTo({ id: msg.id, content, sender: senderName })
+    setShowEmoji(false); setShowGif(false)
+    setTimeout(() => inputRef.current?.focus(), 50)
+  }
+
+  const getContent = (msg: any) => {
+    const c = msg.content as string
+    if (c?.startsWith('__gif__:')) return <img src={c.slice(8)} alt="GIF" style={{ maxWidth: 200, borderRadius: 10, display: 'block', marginTop: 2 }} loading="lazy" />
+    return c
+  }
+
   return <ChatLayout
     onBack={onBack}
     header={<><Av p={peer} size={34} /><div><div className="ch-name">{peer.full_name}</div><div className="ch-sub">Membre de l'equip</div></div></>}
     messages={messages} error={error} currentUserId={currentUserId} profileMap={profileMap}
-    bottomRef={bottomRef} input={input} setInput={setInput} send={send} sending={sending}
+    bottomRef={bottomRef} input={input} setInput={setInput} send={() => send()} sending={sending}
+    inputRef={inputRef}
     emptyIcon={<Av p={peer} size={56} />} emptyName={peer.full_name}
     isMe={(msg: any) => msg.from_user_id === currentUserId}
     getSender={(msg: any) => profileMap[msg.from_user_id] || peer}
-    getContent={(msg: any) => msg.content}
+    getContent={getContent}
     isSameUser={(a: any, b: any) => a.from_user_id === b.from_user_id}
+    replyingTo={replyingTo}
+    onClearReply={() => setReplyingTo(null)}
+    onMsgReply={handleReply}
+    extraButtons={<>
+      <button type="button" className="ch-tool-btn" onClick={() => { setShowEmoji(e => !e); setShowGif(false) }} title="Emoji">😊</button>
+      <button type="button" className="ch-tool-btn ch-tool-gif" onClick={() => { setShowGif(g => !g); setShowEmoji(false) }} title="GIF">GIF</button>
+    </>}
+    pickerPanel={
+      showEmoji ? <EmojiPicker onPick={e => { setInput(p => p + e); setTimeout(() => inputRef.current?.focus(), 0) }} onClose={() => setShowEmoji(false)} /> :
+      showGif ? <GifPicker query={gifQuery} setQuery={q => { setGifQuery(q); loadGifs(q) }} gifs={gifs} loading={gifsLoading} onPick={url => send(`__gif__:${url}`)} onClose={() => setShowGif(false)} /> :
+      null
+    }
   />
 }
 
 // ── Shared chat layout ──
-function ChatLayout({ onBack, header, messages, error, currentUserId, profileMap, bottomRef, input, setInput, send, sending, emptyIcon, emptyName, isMe, getSender, getContent, isSameUser }: any) {
+function ChatLayout({ onBack, header, messages, error, currentUserId, profileMap, bottomRef, input, setInput, send, sending, emptyIcon, emptyName, isMe, getSender, getContent, isSameUser, inputRef, replyingTo, onClearReply, onMsgReply, extraButtons, pickerPanel }: any) {
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
   if (error === 'migration') return (
     <div className="chat-panel">
       <div className="ch-header"><button className="ch-back" onClick={onBack}><ArrowLeft size={15} /></button>{header}</div>
@@ -203,19 +308,48 @@ function ChatLayout({ onBack, header, messages, error, currentUserId, profileMap
           const prev = messages[i - 1]
           const grouped = prev && isSameUser(prev, msg) && new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() < 180000
           return (
-            <div key={msg.id} className={`msg-row${mine ? ' msg-me' : ''}${grouped ? ' msg-grouped' : ''}`}>
+            <div key={msg.id} className={`msg-row${mine ? ' msg-me' : ''}${grouped ? ' msg-grouped' : ''}`}
+              onMouseEnter={() => onMsgReply && setHoveredId(msg.id)}
+              onMouseLeave={() => onMsgReply && setHoveredId(null)}
+            >
               {!mine && (grouped ? <div className="msg-av-gap" /> : <Av p={sender || { id: '', full_name: '?' }} size={30} />)}
               <div className="msg-col">
                 {!grouped && !mine && <span className="msg-name">{sender?.full_name || '?'} <span className="msg-ts">{fmtTime(msg.created_at)}</span></span>}
-                <div className={`bubble${mine ? ' bubble-me' : ''}`}>{getContent(msg)}{grouped && <span className="bubble-ts">{fmtTime(msg.created_at)}</span>}</div>
+                <div className={`bubble${mine ? ' bubble-me' : ''}`}>
+                  {msg.reply_to_content && (
+                    <div className={`reply-quote${mine ? ' reply-quote-me' : ''}`}>
+                      <div className="reply-quote-sender">{msg.reply_to_sender}</div>
+                      <div className="reply-quote-text">{msg.reply_to_content}</div>
+                    </div>
+                  )}
+                  {getContent(msg)}
+                  {grouped && <span className="bubble-ts">{fmtTime(msg.created_at)}</span>}
+                </div>
               </div>
+              {onMsgReply && hoveredId === msg.id && (
+                <button className={`msg-reply-btn${mine ? ' msg-reply-btn-me' : ''}`} onClick={() => onMsgReply(msg)} title="Respondre">
+                  <CornerUpLeft size={13} />
+                </button>
+              )}
             </div>
           )
         })}
         <div ref={bottomRef} />
       </div>
+      {pickerPanel}
+      {replyingTo && (
+        <div className="reply-bar">
+          <CornerUpLeft size={14} style={{ color: '#254067', flexShrink: 0 }} />
+          <div className="reply-bar-body">
+            <div className="reply-bar-sender">{replyingTo.sender}</div>
+            <div className="reply-bar-text">{replyingTo.content}</div>
+          </div>
+          <button className="reply-bar-close" onClick={onClearReply}><X size={13} /></button>
+        </div>
+      )}
       <div className="ch-input-wrap">
-        <textarea className="ch-input" placeholder={`Missatge…`} value={input} rows={1}
+        {extraButtons}
+        <textarea ref={inputRef} className="ch-input" placeholder="Missatge…" value={input} rows={1}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }} />
         <button className="ch-send" onClick={send} disabled={!input.trim() || sending}><Send size={14} /></button>
@@ -683,10 +817,56 @@ export function InboxContent({ currentUserId, notifications, chatMessages, profi
         .ch-input-wrap { display: flex; gap: 8px; padding: 12px 16px 16px; border-top: 1px solid #F0F2F5; align-items: flex-end; flex-shrink: 0; background: white; }
         .ch-input { flex: 1; resize: none; border: 1.5px solid #E5E7EB; border-radius: 12px; padding: 10px 14px; font-size: 13.5px; font-family: inherit; outline: none; line-height: 1.45; max-height: 120px; overflow-y: auto; background: #FAFBFC; transition: border-color 0.15s, box-shadow 0.15s; color: #111827; }
         .ch-input:focus { border-color: #254067; box-shadow: 0 0 0 3px rgba(37,64,103,0.08); background: white; }
-        .ch-send { width: 40px; height: 40px; border-radius: 12px; border: none; background: linear-gradient(135deg,#1B2B4B,#3167C8); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.18s cubic-bezier(0.34,1.56,0.64,1); box-shadow: 0 3px 10px rgba(37,64,103,0.3); }
+        .ch-send { width: 36px; height: 36px; border-radius: 11px; border: none; background: linear-gradient(135deg,#1B2B4B,#3167C8); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.18s cubic-bezier(0.34,1.56,0.64,1); box-shadow: 0 3px 10px rgba(37,64,103,0.3); }
         .ch-send:disabled { background: #E5E7EB; color: #9CA3AF; box-shadow: none; cursor: default; }
         .ch-send:not(:disabled):hover { transform: translateY(-2px) scale(1.07); box-shadow: 0 6px 18px rgba(37,64,103,0.4); }
         .ch-send:not(:disabled):active { transform: scale(0.94); }
+        .ch-tool-btn { width: 34px; height: 34px; border-radius: 10px; border: none; background: #F1F3F7; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; line-height: 1; flex-shrink: 0; transition: background 0.14s; }
+        .ch-tool-btn:hover { background: #E5E7EB; }
+        .ch-tool-gif { font-size: 10px; font-weight: 800; color: #374151; letter-spacing: 0.06em; font-family: inherit; }
+
+        /* ── Reply button on message ── */
+        .msg-reply-btn { background: white; border: 1px solid #E5E7EB; border-radius: 8px; padding: 4px 6px; cursor: pointer; color: #9CA3AF; display: flex; align-items: center; align-self: center; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.1); transition: all 0.12s; }
+        .msg-reply-btn:hover { color: #254067; border-color: #254067; }
+        .msg-reply-btn-me { order: -1; }
+
+        /* ── Reply quote inside bubble ── */
+        .reply-quote { background: rgba(0,0,0,0.07); border-left: 3px solid rgba(0,0,0,0.2); border-radius: 6px; padding: 5px 9px; margin-bottom: 7px; }
+        .reply-quote-me { background: rgba(255,255,255,0.18); border-left-color: rgba(255,255,255,0.55); }
+        .reply-quote-sender { font-size: 10.5px; font-weight: 700; margin-bottom: 2px; opacity: 0.85; }
+        .reply-quote-text { font-size: 11.5px; opacity: 0.72; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+
+        /* ── Reply bar above input ── */
+        .reply-bar { display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: #F0F4FF; border-top: 1px solid #DDE6FF; flex-shrink: 0; }
+        .reply-bar-body { flex: 1; min-width: 0; }
+        .reply-bar-sender { font-size: 11.5px; font-weight: 700; color: #254067; margin-bottom: 1px; }
+        .reply-bar-text { font-size: 12px; color: #6B7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .reply-bar-close { background: none; border: none; cursor: pointer; color: #9CA3AF; display: flex; align-items: center; padding: 4px; border-radius: 6px; transition: color 0.1s; }
+        .reply-bar-close:hover { color: #374151; background: #E5E7EB; }
+
+        /* ── Emoji picker ── */
+        .emoji-picker { border-top: 1px solid #F0F2F5; background: white; flex-shrink: 0; display: flex; flex-direction: column; }
+        .emoji-cats { display: flex; align-items: center; gap: 2px; padding: 8px 12px 4px; border-bottom: 1px solid #F3F4F6; }
+        .emoji-cat-btn { background: none; border: none; cursor: pointer; font-size: 20px; padding: 4px 6px; border-radius: 8px; transition: background 0.1s; opacity: 0.5; }
+        .emoji-cat-btn.active { background: #F0F4FF; opacity: 1; }
+        .emoji-cat-btn:hover { background: #F3F4F6; opacity: 1; }
+        .emoji-close-btn { margin-left: auto; background: none; border: none; cursor: pointer; color: #9CA3AF; display: flex; align-items: center; padding: 6px; border-radius: 8px; }
+        .emoji-close-btn:hover { background: #F3F4F6; color: #374151; }
+        .emoji-grid { display: flex; flex-wrap: wrap; gap: 1px; padding: 6px 10px 10px; overflow-y: auto; max-height: 140px; }
+        .emoji-btn { background: none; border: none; cursor: pointer; font-size: 22px; padding: 4px 5px; border-radius: 8px; transition: background 0.1s; line-height: 1; }
+        .emoji-btn:hover { background: #F3F4F6; }
+
+        /* ── GIF picker ── */
+        .gif-picker { border-top: 1px solid #F0F2F5; background: white; flex-shrink: 0; display: flex; flex-direction: column; height: 240px; }
+        .gif-search-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #F3F4F6; }
+        .gif-search-input { flex: 1; border: 1.5px solid #E5E7EB; border-radius: 9px; padding: 7px 11px; font-size: 13px; outline: none; font-family: inherit; color: #111827; background: #FAFBFC; }
+        .gif-search-input:focus { border-color: #254067; }
+        .gif-close-btn { background: none; border: none; cursor: pointer; color: #9CA3AF; display: flex; align-items: center; padding: 5px; border-radius: 8px; }
+        .gif-close-btn:hover { background: #F3F4F6; color: #374151; }
+        .gif-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 6px 10px 10px; overflow-y: auto; flex: 1; }
+        .gif-item { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; cursor: pointer; transition: opacity 0.15s, transform 0.15s; }
+        .gif-item:hover { opacity: 0.88; transform: scale(1.03); }
+        .gif-loading { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; color: #9CA3AF; font-size: 13px; padding: 24px; }
 
         /* ── Modal ── */
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.38); display: flex; align-items: center; justify-content: center; z-index: 500; backdrop-filter: blur(5px); }
