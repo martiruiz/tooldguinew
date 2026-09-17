@@ -84,19 +84,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Auto-create a linked task for this session
-    const clientName = (data as any).client?.name || 'Client'
-    const sessionTypesStr = Array.isArray(session_types) && session_types.length > 0
-      ? ` (${(session_types as string[]).join(', ')})`
-      : ''
-    await supabase.from('tasks').insert({
-      title: `Sessió ${clientName}${sessionTypesStr} · ${session_date}`,
-      client_id: client_id || null,
-      created_by: user.id,
-      priority: 'medium',
-      status: 'todo',
-      session_id: data.id,
-    }).then(() => {})
 
     // Notify creator about the session creation (confirmation)
     const creatorProfile = await getProfileForNotif(user.id)
