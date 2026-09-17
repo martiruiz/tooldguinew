@@ -148,9 +148,6 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
   }, [localTasks])
 
   const handleStatusChange = async (taskId: string, newStatus: string) => {
-    setLocalTasks((prev) =>
-      prev.map((t) => t.id === taskId ? { ...t, status: newStatus as Task['status'] } : t)
-    )
     const patch: Record<string, any> = { status: newStatus }
     if (newStatus === 'done') patch.completed_at = new Date().toISOString()
     const res = await fetch(`/api/tasks/${taskId}`, {
@@ -158,12 +155,12 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patch),
     })
-    if (!res.ok) {
-      const errText = await res.text().catch(() => 'unknown')
-      console.error('[handleStatusChange] PATCH failed', res.status, errText)
+    if (res.ok) {
       setLocalTasks((prev) =>
-        prev.map((t) => t.id === taskId ? { ...t, status: tasks.find(ot => ot.id === taskId)?.status ?? t.status } : t)
+        prev.map((t) => t.id === taskId ? { ...t, status: newStatus as Task['status'], ...(patch.completed_at ? { completed_at: patch.completed_at } : {}) } : t)
       )
+    } else {
+      console.error('[handleStatusChange] PATCH failed', res.status, await res.text().catch(() => ''))
     }
   }
 
@@ -808,8 +805,6 @@ const COL_COLORS = ['#2196F3','#00BCD4','#3F51B5','#9C27B0','#E91E63','#F44336',
 function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, onTitleSave, onColDoubleClick }: { tasks: Task[]; allLabels: LabelDef[]; onStatusChange: (id: string, status: string) => void; onTaskClick: (t: Task) => void; onDelete: (id: string) => void; onTitleSave: (id: string, title: string) => void; onColDoubleClick: (status: string) => void }) {
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dragOverCol, setDragOverCol] = useState<string | null>(null)
-  const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null)
-  const [insertBefore, setInsertBefore] = useState(true)
   const [colOrders, setColOrders] = useState<Record<string, string[]>>(() => {
     if (typeof window === 'undefined') return {}
     try { return JSON.parse(localStorage.getItem('kanban-col-orders') || '{}') } catch { return {} }
@@ -895,58 +890,19 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
     }
   }
 
-  const handleDrop = (e: React.DragEvent, status: string) => {
+  const onDragOver = (e: React.DragEvent, status: string) => {
     e.preventDefault()
-    const id = e.dataTransfer.getData('text/plain') || draggedId
-    if (id) {
-      const task = tasks.find((t) => t.id === id)
-      if (task && task.status !== status) {
-        onStatusChange(id, status)
-        setColOrders(prev => {
-          const colTaskIds = (prev[status] || tasks.filter(t => t.status === status).map(t => t.id)).filter(tid => tid !== id)
-          const next = { ...prev, [status]: [...colTaskIds, id] }
-          localStorage.setItem('kanban-col-orders', JSON.stringify(next))
-          return next
-        })
-      }
-    }
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverCol(status)
+  }
+
+  const onDrop = async (e: React.DragEvent, status: string) => {
+    e.preventDefault()
+    if (!draggedId) return
+    const task = tasks.find(t => t.id === draggedId)
     setDraggedId(null)
     setDragOverCol(null)
-    setDragOverTaskId(null)
-  }
-
-  const handleCardDragOver = (e: React.DragEvent, taskId: string) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
-    setInsertBefore(e.clientY < rect.top + rect.height / 2)
-    setDragOverTaskId(taskId)
-  }
-
-  const handleCardDrop = (e: React.DragEvent, colStatus: string, targetTaskId: string) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const id = e.dataTransfer.getData('text/plain') || draggedId
-    if (!id || id === targetTaskId) {
-      setDraggedId(null); setDragOverCol(null); setDragOverTaskId(null)
-      return
-    }
-    const draggedTask = tasks.find(t => t.id === id)
-    if (!draggedTask) { setDraggedId(null); setDragOverCol(null); setDragOverTaskId(null); return }
-    if (draggedTask.status !== colStatus) {
-      onStatusChange(id, colStatus)
-    }
-    setColOrders(prev => {
-      const colTaskIds = (prev[colStatus] || tasks.filter(t => t.status === colStatus).map(t => t.id))
-      const base = colTaskIds.filter(tid => tid !== id)
-      const targetIdx = base.indexOf(targetTaskId)
-      const insertIdx = insertBefore ? targetIdx : targetIdx + 1
-      base.splice(Math.max(0, insertIdx), 0, id)
-      const next = { ...prev, [colStatus]: base }
-      localStorage.setItem('kanban-col-orders', JSON.stringify(next))
-      return next
-    })
-    setDraggedId(null); setDragOverCol(null); setDragOverTaskId(null)
+    if (task && task.status !== status) await onStatusChange(draggedId, status)
   }
 
   return (
@@ -970,11 +926,11 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
           <div
             key={col.status}
             className={`kanban-col${isOver ? ' kanban-col--over' : ''}`}
-            onDragOver={(e) => { e.preventDefault(); setDragOverCol(col.status) }}
+            onDragOver={(e) => onDragOver(e, col.status)}
             onDragLeave={(e) => {
               if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverCol(null)
             }}
-            onDrop={(e) => handleDrop(e, col.status)}
+            onDrop={(e) => onDrop(e, col.status)}
             onDoubleClick={() => onColDoubleClick(col.status)}
           >
             {(() => {
@@ -1046,31 +1002,18 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
                 </div>
               ) : (
                 colTasks.map((task) => (
-                  <div
+                  <KanbanCard
                     key={task.id}
-                    style={{ position: 'relative' }}
-                    onDragOver={e => handleCardDragOver(e, task.id)}
-                    onDragLeave={() => setDragOverTaskId(null)}
-                    onDrop={e => handleCardDrop(e, col.status, task.id)}
-                  >
-                    {dragOverTaskId === task.id && insertBefore && draggedId !== task.id && (
-                      <div style={{ height: 3, background: '#2563EB', borderRadius: 2, margin: '0 4px 2px', boxShadow: '0 0 6px rgba(37,99,235,0.5)' }} />
-                    )}
-                    <KanbanCard
-                      task={task}
-                      allLabels={allLabels}
-                      isDragging={draggedId === task.id}
-                      onDragStart={(_e) => setDraggedId(task.id)}
-                      onDragEnd={() => { setDraggedId(null); setDragOverCol(null); setDragOverTaskId(null) }}
-                      onStatusChange={onStatusChange}
-                      onClick={() => onTaskClick(task)}
-                      onDelete={onDelete}
-                      onTitleSave={onTitleSave}
-                    />
-                    {dragOverTaskId === task.id && !insertBefore && draggedId !== task.id && (
-                      <div style={{ height: 3, background: '#2563EB', borderRadius: 2, margin: '2px 4px 0', boxShadow: '0 0 6px rgba(37,99,235,0.5)' }} />
-                    )}
-                  </div>
+                    task={task}
+                    allLabels={allLabels}
+                    isDragging={draggedId === task.id}
+                    onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; setDraggedId(task.id) }}
+                    onDragEnd={() => { setDraggedId(null); setDragOverCol(null) }}
+                    onStatusChange={onStatusChange}
+                    onClick={() => onTaskClick(task)}
+                    onDelete={onDelete}
+                    onTitleSave={onTitleSave}
+                  />
                 ))
               )}
             </div>
