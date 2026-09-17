@@ -25,23 +25,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await req.json()
   const admin = createAdminClient()
 
-  // Update via admin to bypass RLS
+  // Update via admin to bypass RLS — no SELECT after (avoids JOIN permission issues)
   const { error: updateError } = await admin
     .from('tasks')
     .update({ ...body, updated_at: new Date().toISOString() })
     .eq('id', id)
 
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
-
-  // Return only basic fields (no JOINs) — frontend merges with existing joined data
-  const { data, error: selectError } = await admin
-    .from('tasks')
-    .select('*')
-    .eq('id', id)
-    .single()
-
-  if (selectError) return NextResponse.json({ error: selectError.message }, { status: 500 })
-  return NextResponse.json(data)
+  return NextResponse.json({ ok: true })
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

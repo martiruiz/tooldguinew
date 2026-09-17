@@ -183,9 +183,8 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
       body: JSON.stringify(patch),
     })
     if (!res.ok) { console.error('[patchTask] error:', await res.text()); return null }
-    const updated = await res.json()
-    // Merge with current task to preserve joined fields (client, project, responsible)
-    return { ...task, ...updated }
+    // Build updated task locally — server only persists, doesn't return joined data
+    return { ...task, ...(patch as Partial<Task>), updated_at: new Date().toISOString() }
   }
 
   const dirty = (field: string, value: string) => {
