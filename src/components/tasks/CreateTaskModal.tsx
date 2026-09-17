@@ -100,8 +100,7 @@ export function CreateTaskModal({
       onClose={handleClose}
       onUpdated={(updated) => {
         savedRef.current = true
-        const title = (updated.title || '').trim().toUpperCase()
-        if (!title || title === 'NOVA TASCA') return
+        if (!(updated.title || '').trim()) return
         onCreated(updated)
       }}
     />
