@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState, useRef } from 'react'
-import { Bell, Check, CheckCheck, X, ClipboardList, Edit3, CheckSquare, MessageSquare, AtSign, Clock, User, FolderOpen, Settings2, Briefcase, FileSignature, Banknote, Menu } from 'lucide-react'
+import { Bell, Check, CheckCheck, X, ClipboardList, Edit3, CheckSquare, MessageSquare, AtSign, Clock, User, FolderOpen, Settings2, Briefcase, FileSignature, Banknote } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, Notification } from '@/types'
@@ -122,7 +122,7 @@ export function Topbar({ user, title }: Props) {
           onClick={() => window.dispatchEvent(new Event('toggle-mobile-sidebar'))}
           aria-label="Obrir menú"
         >
-          <Menu size={20} strokeWidth={1.8} />
+          <img src="/logo-gw.png" alt="Guinew" width={34} height={34} style={{ borderRadius: 8, objectFit: 'contain', display: 'block' }} />
         </button>
         {title && <h1 className="topbar-title">{title}</h1>}
       </div>
@@ -272,10 +272,10 @@ export function Topbar({ user, title }: Props) {
 
         .topbar-hamburger {
           display: none; align-items: center; justify-content: center;
-          width: 36px; height: 36px; border: none; background: none;
-          cursor: pointer; color: #374151; border-radius: 8px; flex-shrink: 0;
+          width: 38px; height: 38px; border: none; background: none;
+          cursor: pointer; padding: 0; flex-shrink: 0; border-radius: 8px;
         }
-        .topbar-hamburger:hover { background: #F3F4F6; }
+        .topbar-hamburger:hover { opacity: 0.8; }
         @media (max-width: 1023px) { .topbar-hamburger { display: flex; } }
 
         .topbar-title {
