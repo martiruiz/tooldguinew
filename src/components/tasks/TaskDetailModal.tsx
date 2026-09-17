@@ -177,13 +177,12 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
   }, [task.id, currentUserId])
 
   const patchTask = async (patch: object): Promise<Task | null> => {
-    const res = await fetch(`/api/tasks/${task.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
-    })
-    if (!res.ok) { console.error('[patchTask] error:', await res.text()); return null }
-    // Build updated task locally — server only persists, doesn't return joined data
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('tasks')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', task.id)
+    if (error) { console.error('[patchTask] error:', error.message); return null }
     return { ...task, ...(patch as Partial<Task>), updated_at: new Date().toISOString() }
   }
 

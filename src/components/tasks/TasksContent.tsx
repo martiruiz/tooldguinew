@@ -151,19 +151,16 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
   }, [localTasks])
 
   const handleStatusChange = async (taskId: string, newStatus: string) => {
-    const patch: Record<string, any> = { status: newStatus }
+    const patch: Record<string, any> = { status: newStatus, updated_at: new Date().toISOString() }
     if (newStatus === 'done') patch.completed_at = new Date().toISOString()
-    const res = await fetch(`/api/tasks/${taskId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
-    })
-    if (res.ok) {
+    const supabase = createClient()
+    const { error } = await supabase.from('tasks').update(patch).eq('id', taskId)
+    if (!error) {
       setLocalTasks((prev) =>
         prev.map((t) => t.id === taskId ? { ...t, status: newStatus as Task['status'], ...(patch.completed_at ? { completed_at: patch.completed_at } : {}) } : t)
       )
     } else {
-      console.error('[handleStatusChange] PATCH failed', res.status, await res.text().catch(() => ''))
+      console.error('[handleStatusChange] failed', error.message)
     }
   }
 
@@ -185,11 +182,9 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
   const handleTitleSave = async (taskId: string, title: string) => {
     if (!title.trim()) return
     setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, title } : t))
-    fetch(`/api/tasks/${taskId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title }),
-    }).catch(() => {})
+    const supabase = createClient()
+    const { error } = await supabase.from('tasks').update({ title, updated_at: new Date().toISOString() }).eq('id', taskId)
+    if (error) console.error('[handleTitleSave]', error.message)
   }
 
   const handleDeleteTask = async (taskId: string) => {
