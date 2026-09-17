@@ -804,6 +804,7 @@ const COL_COLORS = ['#2196F3','#00BCD4','#3F51B5','#9C27B0','#E91E63','#F44336',
 
 function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, onTitleSave, onColDoubleClick }: { tasks: Task[]; allLabels: LabelDef[]; onStatusChange: (id: string, status: string) => void; onTaskClick: (t: Task) => void; onDelete: (id: string) => void; onTitleSave: (id: string, title: string) => void; onColDoubleClick: (status: string) => void }) {
   const [draggedId, setDraggedId] = useState<string | null>(null)
+  const draggedIdRef = useRef<string | null>(null)
   const [dragOverCol, setDragOverCol] = useState<string | null>(null)
   const [colOrders, setColOrders] = useState<Record<string, string[]>>(() => {
     if (typeof window === 'undefined') return {}
@@ -898,11 +899,13 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
 
   const onDrop = async (e: React.DragEvent, status: string) => {
     e.preventDefault()
-    if (!draggedId) return
-    const task = tasks.find(t => t.id === draggedId)
+    const id = draggedIdRef.current
+    draggedIdRef.current = null
     setDraggedId(null)
     setDragOverCol(null)
-    if (task && task.status !== status) await onStatusChange(draggedId, status)
+    if (!id) return
+    const task = tasks.find(t => t.id === id)
+    if (task && task.status !== status) await onStatusChange(id, status)
   }
 
   return (
@@ -1007,8 +1010,8 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
                     task={task}
                     allLabels={allLabels}
                     isDragging={draggedId === task.id}
-                    onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; setDraggedId(task.id) }}
-                    onDragEnd={() => { setDraggedId(null); setDragOverCol(null) }}
+                    onDragStart={(e) => { draggedIdRef.current = task.id; setDraggedId(task.id); e.dataTransfer.effectAllowed = 'move' }}
+                    onDragEnd={() => { draggedIdRef.current = null; setDraggedId(null); setDragOverCol(null) }}
                     onStatusChange={onStatusChange}
                     onClick={() => onTaskClick(task)}
                     onDelete={onDelete}
