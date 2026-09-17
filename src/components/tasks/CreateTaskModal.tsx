@@ -84,8 +84,8 @@ export function CreateTaskModal({
 
   const handleClose = () => {
     if (!savedRef.current && task) {
-      fetch(`/api/tasks/${task.id}`, { method: 'DELETE' }).catch(() => {})
-      onDiscarded?.(task.id)
+      // Keep the task with default title instead of discarding
+      onCreated(task)
     }
     onClose()
   }
