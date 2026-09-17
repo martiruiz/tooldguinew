@@ -513,7 +513,7 @@ function MessagingPanel({ currentUserId, profiles, profileMap }: {
   const hasActive = !!active
 
   return (
-    <div className="msg-panel">
+    <div className={`msg-panel${hasActive ? ' msg-panel--active' : ''}`}>
       {/* ── Sidebar ── */}
       <div className="msg-sidebar">
         <div className="msg-sidebar-head">
@@ -686,6 +686,12 @@ export function InboxContent({ currentUserId, chatMessages, profiles }: Props) {
         .mark-all-btn:hover { border-color: #9CA3AF; color: #374151; }
         .inbox-body { flex: 1; min-height: 0; background: white; border: 1px solid #E8EAED; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
 
+        @media (max-width: 767px) {
+          .inbox-root { padding: 12px 12px 80px; gap: 10px; height: calc(100vh - 56px); }
+          .inbox-body { border-radius: 12px; }
+          .itab { padding: 7px 14px; font-size: 12.5px; }
+        }
+
         /* ── Notifications ── */
         .notif-list { display: flex; flex-direction: column; overflow-y: auto; flex: 1; }
         .notif-row { display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px; border-bottom: 1px solid #F3F4F6; cursor: pointer; transition: background 0.1s; }
@@ -711,6 +717,17 @@ export function InboxContent({ currentUserId, chatMessages, profiles }: Props) {
         /* ── Messaging panel ── */
         .msg-panel { display: flex; flex: 1; min-height: 0; width: 100%; }
         .msg-sidebar { width: 280px; min-width: 280px; max-width: 280px; border-right: 1px solid #EAECF0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; background: #F8F9FB; flex-shrink: 0; }
+
+        @media (max-width: 767px) {
+          .msg-panel { position: relative; }
+          .msg-sidebar { width: 100%; min-width: 100%; max-width: 100%; border-right: none; }
+          .msg-main { display: none; }
+          .msg-panel--active .msg-sidebar { display: none; }
+          .msg-panel--active .msg-main { display: flex; width: 100%; }
+          .ch-messages { padding: 12px 14px; }
+          .ch-input-wrap { padding: 10px 12px 14px; }
+          .ch-header { padding: 10px 14px; }
+        }
         .msg-sidebar-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; border-bottom: 1px solid #EAECF0; background: white; position: sticky; top: 0; z-index: 2; flex-shrink: 0; }
         .msg-sidebar-title { font-size: 13px; font-weight: 700; color: #0F172A; letter-spacing: -0.2px; }
         .msg-new-btn { width: 28px; height: 28px; border-radius: 8px; border: none; background: linear-gradient(135deg,#1B2B4B,#3B6FD4); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; box-shadow: 0 2px 8px rgba(37,64,103,0.3); }

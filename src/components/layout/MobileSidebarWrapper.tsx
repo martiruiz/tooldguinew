@@ -13,11 +13,16 @@ export function MobileSidebarWrapper({ user }: Props) {
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
 
-  // Listen for open event dispatched by the hamburger button in Topbar
+  // Listen for open/close events
   useEffect(() => {
     const onToggle = () => setOpen(o => !o)
+    const onClose = () => setOpen(false)
     window.addEventListener('toggle-mobile-sidebar', onToggle)
-    return () => window.removeEventListener('toggle-mobile-sidebar', onToggle)
+    window.addEventListener('close-mobile-sidebar', onClose)
+    return () => {
+      window.removeEventListener('toggle-mobile-sidebar', onToggle)
+      window.removeEventListener('close-mobile-sidebar', onClose)
+    }
   }, [])
 
   // Swipe LEFT on open sidebar → close (no swipe-right to open)
