@@ -2,14 +2,14 @@
 
 import { NavigationLink as Link } from '@/components/ui/NavigationLink'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, CheckSquare, Users, Megaphone, Camera } from 'lucide-react'
+import { LayoutDashboard, CheckSquare, Users, Layers, ClipboardList } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const sideItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/clients', icon: Users, label: 'Clients' },
-  { href: '/projects', icon: Megaphone, label: 'Campanyes' },
-  { href: '/check', icon: Camera, label: 'Sessions' },
+  { href: '/clients',   icon: Users,           label: 'Clients'   },
+  { href: '/check',     icon: ClipboardList,   label: 'Sessions'  },
+  { href: '/contingut', icon: Layers,          label: 'Contingut' },
 ]
 
 export function MobileNav() {
