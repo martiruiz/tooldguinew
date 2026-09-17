@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/serverAdmin'
+import { notifyUser, getProfileForNotif } from '@/lib/notifications'
 
 export async function GET(req: NextRequest) {
   try {
@@ -43,6 +44,24 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Notify recipient
+    const [senderProfile, recipientProfile] = await Promise.all([
+      getProfileForNotif(user.id),
+      getProfileForNotif(peerId),
+    ])
+    if (recipientProfile && senderProfile) {
+      await notifyUser({
+        userId: peerId,
+        email: recipientProfile.email,
+        name: recipientProfile.name,
+        type: 'dm_received',
+        title: `Missatge de ${senderProfile.name}`,
+        body: content.trim().slice(0, 120),
+        link: '/inbox',
+      })
+    }
+
     return NextResponse.json({ message: data })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })

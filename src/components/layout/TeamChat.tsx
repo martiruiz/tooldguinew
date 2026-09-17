@@ -499,7 +499,9 @@ export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
     setDmMessages(prev => [...prev, optimistic])
     setDmInput('')
     scrollBottom()
-    const { data } = await supabase.from('direct_messages').insert({ from_user_id: currentUserId, to_user_id: dmPeer.id, content: text }).select('*').single()
+    const res = await fetch('/api/chat/dm-messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ peerId: dmPeer.id, content: text }) })
+    const json = await res.json()
+    const data = json.message
     if (data) setDmMessages(prev => prev.map(m => m.id === optimisticId ? { ...data, user_id: data.from_user_id, profile: profileMap[data.from_user_id] } : m))
     setDmSending(false)
   }

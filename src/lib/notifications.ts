@@ -15,6 +15,7 @@ export type NotifType =
   | 'new_client'
   | 'crm_opportunity'
   | 'mention'
+  | 'dm_received'
 
 interface CreateNotifOptions {
   userId: string

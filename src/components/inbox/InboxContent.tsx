@@ -154,13 +154,14 @@ function DmChat({ peer, currentUserId, profileMap, onBack }: {
     setSending(true); setInput('')
     const opt = { id: `opt-${Date.now()}`, from_user_id: currentUserId, to_user_id: peer.id, content: text, created_at: new Date().toISOString() }
     setMessages(prev => [...prev, opt]); scrollBottom()
-    const { data, error: insertErr } = await supabase.from('direct_messages').insert({ from_user_id: currentUserId, to_user_id: peer.id, content: text }).select('*').single()
-    if (insertErr) {
+    const res = await fetch('/api/chat/dm-messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ peerId: peer.id, content: text }) })
+    const json = await res.json()
+    if (json.error) {
       setMessages(prev => prev.filter(m => m.id !== opt.id))
       setInput(text)
-      setError(insertErr.message)
-    } else if (data) {
-      setMessages(prev => prev.map(m => m.id === opt.id ? data : m))
+      setError(json.error)
+    } else if (json.message) {
+      setMessages(prev => prev.map(m => m.id === opt.id ? json.message : m))
     }
     setSending(false)
   }
