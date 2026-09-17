@@ -50,7 +50,7 @@ const statusBadge: Record<string, { bg: string; color: string }> = {
   archived: { bg: '#F0F0F0', color: '#9A9A9A' },
 }
 
-type Tab = 'campanyes' | 'tasques' | 'briefing' | 'estrategia' | 'metriques' | 'resum' | 'pla'
+type Tab = 'campanyes' | 'tasques' | 'briefing' | 'estrategia' | 'metriques' | 'resum' | 'pla' | 'vista360'
 
 interface Props {
   client: Client
@@ -217,6 +217,7 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
   }
 
   const tabs: { key: Tab; label: string }[] = [
+    { key: 'vista360', label: '360°' },
     { key: 'resum', label: 'Resum' },
     { key: 'briefing', label: 'Briefing' },
     { key: 'estrategia', label: 'Estratègia' },
@@ -668,6 +669,12 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
               reports={metricReports}
               currentUserId={currentUserId}
             />
+          </div>
+        )}
+
+        {tab === 'vista360' && (
+          <div className="tab-full">
+            <Client360 clientId={client.id} clientName={client.name} profiles={profiles} />
           </div>
         )}
       </div>
@@ -1762,6 +1769,203 @@ function StrategyTab({ strategy, clientId }: { strategy: any; clientId: string }
   }
 
   return <div style={{ color: '#5C5C5C', fontSize: '14px', lineHeight: '1.6' }}>{JSON.stringify(strategy, null, 2)}</div>
+}
+
+// ── Vista 360 del client ──
+function Client360({ clientId, clientName, profiles }: { clientId: string; clientName: string; profiles: { id: string; full_name: string }[] }) {
+  const supabase = createSupabase()
+  const [sessions, setSessions] = useState<any[]>([])
+  const [opportunities, setOpportunities] = useState<any[]>([])
+  const [tasks, setTasks] = useState<any[]>([])
+  const [content, setContent] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true)
+      const [s, o, t, c] = await Promise.all([
+        supabase.from('content_sessions').select('id,session_date,start_time,end_time,session_types,notes,hours,status').eq('client_id', clientId).order('session_date', { ascending: false }).limit(10),
+        supabase.from('opportunities').select('id,client_name,stage,value,close_date,next_step,responsible_id').eq('client_id', clientId).order('created_at', { ascending: false }).limit(10),
+        supabase.from('tasks').select('id,title,status,priority,deadline,responsible_id').eq('client_id', clientId).order('deadline', { ascending: true }).limit(15),
+        supabase.from('content_items').select('id,title,status,format,channel,due_date,assigned_to').eq('client_id', clientId).order('created_at', { ascending: false }).limit(15),
+      ])
+      setSessions(s.data || [])
+      setOpportunities(o.data || [])
+      setTasks(t.data || [])
+      setContent(c.data || [])
+      setLoading(false)
+    }
+    load()
+  }, [clientId])
+
+  const profileMap = Object.fromEntries(profiles.map(p => [p.id, p.full_name]))
+
+  const stageLabel: Record<string, string> = {
+    lead: 'Lead', contacted: 'Contactat', proposal: 'Proposta', negotiation: 'Negociació', won: 'Guanyat', lost: 'Perdut',
+  }
+  const stageBadge: Record<string, { bg: string; color: string }> = {
+    lead: { bg: '#F3F4F6', color: '#6B7280' },
+    contacted: { bg: '#EFF6FF', color: '#2563EB' },
+    proposal: { bg: '#FFF7ED', color: '#D97706' },
+    negotiation: { bg: '#F5F3FF', color: '#7C3AED' },
+    won: { bg: '#F0FDF4', color: '#16A34A' },
+    lost: { bg: '#FEF2F2', color: '#DC2626' },
+  }
+  const taskPrio: Record<string, { bg: string; color: string; l: string }> = {
+    urgent: { bg: '#FEF2F2', color: '#DC2626', l: 'Urgent' },
+    high: { bg: '#FFF7ED', color: '#D97706', l: 'Alta' },
+    medium: { bg: '#EFF6FF', color: '#2563EB', l: 'Mitja' },
+    low: { bg: '#F3F4F6', color: '#6B7280', l: 'Baixa' },
+  }
+  const taskStatus: Record<string, string> = {
+    todo: 'Pendent', in_progress: 'En curs', review: 'En revisió', done: 'Fet',
+  }
+  const contentStatusBadge: Record<string, { bg: string; color: string; l: string }> = {
+    idea: { bg: '#F3F4F6', color: '#6B7280', l: 'Idea' },
+    produccio: { bg: '#FFFBEB', color: '#D97706', l: 'Producció' },
+    revisio: { bg: '#EFF6FF', color: '#2563EB', l: 'Revisió' },
+    publicat: { bg: '#F0FDF4', color: '#16A34A', l: 'Publicat' },
+  }
+
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: '#9CA3AF' }}>Carregant...</div>
+
+  return (
+    <div className="v360-root">
+      {/* Sessions */}
+      <div className="v360-section">
+        <div className="v360-sec-hdr">
+          <span className="v360-sec-title">Sessions de contingut</span>
+          <a href="/check" className="v360-sec-link">Veure totes →</a>
+        </div>
+        {sessions.length === 0 ? (
+          <div className="v360-empty">Cap sessió registrada</div>
+        ) : (
+          <div className="v360-list">
+            {sessions.map(s => (
+              <div key={s.id} className="v360-row">
+                <div className="v360-row-main">
+                  <span className="v360-row-title">{s.session_date ? new Date(s.session_date).toLocaleDateString('ca-ES', { weekday: 'short', day: 'numeric', month: 'short' }) : '—'}</span>
+                  {s.start_time && <span className="v360-muted">{s.start_time}{s.end_time ? `–${s.end_time}` : ''}</span>}
+                  {s.hours && <span className="v360-muted">{parseFloat(s.hours)}h</span>}
+                  {(s.session_types || []).map((t: string) => <span key={t} className="v360-tag">{t}</span>)}
+                </div>
+                {s.notes && <div className="v360-notes">{s.notes}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Oportunitats */}
+      <div className="v360-section">
+        <div className="v360-sec-hdr">
+          <span className="v360-sec-title">Oportunitats CRM</span>
+          <a href="/crm" className="v360-sec-link">Veure totes →</a>
+        </div>
+        {opportunities.length === 0 ? (
+          <div className="v360-empty">Cap oportunitat registrada</div>
+        ) : (
+          <div className="v360-list">
+            {opportunities.map(o => {
+              const badge = stageBadge[o.stage] || stageBadge.lead
+              return (
+                <div key={o.id} className="v360-row">
+                  <div className="v360-row-main">
+                    <span className="v360-row-title">{o.client_name}</span>
+                    <span className="v360-badge" style={{ background: badge.bg, color: badge.color }}>{stageLabel[o.stage] || o.stage}</span>
+                    {o.value > 0 && <span className="v360-muted">{o.value.toLocaleString('ca-ES')} €</span>}
+                    {o.close_date && <span className="v360-muted">Tanca: {new Date(o.close_date).toLocaleDateString('ca-ES', { day: 'numeric', month: 'short' })}</span>}
+                    {o.responsible_id && profileMap[o.responsible_id] && <span className="v360-muted">{profileMap[o.responsible_id]}</span>}
+                  </div>
+                  {o.next_step && <div className="v360-notes">Pròxim pas: {o.next_step}</div>}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Tasques */}
+      <div className="v360-section">
+        <div className="v360-sec-hdr">
+          <span className="v360-sec-title">Tasques</span>
+          <a href="/tasks" className="v360-sec-link">Veure totes →</a>
+        </div>
+        {tasks.length === 0 ? (
+          <div className="v360-empty">Cap tasca pendent</div>
+        ) : (
+          <div className="v360-list">
+            {tasks.map(t => {
+              const prio = taskPrio[t.priority] || taskPrio.medium
+              const overdue = t.deadline && new Date(t.deadline) < new Date() && t.status !== 'done'
+              return (
+                <div key={t.id} className="v360-row">
+                  <div className="v360-row-main">
+                    <span className={`v360-row-title${t.status === 'done' ? ' v360-done' : ''}`}>{t.title}</span>
+                    <span className="v360-badge" style={{ background: prio.bg, color: prio.color }}>{prio.l}</span>
+                    <span className="v360-muted">{taskStatus[t.status] || t.status}</span>
+                    {t.deadline && <span className={`v360-muted${overdue ? ' v360-overdue' : ''}`}>{new Date(t.deadline).toLocaleDateString('ca-ES', { day: 'numeric', month: 'short' })}</span>}
+                    {t.responsible_id && profileMap[t.responsible_id] && <span className="v360-muted">{profileMap[t.responsible_id]}</span>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Contingut */}
+      <div className="v360-section">
+        <div className="v360-sec-hdr">
+          <span className="v360-sec-title">Pipeline de contingut</span>
+          <a href="/contingut" className="v360-sec-link">Veure tot →</a>
+        </div>
+        {content.length === 0 ? (
+          <div className="v360-empty">Cap contingut al pipeline</div>
+        ) : (
+          <div className="v360-list">
+            {content.map(c => {
+              const st = contentStatusBadge[c.status] || contentStatusBadge.idea
+              const overdue = c.due_date && new Date(c.due_date) < new Date() && c.status !== 'publicat'
+              return (
+                <div key={c.id} className="v360-row">
+                  <div className="v360-row-main">
+                    <span className="v360-row-title">{c.title}</span>
+                    <span className="v360-badge" style={{ background: st.bg, color: st.color }}>{st.l}</span>
+                    {c.format && <span className="v360-tag">{c.format}</span>}
+                    {c.channel && <span className="v360-tag">{c.channel}</span>}
+                    {c.due_date && <span className={`v360-muted${overdue ? ' v360-overdue' : ''}`}>{new Date(c.due_date).toLocaleDateString('ca-ES', { day: 'numeric', month: 'short' })}</span>}
+                    {c.assigned_to && profileMap[c.assigned_to] && <span className="v360-muted">{profileMap[c.assigned_to]}</span>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      <style jsx global>{`
+        .v360-root { display: flex; flex-direction: column; gap: 20px; }
+        .v360-section { background: white; border: 1px solid #ECECEC; border-radius: 14px; overflow: hidden; }
+        .v360-sec-hdr { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 12px; border-bottom: 1px solid #F3F4F6; }
+        .v360-sec-title { font-size: 13.5px; font-weight: 700; color: #111827; }
+        .v360-sec-link { font-size: 12px; color: #6B7280; text-decoration: none; }
+        .v360-sec-link:hover { color: #1B2B4B; }
+        .v360-empty { padding: 24px 20px; color: #9CA3AF; font-size: 13px; }
+        .v360-list { display: flex; flex-direction: column; }
+        .v360-row { padding: 12px 20px; border-bottom: 1px solid #F9FAFB; }
+        .v360-row:last-child { border-bottom: none; }
+        .v360-row-main { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .v360-row-title { font-size: 13px; font-weight: 600; color: #111827; }
+        .v360-done { text-decoration: line-through; color: #9CA3AF; }
+        .v360-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+        .v360-tag { font-size: 11px; padding: 2px 7px; background: #F1F3F5; color: #4B5563; border-radius: 20px; }
+        .v360-muted { font-size: 11.5px; color: #9CA3AF; white-space: nowrap; }
+        .v360-overdue { color: #DC2626 !important; font-weight: 600; }
+        .v360-notes { font-size: 12px; color: #6B7280; margin-top: 4px; line-height: 1.4; }
+      `}</style>
+    </div>
+  )
 }
 
 function EmptyState({ icon, text, action, onAction }: { icon: React.ReactNode; text: string; action?: string; onAction?: () => void }) {
