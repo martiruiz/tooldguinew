@@ -894,15 +894,16 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
     }
   }
 
-  const handleDrop = (status: string) => {
-    if (draggedId) {
-      const task = tasks.find((t) => t.id === draggedId)
+  const handleDrop = (e: React.DragEvent, status: string) => {
+    e.preventDefault()
+    const id = e.dataTransfer.getData('text/plain') || draggedId
+    if (id) {
+      const task = tasks.find((t) => t.id === id)
       if (task && task.status !== status) {
-        onStatusChange(draggedId, status)
-        // Add to end of target column order
+        onStatusChange(id, status)
         setColOrders(prev => {
-          const colTaskIds = (prev[status] || tasks.filter(t => t.status === status).map(t => t.id)).filter(id => id !== draggedId)
-          const next = { ...prev, [status]: [...colTaskIds, draggedId] }
+          const colTaskIds = (prev[status] || tasks.filter(t => t.status === status).map(t => t.id)).filter(tid => tid !== id)
+          const next = { ...prev, [status]: [...colTaskIds, id] }
           localStorage.setItem('kanban-col-orders', JSON.stringify(next))
           return next
         })
@@ -924,21 +925,22 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
   const handleCardDrop = (e: React.DragEvent, colStatus: string, targetTaskId: string) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!draggedId || draggedId === targetTaskId) {
+    const id = e.dataTransfer.getData('text/plain') || draggedId
+    if (!id || id === targetTaskId) {
       setDraggedId(null); setDragOverCol(null); setDragOverTaskId(null)
       return
     }
-    const draggedTask = tasks.find(t => t.id === draggedId)
-    if (!draggedTask) return
+    const draggedTask = tasks.find(t => t.id === id)
+    if (!draggedTask) { setDraggedId(null); setDragOverCol(null); setDragOverTaskId(null); return }
     if (draggedTask.status !== colStatus) {
-      onStatusChange(draggedId, colStatus)
+      onStatusChange(id, colStatus)
     }
     setColOrders(prev => {
-      const colTaskIds = (prev[colStatus] || tasks.filter(t => t.status === colStatus || t.id === draggedId).filter(t => t.status === colStatus).map(t => t.id))
-      const base = colTaskIds.filter(id => id !== draggedId)
+      const colTaskIds = (prev[colStatus] || tasks.filter(t => t.status === colStatus).map(t => t.id))
+      const base = colTaskIds.filter(tid => tid !== id)
       const targetIdx = base.indexOf(targetTaskId)
       const insertIdx = insertBefore ? targetIdx : targetIdx + 1
-      base.splice(Math.max(0, insertIdx), 0, draggedId)
+      base.splice(Math.max(0, insertIdx), 0, id)
       const next = { ...prev, [colStatus]: base }
       localStorage.setItem('kanban-col-orders', JSON.stringify(next))
       return next
@@ -971,7 +973,7 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
             onDragLeave={(e) => {
               if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverCol(null)
             }}
-            onDrop={() => handleDrop(col.status)}
+            onDrop={(e) => handleDrop(e, col.status)}
             onDoubleClick={() => onColDoubleClick(col.status)}
           >
             {(() => {
@@ -1057,7 +1059,7 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
                       task={task}
                       allLabels={allLabels}
                       isDragging={draggedId === task.id}
-                      onDragStart={() => setDraggedId(task.id)}
+                      onDragStart={(_e) => setDraggedId(task.id)}
                       onDragEnd={() => { setDraggedId(null); setDragOverCol(null); setDragOverTaskId(null) }}
                       onStatusChange={onStatusChange}
                       onClick={() => onTaskClick(task)}
@@ -1302,7 +1304,7 @@ function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onSta
   task: Task
   allLabels: LabelDef[]
   isDragging: boolean
-  onDragStart: () => void
+  onDragStart: (e: React.DragEvent) => void
   onDragEnd: () => void
   onStatusChange: (id: string, status: string) => void
   onClick: () => void
@@ -1327,7 +1329,7 @@ function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onSta
     <div
       className={`kcard${isDragging ? ' kcard--dragging' : ''}${task.session_id ? ' kcard--session' : ''}`}
       draggable
-      onDragStart={onDragStart}
+      onDragStart={(e) => { e.dataTransfer.setData('text/plain', task.id); e.dataTransfer.effectAllowed = 'move'; onDragStart(e) }}
       onDragEnd={onDragEnd}
       onClick={onClick}
     >
