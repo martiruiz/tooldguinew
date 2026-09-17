@@ -86,6 +86,10 @@ export async function POST(req: NextRequest) {
 
 
     // Notify creator about the session creation (confirmation)
+    const clientName = (data as any).client?.name || 'Client'
+    const sessionTypesStr = Array.isArray(session_types) && session_types.length > 0
+      ? ` (${(session_types as string[]).join(', ')})`
+      : ''
     const creatorProfile = await getProfileForNotif(user.id)
     if (creatorProfile) {
       await notifyUser({
