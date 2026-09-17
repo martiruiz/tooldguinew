@@ -24,14 +24,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const body = await req.json()
   const admin = createAdminClient()
-  const { data, error } = await admin
+
+  // Update via admin to bypass RLS, then select via user client to allow JOINs
+  const { error: updateError } = await admin
     .from('tasks')
     .update({ ...body, updated_at: new Date().toISOString() })
     .eq('id', id)
+
+  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+
+  const { data, error: selectError } = await supabase
+    .from('tasks')
     .select(TASK_SELECT)
+    .eq('id', id)
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (selectError) return NextResponse.json({ error: selectError.message }, { status: 500 })
   return NextResponse.json(data)
 }
 
