@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { MessageCircle, AtSign, CheckSquare, MessageSquare, ExternalLink, Users, Send, ArrowLeft, Plus, Globe, Search, X, Hash, CornerUpLeft } from 'lucide-react'
+import { MessageCircle, AtSign, CheckSquare, MessageSquare, ExternalLink, Check, Users, Send, ArrowLeft, Plus, Globe, Search, X, Hash, CornerUpLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getInitials } from '@/lib/utils'
 interface ChatMsg {
