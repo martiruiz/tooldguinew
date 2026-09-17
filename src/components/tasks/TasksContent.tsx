@@ -809,6 +809,8 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const draggedIdRef = useRef<string | null>(null)
   const [dragOverCol, setDragOverCol] = useState<string | null>(null)
+  const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null)
+  const [insertBefore, setInsertBefore] = useState(true)
   const [colOrders, setColOrders] = useState<Record<string, string[]>>(() => {
     if (typeof window === 'undefined') return {}
     try { return JSON.parse(localStorage.getItem('kanban-col-orders') || '{}') } catch { return {} }
@@ -894,6 +896,15 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
     }
   }
 
+  const onCardDragOver = (e: React.DragEvent, taskId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    setDragOverTaskId(taskId)
+    setInsertBefore(e.clientY < rect.top + rect.height / 2)
+    setDragOverCol(null)
+  }
+
   const onDragOver = (e: React.DragEvent, status: string) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
@@ -906,9 +917,31 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
     draggedIdRef.current = null
     setDraggedId(null)
     setDragOverCol(null)
+    const overId = dragOverTaskId
+    const before = insertBefore
+    setDragOverTaskId(null)
     if (!id) return
-    const task = tasks.find(t => t.id === id)
-    if (task && task.status !== status) await onStatusChange(id, status)
+    const dragged = tasks.find(t => t.id === id)
+    if (!dragged) return
+
+    if (dragged.status !== status) {
+      // Cross-column: change status
+      await onStatusChange(id, status)
+    } else if (overId && overId !== id) {
+      // Same column: reorder
+      const colTasks = tasks.filter(t => t.status === status)
+      const base = colOrders[status] || []
+      const effectiveOrder = base.length > 0
+        ? [...base.filter(tid => colTasks.find(t => t.id === tid)), ...colTasks.filter(t => !base.includes(t.id)).map(t => t.id)]
+        : colTasks.map(t => t.id)
+      const newOrder = effectiveOrder.filter(tid => tid !== id)
+      const overIdx = newOrder.indexOf(overId)
+      if (overIdx !== -1) newOrder.splice(before ? overIdx : overIdx + 1, 0, id)
+      else newOrder.push(id)
+      const next = { ...colOrders, [status]: newOrder }
+      setColOrders(next)
+      localStorage.setItem('kanban-col-orders', JSON.stringify(next))
+    }
   }
 
   return (
@@ -1008,18 +1041,27 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
                 </div>
               ) : (
                 colTasks.map((task) => (
-                  <KanbanCard
-                    key={task.id}
-                    task={task}
-                    allLabels={allLabels}
-                    isDragging={draggedId === task.id}
-                    onDragStart={(e) => { draggedIdRef.current = task.id; setDraggedId(task.id); e.dataTransfer.effectAllowed = 'move' }}
-                    onDragEnd={() => { draggedIdRef.current = null; setDraggedId(null); setDragOverCol(null) }}
-                    onStatusChange={onStatusChange}
-                    onClick={() => onTaskClick(task)}
-                    onDelete={onDelete}
-                    onTitleSave={onTitleSave}
-                  />
+                  <div key={task.id} style={{ display: 'contents' }}>
+                    {dragOverTaskId === task.id && insertBefore && draggedId !== task.id && (
+                      <div className="kdrop-indicator" />
+                    )}
+                    <KanbanCard
+                      task={task}
+                      allLabels={allLabels}
+                      isDragging={draggedId === task.id}
+                      onDragStart={(e) => { draggedIdRef.current = task.id; setDraggedId(task.id); e.dataTransfer.effectAllowed = 'move' }}
+                      onDragEnd={() => { draggedIdRef.current = null; setDraggedId(null); setDragOverCol(null); setDragOverTaskId(null) }}
+                      onDragOver={onCardDragOver}
+                      onDragLeave={() => setDragOverTaskId(null)}
+                      onStatusChange={onStatusChange}
+                      onClick={() => onTaskClick(task)}
+                      onDelete={onDelete}
+                      onTitleSave={onTitleSave}
+                    />
+                    {dragOverTaskId === task.id && !insertBefore && draggedId !== task.id && (
+                      <div className="kdrop-indicator" />
+                    )}
+                  </div>
                 ))
               )}
             </div>
@@ -1250,12 +1292,14 @@ function StatusBadge({ status, taskId, onStatusChange }: { status: string; taskI
   )
 }
 
-function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onStatusChange, onClick, onDelete, onTitleSave }: {
+function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onDragOver, onDragLeave, onStatusChange, onClick, onDelete, onTitleSave }: {
   task: Task
   allLabels: LabelDef[]
   isDragging: boolean
   onDragStart: (e: React.DragEvent) => void
   onDragEnd: () => void
+  onDragOver: (e: React.DragEvent, taskId: string) => void
+  onDragLeave: () => void
   onStatusChange: (id: string, status: string) => void
   onClick: () => void
   onDelete: (id: string) => void
@@ -1281,6 +1325,8 @@ function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onSta
       draggable
       onDragStart={(e) => { e.dataTransfer.setData('text/plain', task.id); e.dataTransfer.effectAllowed = 'move'; onDragStart(e) }}
       onDragEnd={onDragEnd}
+      onDragOver={(e) => onDragOver(e, task.id)}
+      onDragLeave={onDragLeave}
       onClick={onClick}
     >
       {/* Top row: title + avatar + delete */}
@@ -1388,6 +1434,7 @@ function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onSta
         }
         .kcard:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.09); border-color: rgba(37,64,103,0.14); transform: translateY(-1px); }
         .kcard--dragging { opacity: 0.4; transform: scale(0.97); cursor: grabbing; }
+        .kdrop-indicator { height: 2px; background: #4A90E2; border-radius: 1px; margin: 2px 4px; }
         .kcard--session { background: #EEF3FA; border-color: #C5D4E8; }
         .kcard--session:hover { background: #EEF3FA; border-color: #9BB5D5; }
 
