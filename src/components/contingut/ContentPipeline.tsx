@@ -398,6 +398,13 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
         /* Board */
         .cp-board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; flex: 1; min-height: 0; }
         .cp-col { display: flex; flex-direction: column; background: #F8F9FB; border-radius: 14px; min-height: 0; overflow: hidden; }
+
+        @media (max-width: 900px) {
+          .cp-root { overflow-x: hidden; padding: 14px 16px 90px; }
+          .cp-board { display: flex !important; flex-direction: row; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding-bottom: 8px; flex: none; min-height: 0; height: calc(100vh - 160px); }
+          .cp-col { min-width: 240px; max-width: 240px; scroll-snap-align: start; flex-shrink: 0; height: 100%; }
+          .cp-col-body { flex: 1; overflow-y: auto; }
+        }
         .cp-col-hdr { display: flex; align-items: center; gap: 8px; padding: 14px 14px 10px; flex-shrink: 0; }
         .cp-col-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
         .cp-col-label { font-size: 12.5px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; }
@@ -456,9 +463,6 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
         .ci-btn-pri:disabled { opacity: 0.5; cursor: not-allowed; }
         .ci-btn-sec { height: 36px; padding: 0 16px; background: transparent; color: #6B7280; border: 1.5px solid #E5E7EB; border-radius: 9px; font-size: 13px; font-family: inherit; cursor: pointer; }
 
-        @media (max-width: 900px) {
-          .cp-board { grid-template-columns: repeat(2, 1fr); }
-        }
       `}</style>
     </div>
   )

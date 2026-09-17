@@ -715,18 +715,23 @@ export function InboxContent({ currentUserId, chatMessages, profiles }: Props) {
         .chat-open-btn { display: flex; align-items: center; gap: 6px; padding: 6px 13px; border-radius: 8px; border: none; background: #254067; color: white; cursor: pointer; font-size: 12px; font-weight: 600; font-family: inherit; }
 
         /* ── Messaging panel ── */
-        .msg-panel { display: flex; flex: 1; min-height: 0; width: 100%; }
+        .msg-panel { display: flex; flex: 1; min-height: 0; width: 100%; overflow: hidden; }
         .msg-sidebar { width: 280px; min-width: 280px; max-width: 280px; border-right: 1px solid #EAECF0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; background: #F8F9FB; flex-shrink: 0; }
 
         @media (max-width: 767px) {
-          .msg-panel { position: relative; }
-          .msg-sidebar { width: 100%; min-width: 100%; max-width: 100%; border-right: none; }
-          .msg-main { display: none; }
-          .msg-panel--active .msg-sidebar { display: none; }
-          .msg-panel--active .msg-main { display: flex; width: 100%; }
+          .msg-panel { display: block; position: relative; overflow: hidden; }
+          .msg-sidebar { width: 100% !important; min-width: 0 !important; max-width: none !important; border-right: none; display: flex; flex-direction: column; height: 100%; overflow-y: auto; }
+          .msg-main { display: none !important; }
+          .msg-panel--active .msg-sidebar { display: none !important; }
+          .msg-panel--active .msg-main { display: flex !important; width: 100%; height: 100%; flex-direction: column; }
           .ch-messages { padding: 12px 14px; }
           .ch-input-wrap { padding: 10px 12px 14px; }
           .ch-header { padding: 10px 14px; }
+          .conv-row { margin: 1px 4px; width: calc(100% - 8px); }
+          .conv-label { padding: 10px 12px 4px; }
+          .msg-sidebar-head { padding: 12px 14px 10px; }
+          .bubble { font-size: 14px; }
+          .ch-input { font-size: 14px; }
         }
         .msg-sidebar-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; border-bottom: 1px solid #EAECF0; background: white; position: sticky; top: 0; z-index: 2; flex-shrink: 0; }
         .msg-sidebar-title { font-size: 13px; font-weight: 700; color: #0F172A; letter-spacing: -0.2px; }

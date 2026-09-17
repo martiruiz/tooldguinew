@@ -29,6 +29,18 @@ export function Topbar({ user, title }: Props) {
   const panelRef = useRef<HTMLDivElement>(null)
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    const onToggle = () => setMenuOpen(o => !o)
+    const onClose = () => setMenuOpen(false)
+    window.addEventListener('toggle-mobile-sidebar', onToggle)
+    window.addEventListener('close-mobile-sidebar', onClose)
+    return () => {
+      window.removeEventListener('toggle-mobile-sidebar', onToggle)
+      window.removeEventListener('close-mobile-sidebar', onClose)
+    }
+  }, [])
 
   const unread = notifs.filter(n => !n.read).length
 
@@ -118,7 +130,7 @@ export function Topbar({ user, title }: Props) {
     <header className="topbar">
       <div className="topbar-left">
         <button
-          className="topbar-hamburger"
+          className={`topbar-hamburger${menuOpen ? ' topbar-hamburger--open' : ''}`}
           onClick={() => window.dispatchEvent(new Event('toggle-mobile-sidebar'))}
           aria-label="Obrir menú"
         >
@@ -272,10 +284,22 @@ export function Topbar({ user, title }: Props) {
 
         .topbar-hamburger {
           display: none; align-items: center; justify-content: center;
-          width: 38px; height: 38px; border: none; background: none;
-          cursor: pointer; padding: 0; flex-shrink: 0; border-radius: 8px;
+          width: 38px; height: 38px; border: none; background: transparent;
+          cursor: pointer; padding: 2px; flex-shrink: 0; border-radius: 10px;
+          transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+          position: relative;
         }
-        .topbar-hamburger:hover { opacity: 0.8; }
+        .topbar-hamburger::before {
+          content: ''; position: absolute; inset: 0; border-radius: 10px;
+          background: linear-gradient(135deg, #1B2B4B 0%, #3B6DB4 50%, #6C63FF 100%);
+          opacity: 0; transition: opacity 0.2s;
+        }
+        .topbar-hamburger img { position: relative; z-index: 1; }
+        .topbar-hamburger:hover::before { opacity: 0.12; }
+        .topbar-hamburger:active { transform: scale(0.93); }
+        .topbar-hamburger--open::before { opacity: 1; }
+        .topbar-hamburger--open img { filter: brightness(0) invert(1); }
+        .topbar-hamburger--open { box-shadow: 0 4px 16px rgba(27,43,75,0.35), 0 0 0 3px rgba(108,99,255,0.2); }
         @media (max-width: 1023px) { .topbar-hamburger { display: flex; } }
 
         .topbar-title {
