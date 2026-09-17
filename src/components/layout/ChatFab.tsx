@@ -77,7 +77,8 @@ function MiniChat({ target, currentUserId, profiles, onBack }: {
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages' }, (p: any) => {
           const { from_user_id, to_user_id } = p.new
           if ((from_user_id === peerId && to_user_id === currentUserId) || (from_user_id === currentUserId && to_user_id === peerId)) {
-            setMessages(prev => [...prev, p.new]); scrollBottom()
+            if (from_user_id === currentUserId) return
+            setMessages(prev => prev.some(m => m.id === p.new.id) ? prev : [...prev, p.new]); scrollBottom()
           }
         }).subscribe()
       return () => { supabase.removeChannel(ch) }
