@@ -141,7 +141,9 @@ function DmChat({ peer, currentUserId, profileMap, onBack }: {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages' }, (payload: any) => {
         const { from_user_id, to_user_id } = payload.new
         if ((from_user_id === peer.id && to_user_id === currentUserId) || (from_user_id === currentUserId && to_user_id === peer.id)) {
-          setMessages(prev => [...prev, payload.new]); scrollBottom()
+          // Own messages are already handled by the insert .then() optimistic replace
+          if (from_user_id === currentUserId) return
+          setMessages(prev => prev.some(m => m.id === payload.new.id) ? prev : [...prev, payload.new]); scrollBottom()
         }
       }).subscribe()
     return () => { supabase.removeChannel(ch) }

@@ -479,6 +479,8 @@ export function TeamChat({ currentUserId, currentUserName, profiles }: Props) {
         const { from_user_id, to_user_id, id } = payload.new ?? {}
         const isForMe = (from_user_id === dmPeer.id && to_user_id === currentUserId) || (from_user_id === currentUserId && to_user_id === dmPeer.id)
         if (!isForMe) return
+        // Own messages are already handled by the insert .then() optimistic replace
+        if (from_user_id === currentUserId) return
         const { data } = await supabase.from('direct_messages').select('*').eq('id', id).single()
         if (data) setDmMessages(prev => prev.some(m => m.id === data.id) ? prev : [...prev, { ...data, user_id: data.from_user_id, profile: pm()[data.from_user_id] }])
         scrollBottom()
