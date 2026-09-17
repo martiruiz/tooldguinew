@@ -218,12 +218,12 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'vista360', label: '360°' },
+    { key: 'campanyes', label: `Projectes (${projects.length})` },
+    { key: 'tasques', label: `Tasques (${tasks.length})` },
     { key: 'resum', label: 'Resum' },
     { key: 'briefing', label: 'Briefing' },
     { key: 'estrategia', label: 'Estratègia' },
     { key: 'pla', label: 'Pla de contingut anual' },
-    { key: 'campanyes', label: `Projectes (${projects.length})` },
-    { key: 'tasques', label: `Tasques (${tasks.length})` },
     { key: 'metriques', label: 'Mètriques' },
   ]
 
