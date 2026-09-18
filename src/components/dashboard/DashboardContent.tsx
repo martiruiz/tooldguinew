@@ -874,8 +874,12 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           .dash { padding: 16px 12px 80px; }
           .dash-greeting { font-size: 18px; }
           .dash-stats { gap: 8px; }
+          .stat-card { min-width: calc(50% - 4px); flex: 1 1 calc(50% - 4px); padding: 12px 12px 10px; gap: 10px; }
           .dash-stat-card { min-width: calc(50% - 4px); flex: 1; padding: 14px 14px 12px; }
-          .dash-stat-value { font-size: 20px; }
+          .stat-value { font-size: 20px; }
+          .widget-header { padding: 12px 14px 10px; }
+          .widget-link { white-space: nowrap; flex-shrink: 0; }
+          .widget-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         }
         @media (min-width: 768px) and (max-width: 1023px) {
           .dash { padding: 20px 16px 40px; }
