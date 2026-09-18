@@ -27,7 +27,7 @@ function ChannelChips({ value, onChange }: { value: string; onChange: (v: string
       {CHANNEL_ITEMS.map(c => (
         <button key={c.label} type="button"
           className={`chip chip--brand${value === c.label ? ' chip--active' : ''}`}
-          style={value === c.label ? { background: c.color, borderColor: c.color, color: 'white' } : {}}
+          style={value === c.label ? { '--brand-color': c.color, background: c.color, borderColor: c.color, color: 'white' } as React.CSSProperties : {}}
           onClick={() => onChange(value === c.label ? '' : c.label)}>
           {c.icon}{c.label}
         </button>
@@ -669,7 +669,8 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
         .chips-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
         .chip { display: flex; align-items: center; gap: 5px; padding: 5px 11px; border: 1.5px solid #E5E7EB; border-radius: 20px; background: white; font-size: 12.5px; font-weight: 500; color: #374151; font-family: inherit; cursor: pointer; transition: all 0.12s; white-space: nowrap; line-height: 1; }
         .chip:hover { border-color: #1B2B4B; color: #1B2B4B; background: #F0F3F8; }
-        .chip--active { background: #1B2B4B !important; border-color: #1B2B4B !important; color: white !important; }
+        .chip--active { background: #1B2B4B; border-color: #1B2B4B; color: white; }
+        .chip--brand.chip--active { background: var(--brand-color, #1B2B4B); border-color: var(--brand-color, #1B2B4B); color: white; }
         .chip--brand.chip--active svg { filter: brightness(0) invert(1); }
         .chip-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; transition: opacity 0.1s; }
         .chip--status { border-radius: 20px; font-weight: 600; }
