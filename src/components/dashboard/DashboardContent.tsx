@@ -872,14 +872,36 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
         }
 
         @media (max-width: 767px) {
-          .dash { padding: 16px 12px 80px; }
-          .dash-greeting { font-size: 18px; }
-          .dash-stats { gap: 8px; grid-template-columns: repeat(2, 1fr); }
-          .stat-card { padding: 12px 12px 10px; gap: 10px; border-radius: 14px; }
+          /* Page shell */
+          .dash { padding: 14px 12px 100px; }
+
+          /* Header */
+          .dash-header { flex-direction: column; gap: 12px; margin-bottom: 16px; }
+          .dash-greeting { font-size: 20px; }
+          .dash-subtitle { font-size: 12.5px; margin-top: 3px; }
+          .dash-quick-actions { width: 100%; gap: 6px; }
+          .quick-btn { flex: 1; justify-content: center; font-size: 12px; height: 34px; padding: 0 10px; border-radius: 9px; }
+
+          /* Stats */
+          .dash-stats { gap: 8px; grid-template-columns: repeat(2, 1fr); margin-bottom: 16px; }
+          .stat-card { padding: 12px 10px; gap: 8px; border-radius: 14px; }
+          .stat-icon { width: 34px; height: 34px; border-radius: 10px; }
           .stat-value { font-size: 20px; }
-          .widget-header { padding: 12px 14px 10px; }
-          .widget-link { white-space: nowrap; flex-shrink: 0; font-size: 11.5px; }
-          .widget-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .stat-label { font-size: 11px; margin-top: 2px; }
+
+          /* Grid */
+          .dash-grid { gap: 10px; }
+
+          /* Widgets */
+          .dash-widget { border-radius: 14px; }
+          .widget-header { padding: 12px 14px 10px; gap: 6px; }
+          .widget-title { font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .widget-link { white-space: nowrap; flex-shrink: 0; font-size: 11px; }
+          .widget-empty { padding: 20px 14px; }
+          .widget-empty p { font-size: 12.5px; }
+
+          /* Attention / blockers widget */
+          .dash-widget--blocked .widget-header { padding: 10px 14px 8px; }
         }
         @media (min-width: 768px) and (max-width: 1023px) {
           .dash { padding: 20px 16px 40px; }
