@@ -875,33 +875,76 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           /* Page shell */
           .dash { padding: 14px 12px 100px; }
 
-          /* Header */
-          .dash-header { flex-direction: column; gap: 12px; margin-bottom: 16px; }
+          /* ── Header ── */
+          .dash-header { flex-direction: column; gap: 10px; margin-bottom: 16px; }
           .dash-greeting { font-size: 20px; }
           .dash-subtitle { font-size: 12.5px; margin-top: 3px; }
-          .dash-quick-actions { width: 100%; gap: 6px; }
-          .quick-btn { flex: 1; justify-content: center; font-size: 12px; height: 34px; padding: 0 10px; border-radius: 9px; }
+          .dash-quick-actions { width: 100%; gap: 6px; flex-wrap: wrap; }
+          .quick-btn {
+            flex: 1; justify-content: center;
+            white-space: nowrap; overflow: hidden;
+            font-size: 12.5px; font-weight: 600;
+            height: 38px; padding: 0 10px;
+            border-radius: 10px; gap: 5px;
+          }
+          /* Nova tasca ocupa tota la fila */
+          .quick-btn--primary { flex: 0 0 100%; height: 42px; font-size: 14px; }
 
-          /* Stats */
+          /* ── Stats ── */
           .dash-stats { gap: 8px; grid-template-columns: repeat(2, 1fr); margin-bottom: 16px; }
           .stat-card { padding: 12px 10px; gap: 8px; border-radius: 14px; }
           .stat-icon { width: 34px; height: 34px; border-radius: 10px; }
           .stat-value { font-size: 20px; }
           .stat-label { font-size: 11px; margin-top: 2px; }
 
-          /* Grid */
+          /* ── Grid & Widgets ── */
           .dash-grid { gap: 10px; }
-
-          /* Widgets */
           .dash-widget { border-radius: 14px; }
-          .widget-header { padding: 12px 14px 10px; gap: 6px; }
-          .widget-title { font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-          .widget-link { white-space: nowrap; flex-shrink: 0; font-size: 11px; }
-          .widget-empty { padding: 20px 14px; }
+
+          /* Amagar botons de rearranjar en mòbil (no útils sense drag) */
+          .widget-move-btn { display: none !important; }
+
+          .widget-header { padding: 11px 14px 10px; gap: 6px; }
+          .widget-title {
+            font-size: 13px; min-width: 0;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+          }
+          .widget-link { white-space: nowrap; flex-shrink: 0; font-size: 11.5px; }
+          .widget-empty { padding: 18px 14px; }
           .widget-empty p { font-size: 12.5px; }
 
-          /* Attention / blockers widget */
-          .dash-widget--blocked .widget-header { padding: 10px 14px 8px; }
+          /* Padding inferior — la vora rodona del widget (14px) necessita espai */
+          .task-list { padding-bottom: 10px; }
+          .meeting-list { padding-bottom: 10px; }
+          .attention-list { padding-bottom: 6px; }
+          .blocked-list { padding-bottom: 10px; }
+          .activity-list { padding-bottom: 10px; }
+          .priority-task-list { padding-bottom: 10px; }
+          .task-row { padding: 9px 14px; }
+          /* Últim element sense border-bottom en totes les llistes */
+          .task-row:last-child { border-bottom: none; }
+
+          /* ── Attention widget ── */
+          .attention-block { margin-bottom: 0; }
+          .attention-header { padding: 10px 14px; }
+          .attention-item { padding: 9px 12px; gap: 8px; }
+          .attention-item-title {
+            font-size: 12.5px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          }
+          .attention-item-sub {
+            font-size: 11px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          }
+          .attention-actions { gap: 4px; flex-shrink: 0; }
+          .attn-btn--resolve { display: none; }
+          .attn-btn--primary { height: 26px; padding: 0 8px; font-size: 11px; white-space: nowrap; }
+          .attn-btn--dismiss { width: 24px; font-size: 12px; }
+
+          /* ── Priority tasks ── */
+          .priority-task-item { padding: 9px 14px; }
+          .priority-task-title { font-size: 12.5px; }
+          .priority-badge { font-size: 9.5px; }
         }
         @media (min-width: 768px) and (max-width: 1023px) {
           .dash { padding: 20px 16px 40px; }
