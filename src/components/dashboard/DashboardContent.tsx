@@ -873,12 +873,11 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
         @media (max-width: 767px) {
           .dash { padding: 16px 12px 80px; }
           .dash-greeting { font-size: 18px; }
-          .dash-stats { gap: 8px; }
-          .stat-card { min-width: calc(50% - 4px); flex: 1 1 calc(50% - 4px); padding: 12px 12px 10px; gap: 10px; }
-          .dash-stat-card { min-width: calc(50% - 4px); flex: 1; padding: 14px 14px 12px; }
+          .dash-stats { gap: 8px; grid-template-columns: repeat(2, 1fr); }
+          .stat-card { padding: 12px 12px 10px; gap: 10px; border-radius: 14px; }
           .stat-value { font-size: 20px; }
           .widget-header { padding: 12px 14px 10px; }
-          .widget-link { white-space: nowrap; flex-shrink: 0; }
+          .widget-link { white-space: nowrap; flex-shrink: 0; font-size: 11.5px; }
           .widget-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         }
         @media (min-width: 768px) and (max-width: 1023px) {
@@ -1033,10 +1032,10 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
 
         /* Stats */
         .dash-stats {
-          display: flex;
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
           gap: 14px;
           margin-bottom: 24px;
-          flex-wrap: wrap;
         }
 
         .stat-card {
@@ -1047,8 +1046,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           display: flex;
           align-items: center;
           gap: 14px;
-          min-width: 140px;
-          flex: 1;
+          min-width: 0;
           box-shadow: 0 2px 8px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
           transition: box-shadow 0.2s ease, transform 0.2s ease;
         }

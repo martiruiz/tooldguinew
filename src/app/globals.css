@@ -83,15 +83,12 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: 'cv11', 'ss01';
-  overflow-x: hidden;
 }
 
 body {
   background-color: var(--color-bg);
   color: var(--color-text-primary);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  overflow-x: hidden;
-  max-width: 100vw;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -133,15 +130,6 @@ input:focus, select:focus, textarea:focus {
   border-color: #4A82C6 !important;
 }
 
-/* ── Mobile global overflow prevention ── */
-@media (max-width: 1023px) {
-  .app-shell,
-  .app-main,
-  main {
-    max-width: 100vw;
-    overflow-x: hidden;
-  }
-}
 
 /* Selection */
 ::selection {
