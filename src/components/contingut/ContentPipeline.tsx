@@ -269,7 +269,7 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
     const isNew = !editItem || !(editItem as ContentItem).id
     const payload = {
       title: data.title,
-      status: data.status,
+      status: data.status || 'idea',
       format: data.format || null,
       channel: data.channel || null,
       client_id: data.client_id || null,
@@ -279,13 +279,18 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
       created_by: currentUserId,
     }
 
+    const SEL = '*, client:clients(id,name,logo_url), assignee:profiles!content_items_assigned_to_fkey(id,full_name,avatar_url)'
+
     if (isNew) {
       const { data: created, error } = await supabase
         .from('content_items')
         .insert(payload)
-        .select('*, client:clients(id,name,logo_url), assignee:profiles!content_items_assigned_to_fkey(id,full_name,avatar_url)')
+        .select(SEL)
         .single()
-      if (!error && created) {
+      if (error) {
+        console.error('[ContentPipeline] insert error:', error)
+        alert(`Error al crear: ${error.message}`)
+      } else if (created) {
         setItems(prev => [created as ContentItem, ...prev])
       }
     } else {
@@ -294,9 +299,12 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
         .from('content_items')
         .update(payload)
         .eq('id', id)
-        .select('*, client:clients(id,name,logo_url), assignee:profiles!content_items_assigned_to_fkey(id,full_name,avatar_url)')
+        .select(SEL)
         .single()
-      if (!error && updated) {
+      if (error) {
+        console.error('[ContentPipeline] update error:', error)
+        alert(`Error al guardar: ${error.message}`)
+      } else if (updated) {
         setItems(prev => prev.map(it => it.id === id ? updated as ContentItem : it))
       }
     }
