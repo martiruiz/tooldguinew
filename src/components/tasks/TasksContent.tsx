@@ -1718,6 +1718,7 @@ function ListView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, onT
           flex-direction: column;
           gap: 4px;
           overflow-y: auto;
+          overflow-x: hidden;
           flex: 1;
         }
 

@@ -1484,7 +1484,7 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
         .btn-action--meet { background: #F0FDF4; border: 1px solid #BBF7D0; color: #15803D; }
         .btn-action--meet:hover { background: #DCFCE7; border-color: #16A34A; }
 
-        .crm-page { flex: 1; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+        .crm-page { flex: 1; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; overflow-x: hidden; }
 
         /* KPIs Row 1 */
         .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }

@@ -171,7 +171,7 @@ export function ProspeccioContent() {
   return (
     <div className="prosp-page">
       <style>{`
-        .prosp-page { flex: 1; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+        .prosp-page { flex: 1; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; overflow-x: hidden; }
 
         /* Header */
         .prosp-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }

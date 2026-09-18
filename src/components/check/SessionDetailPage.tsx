@@ -1031,7 +1031,7 @@ export function SessionDetailPage({
 
       <style jsx>{`
         .sdp-wrap {
-          flex: 1; overflow-y: auto;
+          flex: 1; overflow-y: auto; overflow-x: hidden;
           padding: 20px 28px 40px;
           display: flex; flex-direction: column; gap: 16px;
         }

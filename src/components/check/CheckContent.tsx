@@ -637,7 +637,7 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
       <style jsx>{`
         /* ── Page shell ── */
         .check-page {
-          flex: 1; overflow-y: auto;
+          flex: 1; overflow-y: auto; overflow-x: hidden;
           display: flex; flex-direction: column;
           padding: 20px 24px 40px; gap: 16px;
           background: #F7F8FA;

@@ -868,6 +868,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           flex: 1;
           padding: 28px 28px 40px;
           overflow-y: auto;
+          overflow-x: hidden;
         }
 
         @media (max-width: 767px) {
