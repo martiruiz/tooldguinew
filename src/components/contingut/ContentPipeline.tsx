@@ -1,10 +1,95 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Plus, X, Calendar, Search, MoreHorizontal, Edit2, Trash2 } from 'lucide-react'
+import { Plus, X, Calendar, Search, MoreHorizontal, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 import { ClientSearchSelect } from '@/components/ui/ClientSearchSelect'
 import { createContentItem, updateContentItem, deleteContentItem, moveContentItem } from '@/app/(app)/contingut/actions'
+
+// ── Premium Date Picker ──
+const DAYS_CA = ['dl', 'dt', 'dc', 'dj', 'dv', 'ds', 'dg']
+const MONTHS_CA = ['Gener','Febrer','Març','Abril','Maig','Juny','Juliol','Agost','Setembre','Octubre','Novembre','Desembre']
+
+function DatePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const today = new Date(); today.setHours(0,0,0,0)
+  const selected = value ? new Date(value + 'T00:00:00') : null
+  const [view, setView] = useState(() => {
+    const d = selected || today
+    return { year: d.getFullYear(), month: d.getMonth() }
+  })
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  const prevMonth = () => setView(v => v.month === 0 ? { year: v.year - 1, month: 11 } : { ...v, month: v.month - 1 })
+  const nextMonth = () => setView(v => v.month === 11 ? { year: v.year + 1, month: 0 } : { ...v, month: v.month + 1 })
+
+  const firstDay = new Date(view.year, view.month, 1)
+  // Monday-first: Sunday=0 → 6, Monday=1 → 0, ...
+  const startOffset = (firstDay.getDay() + 6) % 7
+  const daysInMonth = new Date(view.year, view.month + 1, 0).getDate()
+  const cells: (number | null)[] = [...Array(startOffset).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
+
+  const selectDay = (d: number) => {
+    const iso = `${view.year}-${String(view.month + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+    onChange(iso)
+    setOpen(false)
+  }
+
+  const displayValue = selected
+    ? selected.toLocaleDateString('ca-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+    : ''
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button type="button" className="dp-trigger" onClick={() => setOpen(o => !o)}>
+        <Calendar size={14} style={{ color: selected ? '#1B2B4B' : '#9CA3AF', flexShrink: 0 }} />
+        <span style={{ color: selected ? '#111827' : '#9CA3AF', fontSize: 13.5 }}>
+          {displayValue || 'Selecciona data'}
+        </span>
+      </button>
+
+      {open && (
+        <div className="dp-pop">
+          <div className="dp-header">
+            <button type="button" className="dp-nav" onClick={prevMonth}><ChevronLeft size={15} /></button>
+            <span className="dp-month-label">{MONTHS_CA[view.month]} {view.year}</span>
+            <button type="button" className="dp-nav" onClick={nextMonth}><ChevronRight size={15} /></button>
+          </div>
+
+          <div className="dp-grid">
+            {DAYS_CA.map(d => <div key={d} className="dp-weekday">{d}</div>)}
+            {cells.map((d, i) => {
+              if (!d) return <div key={`e${i}`} />
+              const thisDate = new Date(view.year, view.month, d); thisDate.setHours(0,0,0,0)
+              const isToday = thisDate.getTime() === today.getTime()
+              const isSel = selected && thisDate.getTime() === selected.getTime()
+              return (
+                <button key={d} type="button"
+                  className={`dp-day${isToday ? ' dp-today' : ''}${isSel ? ' dp-selected' : ''}`}
+                  onClick={() => selectDay(d)}>{d}</button>
+              )
+            })}
+          </div>
+
+          <div className="dp-footer">
+            <button type="button" className="dp-foot-btn dp-foot-clear" onClick={() => { onChange(''); setOpen(false) }}>Esborra</button>
+            <button type="button" className="dp-foot-btn dp-foot-today" onClick={() => {
+              const iso = today.toISOString().slice(0,10)
+              onChange(iso)
+              setOpen(false)
+            }}>Avui</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export type ContentStatus = 'idea' | 'produccio' | 'revisio' | 'publicat'
 
@@ -192,7 +277,7 @@ function ItemModal({
             </div>
             <div className="ci-field">
               <label>Data entrega</label>
-              <input type="date" className="ci-input" value={form.due_date} onChange={set('due_date')} />
+              <DatePicker value={form.due_date} onChange={v => setForm(f => ({ ...f, due_date: v }))} />
             </div>
           </div>
           <div className="ci-row2">
@@ -452,6 +537,30 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
         .ci-client-name { font-size: 11.5px; color: #6B7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
         .ci-date { display: flex; align-items: center; gap: 3px; font-size: 11px; color: #6B7280; white-space: nowrap; }
         .ci-date--overdue { color: #DC2626; font-weight: 600; }
+
+        /* Date Picker */
+        .dp-trigger { display: flex; align-items: center; gap: 8px; width: 100%; height: 38px; padding: 0 12px; border: 1.5px solid #E5E7EB; border-radius: 8px; background: white; cursor: pointer; font-family: inherit; transition: border-color 0.15s, box-shadow 0.15s; text-align: left; }
+        .dp-trigger:hover { border-color: #1B2B4B; }
+        .dp-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 1000; background: white; border-radius: 16px; box-shadow: 0 8px 40px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.08); padding: 16px; width: 280px; animation: dp-in 0.15s ease; }
+        @keyframes dp-in { from { opacity:0; transform:translateY(-6px) scale(0.97) } to { opacity:1; transform:translateY(0) scale(1) } }
+        .dp-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+        .dp-nav { width: 30px; height: 30px; border: none; background: #F3F4F6; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #374151; transition: background 0.1s; }
+        .dp-nav:hover { background: #E5E7EB; }
+        .dp-month-label { font-size: 14px; font-weight: 700; color: #111827; letter-spacing: -0.2px; }
+        .dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+        .dp-weekday { font-size: 11px; font-weight: 600; color: #9CA3AF; text-align: center; padding: 4px 0 8px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .dp-day { width: 100%; aspect-ratio: 1; border: none; background: none; border-radius: 8px; font-size: 13px; color: #374151; cursor: pointer; font-family: inherit; font-weight: 500; display: flex; align-items: center; justify-content: center; transition: background 0.1s, color 0.1s; }
+        .dp-day:hover { background: #F3F4F6; }
+        .dp-today { color: #1B2B4B; font-weight: 700; position: relative; }
+        .dp-today::after { content: ''; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: #1B2B4B; }
+        .dp-selected { background: #1B2B4B !important; color: white !important; font-weight: 700; box-shadow: 0 2px 8px rgba(27,43,75,0.35); }
+        .dp-selected::after { display: none; }
+        .dp-footer { display: flex; justify-content: space-between; margin-top: 14px; padding-top: 12px; border-top: 1px solid #F3F4F6; }
+        .dp-foot-btn { border: none; background: none; cursor: pointer; font-size: 13px; font-family: inherit; font-weight: 600; padding: 6px 10px; border-radius: 8px; transition: background 0.1s; }
+        .dp-foot-clear { color: #6B7280; }
+        .dp-foot-clear:hover { background: #F3F4F6; }
+        .dp-foot-today { color: #1B2B4B; }
+        .dp-foot-today:hover { background: #EFF2F8; }
 
         /* Modal */
         .ci-modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 900; display: flex; align-items: center; justify-content: center; padding: 20px; }
