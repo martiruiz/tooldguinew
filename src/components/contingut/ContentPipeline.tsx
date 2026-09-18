@@ -286,27 +286,51 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
       const { data: created, error } = await supabase
         .from('content_items')
         .insert(payload)
-        .select('*')
+        .select('id, created_at')
         .single()
       if (error) {
         console.error('[ContentPipeline] insert error:', error)
         alert(`Error al crear: ${error.message}`)
-      } else if (created) {
-        setItems(prev => [{ ...created, client: clientObj, assignee: assigneeObj } as ContentItem, ...prev])
+      } else {
+        const newItem: ContentItem = {
+          id: created?.id ?? crypto.randomUUID(),
+          created_at: created?.created_at ?? new Date().toISOString(),
+          title: payload.title!,
+          status: (payload.status as ContentStatus) || 'idea',
+          format: payload.format ?? null,
+          channel: payload.channel ?? null,
+          client_id: payload.client_id ?? null,
+          assigned_to: payload.assigned_to ?? null,
+          due_date: payload.due_date ?? null,
+          notes: payload.notes ?? null,
+          client: clientObj,
+          assignee: assigneeObj,
+        }
+        setItems(prev => [newItem, ...prev])
       }
     } else {
       const id = (editItem as ContentItem).id
-      const { data: updated, error } = await supabase
+      const { error } = await supabase
         .from('content_items')
         .update(payload)
         .eq('id', id)
-        .select('*')
-        .single()
       if (error) {
         console.error('[ContentPipeline] update error:', error)
         alert(`Error al guardar: ${error.message}`)
-      } else if (updated) {
-        setItems(prev => prev.map(it => it.id === id ? { ...updated, client: clientObj, assignee: assigneeObj } as ContentItem : it))
+      } else {
+        setItems(prev => prev.map(it => it.id === id ? {
+          ...it,
+          title: payload.title!,
+          status: (payload.status as ContentStatus) || it.status,
+          format: payload.format ?? null,
+          channel: payload.channel ?? null,
+          client_id: payload.client_id ?? null,
+          assigned_to: payload.assigned_to ?? null,
+          due_date: payload.due_date ?? null,
+          notes: payload.notes ?? null,
+          client: clientObj,
+          assignee: assigneeObj,
+        } : it))
       }
     }
     setLoading(false)
