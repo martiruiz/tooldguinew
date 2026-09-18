@@ -279,19 +279,20 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
       created_by: currentUserId,
     }
 
-    const SEL = '*, client:clients(id,name,logo_url), assignee:profiles!content_items_assigned_to_fkey(id,full_name,avatar_url)'
+    const clientObj = data.client_id ? clients.find(c => c.id === data.client_id) || null : null
+    const assigneeObj = data.assigned_to ? profiles.find(p => p.id === data.assigned_to) || null : null
 
     if (isNew) {
       const { data: created, error } = await supabase
         .from('content_items')
         .insert(payload)
-        .select(SEL)
+        .select('*')
         .single()
       if (error) {
         console.error('[ContentPipeline] insert error:', error)
         alert(`Error al crear: ${error.message}`)
       } else if (created) {
-        setItems(prev => [created as ContentItem, ...prev])
+        setItems(prev => [{ ...created, client: clientObj, assignee: assigneeObj } as ContentItem, ...prev])
       }
     } else {
       const id = (editItem as ContentItem).id
@@ -299,13 +300,13 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
         .from('content_items')
         .update(payload)
         .eq('id', id)
-        .select(SEL)
+        .select('*')
         .single()
       if (error) {
         console.error('[ContentPipeline] update error:', error)
         alert(`Error al guardar: ${error.message}`)
       } else if (updated) {
-        setItems(prev => prev.map(it => it.id === id ? updated as ContentItem : it))
+        setItems(prev => prev.map(it => it.id === id ? { ...updated, client: clientObj, assignee: assigneeObj } as ContentItem : it))
       }
     }
     setLoading(false)
