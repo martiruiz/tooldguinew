@@ -6,6 +6,36 @@ import { getInitials } from '@/lib/utils'
 import { ClientSearchSelect } from '@/components/ui/ClientSearchSelect'
 import { createContentItem, updateContentItem, deleteContentItem, moveContentItem } from '@/app/(app)/contingut/actions'
 
+// ── Chip Selectors ──
+function FormatChips({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="chips-wrap">
+      {FORMATS.map(f => (
+        <button key={f.label} type="button"
+          className={`chip${value === f.label ? ' chip--active' : ''}`}
+          onClick={() => onChange(value === f.label ? '' : f.label)}>
+          <span>{f.icon}</span>{f.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function ChannelChips({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="chips-wrap">
+      {CHANNELS.map(c => (
+        <button key={c.label} type="button"
+          className={`chip${value === c.label ? ' chip--active' : ''}`}
+          style={value === c.label ? { background: c.color, borderColor: c.color, color: 'white' } : {}}
+          onClick={() => onChange(value === c.label ? '' : c.label)}>
+          <span>{c.icon}</span>{c.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // ── Premium Date Picker ──
 const DAYS_CA = ['dl', 'dt', 'dc', 'dj', 'dv', 'ds', 'dg']
 const MONTHS_CA = ['Gener','Febrer','Març','Abril','Maig','Juny','Juliol','Agost','Setembre','Octubre','Novembre','Desembre']
@@ -100,8 +130,30 @@ const COLUMNS: { key: ContentStatus; label: string; color: string; bg: string }[
   { key: 'publicat',  label: 'Publicat',    color: '#16A34A', bg: '#F0FDF4' },
 ]
 
-const FORMATS = ['Post', 'Reel', 'Story', 'Carrusel', 'Video', 'Blog', 'Email', 'Podcast', 'Infografia', 'Altre']
-const CHANNELS = ['Instagram', 'LinkedIn', 'TikTok', 'YouTube', 'Twitter/X', 'Facebook', 'Web', 'Newsletter', 'Altre']
+const FORMATS: { label: string; icon: string }[] = [
+  { label: 'Post',       icon: '📝' },
+  { label: 'Reel',       icon: '🎬' },
+  { label: 'Story',      icon: '⚡' },
+  { label: 'Carrusel',   icon: '🎠' },
+  { label: 'Video',      icon: '📹' },
+  { label: 'Blog',       icon: '✍️' },
+  { label: 'Email',      icon: '📧' },
+  { label: 'Podcast',    icon: '🎙️' },
+  { label: 'Infografia', icon: '📊' },
+  { label: 'Altre',      icon: '➕' },
+]
+
+const CHANNELS: { label: string; icon: string; color: string }[] = [
+  { label: 'Instagram',   icon: '📸', color: '#E1306C' },
+  { label: 'LinkedIn',    icon: '💼', color: '#0077B5' },
+  { label: 'TikTok',      icon: '🎵', color: '#010101' },
+  { label: 'YouTube',     icon: '▶️',  color: '#FF0000' },
+  { label: 'Twitter/X',   icon: '✖️',  color: '#14171A' },
+  { label: 'Facebook',    icon: '👥', color: '#1877F2' },
+  { label: 'Web',         icon: '🌐', color: '#059669' },
+  { label: 'Newsletter',  icon: '📨', color: '#D97706' },
+  { label: 'Altre',       icon: '➕', color: '#6B7280' },
+]
 
 export interface ContentItem {
   id: string
@@ -280,21 +332,13 @@ function ItemModal({
               <DatePicker value={form.due_date} onChange={v => setForm(f => ({ ...f, due_date: v }))} />
             </div>
           </div>
-          <div className="ci-row2">
-            <div className="ci-field">
-              <label>Format</label>
-              <select className="ci-select" value={form.format} onChange={set('format')}>
-                <option value="">— Format —</option>
-                {FORMATS.map(f => <option key={f} value={f}>{f}</option>)}
-              </select>
-            </div>
-            <div className="ci-field">
-              <label>Canal</label>
-              <select className="ci-select" value={form.channel} onChange={set('channel')}>
-                <option value="">— Canal —</option>
-                {CHANNELS.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
+          <div className="ci-field">
+            <label>Format</label>
+            <FormatChips value={form.format} onChange={v => setForm(f => ({ ...f, format: v }))} />
+          </div>
+          <div className="ci-field">
+            <label>Canal</label>
+            <ChannelChips value={form.channel} onChange={v => setForm(f => ({ ...f, channel: v }))} />
           </div>
           <div className="ci-field">
             <label>Client</label>
@@ -537,6 +581,13 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
         .ci-client-name { font-size: 11.5px; color: #6B7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
         .ci-date { display: flex; align-items: center; gap: 3px; font-size: 11px; color: #6B7280; white-space: nowrap; }
         .ci-date--overdue { color: #DC2626; font-weight: 600; }
+
+        /* Chip Selectors */
+        .chips-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+        .chip { display: flex; align-items: center; gap: 5px; padding: 5px 11px; border: 1.5px solid #E5E7EB; border-radius: 20px; background: white; font-size: 12.5px; font-weight: 500; color: #374151; font-family: inherit; cursor: pointer; transition: all 0.12s; white-space: nowrap; line-height: 1; }
+        .chip:hover { border-color: #1B2B4B; color: #1B2B4B; background: #F0F3F8; }
+        .chip--active { background: #1B2B4B; border-color: #1B2B4B; color: white; }
+        .chip span { font-size: 14px; line-height: 1; }
 
         /* Date Picker */
         .dp-trigger { display: flex; align-items: center; gap: 8px; width: 100%; height: 38px; padding: 0 12px; border: 1.5px solid #E5E7EB; border-radius: 8px; background: white; cursor: pointer; font-family: inherit; transition: border-color 0.15s, box-shadow 0.15s; text-align: left; }
