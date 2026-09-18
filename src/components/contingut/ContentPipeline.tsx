@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Plus, X, Calendar, Search, MoreHorizontal, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, X, Calendar, Search, MoreHorizontal, Edit2, Trash2, ChevronLeft, ChevronRight, FileText, Film, Zap, Layers, Video, PenLine, Mail, Mic, BarChart2, Globe } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 import { ClientSearchSelect } from '@/components/ui/ClientSearchSelect'
 import { createContentItem, updateContentItem, deleteContentItem, moveContentItem } from '@/app/(app)/contingut/actions'
@@ -10,11 +10,11 @@ import { createContentItem, updateContentItem, deleteContentItem, moveContentIte
 function FormatChips({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div className="chips-wrap">
-      {FORMATS.map(f => (
+      {FORMAT_ITEMS.map(f => (
         <button key={f.label} type="button"
           className={`chip${value === f.label ? ' chip--active' : ''}`}
           onClick={() => onChange(value === f.label ? '' : f.label)}>
-          <span>{f.icon}</span>{f.label}
+          {f.icon}{f.label}
         </button>
       ))}
     </div>
@@ -24,14 +24,47 @@ function FormatChips({ value, onChange }: { value: string; onChange: (v: string)
 function ChannelChips({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div className="chips-wrap">
-      {CHANNELS.map(c => (
+      {CHANNEL_ITEMS.map(c => (
         <button key={c.label} type="button"
-          className={`chip${value === c.label ? ' chip--active' : ''}`}
+          className={`chip${value === c.label ? ' chip--active chip--brand' : ''}`}
           style={value === c.label ? { background: c.color, borderColor: c.color, color: 'white' } : {}}
           onClick={() => onChange(value === c.label ? '' : c.label)}>
-          <span>{c.icon}</span>{c.label}
+          {c.icon}{c.label}
         </button>
       ))}
+    </div>
+  )
+}
+
+// ── Assignee Picker ──
+function AssigneePicker({ value, onChange, profiles }: {
+  value: string
+  onChange: (v: string) => void
+  profiles: Props['profiles']
+}) {
+  return (
+    <div className="ap-grid">
+      <button type="button"
+        className={`ap-item${!value ? ' ap-item--active' : ''}`}
+        onClick={() => onChange('')}>
+        <div className="ap-avatar ap-avatar--none">—</div>
+        <span className="ap-name">Cap</span>
+      </button>
+      {profiles.map(p => {
+        const sel = value === p.id
+        return (
+          <button key={p.id} type="button"
+            className={`ap-item${sel ? ' ap-item--active' : ''}`}
+            onClick={() => onChange(sel ? '' : p.id)}>
+            <div className="ap-avatar" style={{ background: sel ? '#1B2B4B' : avColor(p.full_name) }}>
+              {p.avatar_url
+                ? <img src={p.avatar_url} alt={p.full_name} style={{ width:'100%',height:'100%',objectFit:'cover' }}/>
+                : getInitials(p.full_name)}
+            </div>
+            <span className="ap-name">{p.full_name.split(' ')[0]}</span>
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -42,7 +75,6 @@ const MONTHS_CA = ['Gener','Febrer','Març','Abril','Maig','Juny','Juliol','Agos
 
 function DatePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
   const today = new Date(); today.setHours(0,0,0,0)
   const selected = value ? new Date(value + 'T00:00:00') : null
   const [view, setView] = useState(() => {
@@ -50,18 +82,10 @@ function DatePicker({ value, onChange }: { value: string; onChange: (v: string) 
     return { year: d.getFullYear(), month: d.getMonth() }
   })
 
-  useEffect(() => {
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [])
-
   const prevMonth = () => setView(v => v.month === 0 ? { year: v.year - 1, month: 11 } : { ...v, month: v.month - 1 })
   const nextMonth = () => setView(v => v.month === 11 ? { year: v.year + 1, month: 0 } : { ...v, month: v.month + 1 })
 
-  const firstDay = new Date(view.year, view.month, 1)
-  // Monday-first: Sunday=0 → 6, Monday=1 → 0, ...
-  const startOffset = (firstDay.getDay() + 6) % 7
+  const startOffset = (new Date(view.year, view.month, 1).getDay() + 6) % 7
   const daysInMonth = new Date(view.year, view.month + 1, 0).getDate()
   const cells: (number | null)[] = [...Array(startOffset).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
 
@@ -76,16 +100,19 @@ function DatePicker({ value, onChange }: { value: string; onChange: (v: string) 
     : ''
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <button type="button" className="dp-trigger" onClick={() => setOpen(o => !o)}>
+    <div>
+      <button type="button" className={`dp-trigger${open ? ' dp-trigger--open' : ''}`} onClick={() => setOpen(o => !o)}>
         <Calendar size={14} style={{ color: selected ? '#1B2B4B' : '#9CA3AF', flexShrink: 0 }} />
-        <span style={{ color: selected ? '#111827' : '#9CA3AF', fontSize: 13.5 }}>
+        <span style={{ color: selected ? '#111827' : '#9CA3AF', fontSize: 13.5, flex: 1, textAlign: 'left' }}>
           {displayValue || 'Selecciona data'}
         </span>
+        {selected && (
+          <span role="button" className="dp-clear-x" onClick={e => { e.stopPropagation(); onChange(''); }}>×</span>
+        )}
       </button>
 
       {open && (
-        <div className="dp-pop">
+        <div className="dp-inline">
           <div className="dp-header">
             <button type="button" className="dp-nav" onClick={prevMonth}><ChevronLeft size={15} /></button>
             <span className="dp-month-label">{MONTHS_CA[view.month]} {view.year}</span>
@@ -110,8 +137,7 @@ function DatePicker({ value, onChange }: { value: string; onChange: (v: string) 
           <div className="dp-footer">
             <button type="button" className="dp-foot-btn dp-foot-clear" onClick={() => { onChange(''); setOpen(false) }}>Esborra</button>
             <button type="button" className="dp-foot-btn dp-foot-today" onClick={() => {
-              const iso = today.toISOString().slice(0,10)
-              onChange(iso)
+              onChange(today.toISOString().slice(0,10))
               setOpen(false)
             }}>Avui</button>
           </div>
@@ -130,30 +156,80 @@ const COLUMNS: { key: ContentStatus; label: string; color: string; bg: string }[
   { key: 'publicat',  label: 'Publicat',    color: '#16A34A', bg: '#F0FDF4' },
 ]
 
-const FORMATS: { label: string; icon: string }[] = [
-  { label: 'Post',       icon: '📝' },
-  { label: 'Reel',       icon: '🎬' },
-  { label: 'Story',      icon: '⚡' },
-  { label: 'Carrusel',   icon: '🎠' },
-  { label: 'Video',      icon: '📹' },
-  { label: 'Blog',       icon: '✍️' },
-  { label: 'Email',      icon: '📧' },
-  { label: 'Podcast',    icon: '🎙️' },
-  { label: 'Infografia', icon: '📊' },
-  { label: 'Altre',      icon: '➕' },
+// Social brand SVG icons
+const IcoInstagram = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+    <defs>
+      <linearGradient id="ig-g" x1="0%" y1="100%" x2="100%" y2="0%">
+        <stop offset="0%" stopColor="#F58529"/>
+        <stop offset="50%" stopColor="#DD2A7B"/>
+        <stop offset="100%" stopColor="#8134AF"/>
+      </linearGradient>
+    </defs>
+    <rect x="2" y="2" width="20" height="20" rx="6" stroke="url(#ig-g)" strokeWidth="2"/>
+    <circle cx="12" cy="12" r="4.5" stroke="url(#ig-g)" strokeWidth="2"/>
+    <circle cx="17.5" cy="6.5" r="1.2" fill="#DD2A7B"/>
+  </svg>
+)
+const IcoLinkedIn = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="#0077B5">
+    <rect x="2" y="2" width="20" height="20" rx="4"/>
+    <path d="M7 10h2v7H7zm1-1.5a1.2 1.2 0 110-2.4 1.2 1.2 0 010 2.4zm3.5 1.5h2v1s.7-1.2 2.2-1.2c1.8 0 2.8 1.1 2.8 3.2V17h-2v-3.5c0-.9-.4-1.5-1.3-1.5s-1.7.7-1.7 1.7V17h-2v-7z" fill="white"/>
+  </svg>
+)
+const IcoTikTok = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+    <path d="M19.6 7.2A4.6 4.6 0 0115 2.6h-2.8v12.7a2.3 2.3 0 11-1.9-2.3V10a5.1 5.1 0 105.1 5.1V9.5a7.3 7.3 0 004.2 1.3V8a4.6 4.6 0 01-.9-.8z" fill="#010101"/>
+    <path d="M18.7 6.4A4.6 4.6 0 0114.1 1.8h-2.8v12.7a2.3 2.3 0 11-1.9-2.3V9.2A5.1 5.1 0 1014.6 14V8.7a7.3 7.3 0 004.1 1.1V7a4.6 4.6 0 01-.9-.6z" fill="#EE1D52"/>
+    <path d="M19.6 8.8v2.8a7.3 7.3 0 01-4.2-1.3v5.8A5.1 5.1 0 1110.3 11V9.3a2.3 2.3 0 011.9 2.3 2.3 2.3 0 01-2.3 2.3 2.3 2.3 0 01-2.3-2.3 2.3 2.3 0 012.3-2.3v-3a5.1 5.1 0 100 10.2V9.2a7.3 7.3 0 004.2 1.3V7.2a4.6 4.6 0 003.5 1.6z" fill="#69C9D0"/>
+  </svg>
+)
+const IcoYouTube = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="#FF0000">
+    <path d="M22.5 6.7a2.8 2.8 0 00-2-2C18.9 4.3 12 4.3 12 4.3s-6.9 0-8.5.4a2.8 2.8 0 00-2 2C1.1 8.3 1.1 12 1.1 12s0 3.7.4 5.3a2.8 2.8 0 002 2c1.6.4 8.5.4 8.5.4s6.9 0 8.5-.4a2.8 2.8 0 002-2c.4-1.6.4-5.3.4-5.3s0-3.7-.4-5.3z"/>
+    <path d="M9.8 15.5V8.5l6.4 3.5-6.4 3.5z" fill="white"/>
+  </svg>
+)
+const IcoX = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="#14171A">
+    <path d="M18.3 3h3.3l-7.2 8.2L23 21h-6.6l-5.2-6.8L5 21H1.7l7.7-8.8L1 3h6.8l4.7 6.2L18.3 3zm-1.2 16.2h1.8L7 4.8H5.1l12 14.4z"/>
+  </svg>
+)
+const IcoFacebook = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="#1877F2">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M15.5 8h-2c-.3 0-.5.2-.5.5V10h2.5l-.4 2.5H13V19h-2.5v-6.5H9V10h1.5V8.5C10.5 6.6 11.6 5.5 13.5 5.5c.8 0 2 .1 2 .1V8z" fill="white"/>
+  </svg>
+)
+
+const FORMAT_ITEMS: { label: string; icon: React.ReactNode }[] = [
+  { label: 'Post',       icon: <FileText size={13}/> },
+  { label: 'Reel',       icon: <Film size={13}/> },
+  { label: 'Story',      icon: <Zap size={13}/> },
+  { label: 'Carrusel',   icon: <Layers size={13}/> },
+  { label: 'Video',      icon: <Video size={13}/> },
+  { label: 'Blog',       icon: <PenLine size={13}/> },
+  { label: 'Email',      icon: <Mail size={13}/> },
+  { label: 'Podcast',    icon: <Mic size={13}/> },
+  { label: 'Infografia', icon: <BarChart2 size={13}/> },
+  { label: 'Altre',      icon: <Plus size={13}/> },
 ]
 
-const CHANNELS: { label: string; icon: string; color: string }[] = [
-  { label: 'Instagram',   icon: '📸', color: '#E1306C' },
-  { label: 'LinkedIn',    icon: '💼', color: '#0077B5' },
-  { label: 'TikTok',      icon: '🎵', color: '#010101' },
-  { label: 'YouTube',     icon: '▶️',  color: '#FF0000' },
-  { label: 'Twitter/X',   icon: '✖️',  color: '#14171A' },
-  { label: 'Facebook',    icon: '👥', color: '#1877F2' },
-  { label: 'Web',         icon: '🌐', color: '#059669' },
-  { label: 'Newsletter',  icon: '📨', color: '#D97706' },
-  { label: 'Altre',       icon: '➕', color: '#6B7280' },
+const CHANNEL_ITEMS: { label: string; icon: React.ReactNode; color: string }[] = [
+  { label: 'Instagram',  icon: <IcoInstagram/>,  color: '#DD2A7B' },
+  { label: 'LinkedIn',   icon: <IcoLinkedIn/>,   color: '#0077B5' },
+  { label: 'TikTok',     icon: <IcoTikTok/>,     color: '#010101' },
+  { label: 'YouTube',    icon: <IcoYouTube/>,    color: '#FF0000' },
+  { label: 'Twitter/X',  icon: <IcoX/>,          color: '#14171A' },
+  { label: 'Facebook',   icon: <IcoFacebook/>,   color: '#1877F2' },
+  { label: 'Web',        icon: <Globe size={13}/>, color: '#059669' },
+  { label: 'Newsletter', icon: <Mail size={13}/>, color: '#D97706' },
+  { label: 'Altre',      icon: <Plus size={13}/>, color: '#6B7280' },
 ]
+
+// Keep for backward compat with card tags
+const FORMATS = FORMAT_ITEMS.map(f => f.label)
+const CHANNELS = CHANNEL_ITEMS.map(c => c.label)
 
 export interface ContentItem {
   id: string
@@ -320,17 +396,23 @@ function ItemModal({
             <label>Títol *</label>
             <input className="ci-input" placeholder="Títol del contingut..." value={form.title} onChange={set('title')} autoFocus />
           </div>
-          <div className="ci-row2">
-            <div className="ci-field">
-              <label>Estat</label>
-              <select className="ci-select" value={form.status} onChange={set('status')}>
-                {COLUMNS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
-              </select>
+          <div className="ci-field">
+            <label>Estat</label>
+            <div className="chips-wrap">
+              {COLUMNS.map(c => (
+                <button key={c.key} type="button"
+                  className={`chip chip--status${form.status === c.key ? ' chip--status-active' : ''}`}
+                  style={form.status === c.key ? { background: c.color, borderColor: c.color, color: 'white' } : { borderColor: c.color, color: c.color }}
+                  onClick={() => setForm(f => ({ ...f, status: c.key }))}>
+                  <span className="chip-dot" style={{ background: c.color, opacity: form.status === c.key ? 0 : 1 }} />
+                  {c.label}
+                </button>
+              ))}
             </div>
-            <div className="ci-field">
-              <label>Data entrega</label>
-              <DatePicker value={form.due_date} onChange={v => setForm(f => ({ ...f, due_date: v }))} />
-            </div>
+          </div>
+          <div className="ci-field">
+            <label>Data entrega</label>
+            <DatePicker value={form.due_date} onChange={v => setForm(f => ({ ...f, due_date: v }))} />
           </div>
           <div className="ci-field">
             <label>Format</label>
@@ -352,10 +434,11 @@ function ItemModal({
           </div>
           <div className="ci-field">
             <label>Assignat a</label>
-            <select className="ci-select" value={form.assigned_to} onChange={set('assigned_to')}>
-              <option value="">— Sense assignar —</option>
-              {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
-            </select>
+            <AssigneePicker
+              value={form.assigned_to}
+              onChange={v => setForm(f => ({ ...f, assigned_to: v }))}
+              profiles={profiles}
+            />
           </div>
           <div className="ci-field">
             <label>Notes</label>
@@ -586,28 +669,42 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
         .chips-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
         .chip { display: flex; align-items: center; gap: 5px; padding: 5px 11px; border: 1.5px solid #E5E7EB; border-radius: 20px; background: white; font-size: 12.5px; font-weight: 500; color: #374151; font-family: inherit; cursor: pointer; transition: all 0.12s; white-space: nowrap; line-height: 1; }
         .chip:hover { border-color: #1B2B4B; color: #1B2B4B; background: #F0F3F8; }
-        .chip--active { background: #1B2B4B; border-color: #1B2B4B; color: white; }
-        .chip span { font-size: 14px; line-height: 1; }
+        .chip--active { background: #1B2B4B !important; border-color: #1B2B4B !important; color: white !important; }
+        .chip--brand.chip--active svg * { fill: white !important; stroke: white !important; }
+        .chip-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; transition: opacity 0.1s; }
+        .chip--status { border-radius: 20px; font-weight: 600; }
+        .chip--status-active { }
+
+        /* Assignee Picker */
+        .ap-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+        .ap-item { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 10px; border: 1.5px solid #E5E7EB; border-radius: 12px; background: white; cursor: pointer; font-family: inherit; transition: all 0.12s; min-width: 54px; }
+        .ap-item:hover { border-color: #1B2B4B; background: #F0F3F8; }
+        .ap-item--active { border-color: #1B2B4B; background: #EEF2FA; }
+        .ap-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; overflow: hidden; flex-shrink: 0; }
+        .ap-avatar--none { background: #E5E7EB; color: #9CA3AF; font-size: 16px; font-weight: 400; }
+        .ap-name { font-size: 11px; font-weight: 600; color: #374151; white-space: nowrap; max-width: 60px; overflow: hidden; text-overflow: ellipsis; }
 
         /* Date Picker */
-        .dp-trigger { display: flex; align-items: center; gap: 8px; width: 100%; height: 38px; padding: 0 12px; border: 1.5px solid #E5E7EB; border-radius: 8px; background: white; cursor: pointer; font-family: inherit; transition: border-color 0.15s, box-shadow 0.15s; text-align: left; }
-        .dp-trigger:hover { border-color: #1B2B4B; }
-        .dp-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 1000; background: white; border-radius: 16px; box-shadow: 0 8px 40px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.08); padding: 16px; width: 280px; animation: dp-in 0.15s ease; }
-        @keyframes dp-in { from { opacity:0; transform:translateY(-6px) scale(0.97) } to { opacity:1; transform:translateY(0) scale(1) } }
-        .dp-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-        .dp-nav { width: 30px; height: 30px; border: none; background: #F3F4F6; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #374151; transition: background 0.1s; }
+        .dp-trigger { display: flex; align-items: center; gap: 8px; width: 100%; height: 38px; padding: 0 12px; border: 1.5px solid #E5E7EB; border-radius: 8px; background: white; cursor: pointer; font-family: inherit; transition: border-color 0.15s; text-align: left; }
+        .dp-trigger:hover, .dp-trigger--open { border-color: #1B2B4B; }
+        .dp-clear-x { margin-left: auto; font-size: 16px; color: #9CA3AF; line-height: 1; cursor: pointer; padding: 0 2px; }
+        .dp-clear-x:hover { color: #374151; }
+        .dp-inline { margin-top: 8px; background: white; border-radius: 14px; border: 1.5px solid #E5E7EB; padding: 14px; animation: dp-in 0.15s ease; }
+        @keyframes dp-in { from { opacity:0; transform:translateY(-4px) } to { opacity:1; transform:translateY(0) } }
+        .dp-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .dp-nav { width: 28px; height: 28px; border: none; background: #F3F4F6; border-radius: 7px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #374151; transition: background 0.1s; }
         .dp-nav:hover { background: #E5E7EB; }
-        .dp-month-label { font-size: 14px; font-weight: 700; color: #111827; letter-spacing: -0.2px; }
-        .dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
-        .dp-weekday { font-size: 11px; font-weight: 600; color: #9CA3AF; text-align: center; padding: 4px 0 8px; text-transform: uppercase; letter-spacing: 0.3px; }
-        .dp-day { width: 100%; aspect-ratio: 1; border: none; background: none; border-radius: 8px; font-size: 13px; color: #374151; cursor: pointer; font-family: inherit; font-weight: 500; display: flex; align-items: center; justify-content: center; transition: background 0.1s, color 0.1s; }
+        .dp-month-label { font-size: 13.5px; font-weight: 700; color: #111827; }
+        .dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+        .dp-weekday { font-size: 10.5px; font-weight: 600; color: #9CA3AF; text-align: center; padding: 3px 0 7px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .dp-day { width: 100%; aspect-ratio: 1; border: none; background: none; border-radius: 7px; font-size: 12.5px; color: #374151; cursor: pointer; font-family: inherit; font-weight: 500; display: flex; align-items: center; justify-content: center; transition: background 0.1s, color 0.1s; }
         .dp-day:hover { background: #F3F4F6; }
         .dp-today { color: #1B2B4B; font-weight: 700; position: relative; }
         .dp-today::after { content: ''; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: #1B2B4B; }
-        .dp-selected { background: #1B2B4B !important; color: white !important; font-weight: 700; box-shadow: 0 2px 8px rgba(27,43,75,0.35); }
+        .dp-selected { background: #1B2B4B !important; color: white !important; font-weight: 700; box-shadow: 0 2px 8px rgba(27,43,75,0.3); }
         .dp-selected::after { display: none; }
-        .dp-footer { display: flex; justify-content: space-between; margin-top: 14px; padding-top: 12px; border-top: 1px solid #F3F4F6; }
-        .dp-foot-btn { border: none; background: none; cursor: pointer; font-size: 13px; font-family: inherit; font-weight: 600; padding: 6px 10px; border-radius: 8px; transition: background 0.1s; }
+        .dp-footer { display: flex; justify-content: space-between; margin-top: 12px; padding-top: 10px; border-top: 1px solid #F3F4F6; }
+        .dp-foot-btn { border: none; background: none; cursor: pointer; font-size: 12.5px; font-family: inherit; font-weight: 600; padding: 5px 9px; border-radius: 7px; transition: background 0.1s; }
         .dp-foot-clear { color: #6B7280; }
         .dp-foot-clear:hover { background: #F3F4F6; }
         .dp-foot-today { color: #1B2B4B; }
