@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Plus, X, ChevronDown, GripVertical, Calendar, User, Tag, FileText, Filter, Search, MoreHorizontal, Edit2, Trash2, ExternalLink } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { Plus, X, Calendar, Search, MoreHorizontal, Edit2, Trash2 } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 import { ClientSearchSelect } from '@/components/ui/ClientSearchSelect'
+import { createContentItem, updateContentItem, deleteContentItem, moveContentItem } from '@/app/(app)/contingut/actions'
 
 export type ContentStatus = 'idea' | 'produccio' | 'revisio' | 'publicat'
 
@@ -247,7 +247,6 @@ function ItemModal({
 
 // ── Main Component ──
 export function ContentPipeline({ items: initialItems, clients, profiles, currentUserId }: Props) {
-  const supabase = createClient()
   const [items, setItems] = useState<ContentItem[]>(initialItems)
   const [filterClient, setFilterClient] = useState('')
   const [filterAssignee, setFilterAssignee] = useState('')
@@ -268,7 +267,7 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
     setLoading(true)
     const isNew = !editItem || !(editItem as ContentItem).id
     const payload = {
-      title: data.title,
+      title: data.title ?? '',
       status: data.status || 'idea',
       format: data.format || null,
       channel: data.channel || null,
@@ -276,62 +275,41 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
       assigned_to: data.assigned_to || null,
       due_date: data.due_date || null,
       notes: data.notes || null,
-      created_by: currentUserId,
     }
-
     const clientObj = data.client_id ? clients.find(c => c.id === data.client_id) || null : null
     const assigneeObj = data.assigned_to ? profiles.find(p => p.id === data.assigned_to) || null : null
 
-    if (isNew) {
-      const { data: created, error } = await supabase
-        .from('content_items')
-        .insert(payload)
-        .select('id, created_at')
-        .single()
-      if (error) {
-        console.error('[ContentPipeline] insert error:', error)
-        alert(`Error al crear: ${error.message}`)
-      } else {
+    try {
+      if (isNew) {
+        const created = await createContentItem(payload)
         const newItem: ContentItem = {
           id: created?.id ?? crypto.randomUUID(),
           created_at: created?.created_at ?? new Date().toISOString(),
-          title: payload.title!,
-          status: (payload.status as ContentStatus) || 'idea',
-          format: payload.format ?? null,
-          channel: payload.channel ?? null,
-          client_id: payload.client_id ?? null,
-          assigned_to: payload.assigned_to ?? null,
-          due_date: payload.due_date ?? null,
-          notes: payload.notes ?? null,
+          title: payload.title,
+          status: payload.status as ContentStatus,
+          format: payload.format,
+          channel: payload.channel,
+          client_id: payload.client_id,
+          assigned_to: payload.assigned_to,
+          due_date: payload.due_date,
+          notes: payload.notes,
           client: clientObj,
           assignee: assigneeObj,
         }
         setItems(prev => [newItem, ...prev])
-      }
-    } else {
-      const id = (editItem as ContentItem).id
-      const { error } = await supabase
-        .from('content_items')
-        .update(payload)
-        .eq('id', id)
-      if (error) {
-        console.error('[ContentPipeline] update error:', error)
-        alert(`Error al guardar: ${error.message}`)
       } else {
+        const id = (editItem as ContentItem).id
+        await updateContentItem(id, payload)
         setItems(prev => prev.map(it => it.id === id ? {
-          ...it,
-          title: payload.title!,
-          status: (payload.status as ContentStatus) || it.status,
-          format: payload.format ?? null,
-          channel: payload.channel ?? null,
-          client_id: payload.client_id ?? null,
-          assigned_to: payload.assigned_to ?? null,
-          due_date: payload.due_date ?? null,
-          notes: payload.notes ?? null,
+          ...it, ...payload,
+          status: payload.status as ContentStatus,
           client: clientObj,
           assignee: assigneeObj,
         } : it))
       }
+    } catch (err: any) {
+      console.error('[ContentPipeline] save error:', err)
+      alert(`Error: ${err.message}`)
     }
     setLoading(false)
     setEditItem(false)
@@ -339,13 +317,13 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
 
   const handleMove = async (id: string, status: ContentStatus) => {
     setItems(prev => prev.map(it => it.id === id ? { ...it, status } : it))
-    await supabase.from('content_items').update({ status }).eq('id', id)
+    try { await moveContentItem(id, status) } catch (err) { console.error(err) }
   }
 
   const handleDelete = async (id: string) => {
     if (!confirm('Eliminar aquest contingut?')) return
     setItems(prev => prev.filter(it => it.id !== id))
-    await supabase.from('content_items').delete().eq('id', id)
+    try { await deleteContentItem(id) } catch (err) { console.error(err) }
   }
 
   return (
