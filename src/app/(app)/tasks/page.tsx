@@ -19,7 +19,7 @@ export default async function TasksPage() {
     `)
     .order('created_at', { ascending: false })
 
-  const { data: clients } = await supabase.from('clients').select('id, name').eq('status', 'active').order('name')
+  const { data: clients } = await supabase.from('clients').select('id, name, logo_url').eq('status', 'active').order('name')
   const { data: projects } = await supabase.from('projects').select('id, name').eq('status', 'active').order('name')
   const { data: profiles } = await supabase.from('profiles').select('id, full_name, avatar_url').eq('is_active', true)
   const { data: labels } = await supabase.from('labels').select('id, name, color').order('created_at')

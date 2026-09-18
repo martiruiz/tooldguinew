@@ -7,7 +7,7 @@ import { TaskDetailModal } from './TaskDetailModal'
 import type { Task } from '@/types'
 
 interface Props {
-  clients: { id: string; name: string }[]
+  clients: { id: string; name: string; logo_url?: string | null }[]
   projects: { id: string; name: string }[]
   profiles: { id: string; full_name: string; avatar_url?: string }[]
   currentUserId: string

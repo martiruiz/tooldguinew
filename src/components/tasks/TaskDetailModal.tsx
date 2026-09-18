@@ -30,11 +30,17 @@ interface Activity { id: string; task_id: string; user_id: string; action: strin
 interface Props {
   task: Task
   profiles: { id: string; full_name: string; avatar_url?: string }[]
-  clients: { id: string; name: string }[]
+  clients: { id: string; name: string; logo_url?: string | null }[]
   projects: { id: string; name: string }[]
   currentUserId: string
   onClose: () => void
   onUpdated: (task: Task) => void
+}
+
+function avColor(name: string) {
+  const colors = ['#254067','#7C3AED','#059669','#D97706','#DC2626','#2563EB','#0891B2','#65A30D']
+  let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) % colors.length
+  return colors[Math.abs(h)]
 }
 
 export function TaskDetailModal({ task, profiles, clients, projects, currentUserId, onClose, onUpdated }: Props) {
@@ -202,7 +208,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
   }
 
   const saveAll = async () => {
-    if (!form.title.trim() || form.title.trim().toUpperCase() === 'NOVA TASCA') {
+    if (!form.title.trim()) {
       setTitleError(true)
       return false
     }
@@ -782,10 +788,26 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
                 </select>
               </div>
               <div className="field"><label>Responsable</label>
-                <select value={form.responsible_id} onChange={e => saveDropdown('responsible_id', e.target.value)}>
-                  <option value="">Sense assignar</option>
-                  {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
-                </select>
+                <div className="tdm-ap-grid">
+                  <button type="button"
+                    className={`tdm-ap-item${!form.responsible_id ? ' tdm-ap-item--on' : ''}`}
+                    onClick={() => saveDropdown('responsible_id', '')}>
+                    <div className="tdm-ap-av tdm-ap-av--none">—</div>
+                    <span className="tdm-ap-name">Cap</span>
+                  </button>
+                  {profiles.map(p => (
+                    <button key={p.id} type="button"
+                      className={`tdm-ap-item${form.responsible_id === p.id ? ' tdm-ap-item--on' : ''}`}
+                      onClick={() => saveDropdown('responsible_id', p.id)}>
+                      <div className="tdm-ap-av" style={{ background: form.responsible_id === p.id ? '#1B2B4B' : avColor(p.full_name) }}>
+                        {p.avatar_url
+                          ? <img src={p.avatar_url} alt={p.full_name} style={{ width:'100%',height:'100%',objectFit:'cover' }}/>
+                          : getInitials(p.full_name)}
+                      </div>
+                      <span className="tdm-ap-name">{p.full_name.split(' ')[0]}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="field"><label>Data límit</label>
                 <DateTimePicker
@@ -795,11 +817,26 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
                 />
               </div>
               <div className="field"><label>Client</label>
-                <ClientSearchSelect
-                  clients={clients}
-                  value={form.client_id}
-                  onChange={(id) => saveDropdown('client_id', id)}
-                />
+                <div className="tdm-cl-grid">
+                  <button type="button"
+                    className={`tdm-cl-item${!form.client_id ? ' tdm-cl-item--on' : ''}`}
+                    onClick={() => saveDropdown('client_id', '')}>
+                    <div className="tdm-cl-logo tdm-cl-logo--none">—</div>
+                    <span className="tdm-cl-name">Cap</span>
+                  </button>
+                  {clients.map(c => (
+                    <button key={c.id} type="button"
+                      className={`tdm-cl-item${form.client_id === c.id ? ' tdm-cl-item--on' : ''}`}
+                      onClick={() => saveDropdown('client_id', c.id)}>
+                      <div className="tdm-cl-logo" style={{ background: avColor(c.name) }}>
+                        {c.logo_url
+                          ? <img src={c.logo_url} alt={c.name} style={{ width:'100%',height:'100%',objectFit:'cover',borderRadius:6 }}/>
+                          : getInitials(c.name)}
+                      </div>
+                      <span className="tdm-cl-name">{c.name.split(' ')[0]}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="field"><label>Projecte</label>
                 <select value={form.project_id} onChange={e => saveDropdown('project_id', e.target.value)}>
@@ -1293,8 +1330,24 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
 
         /* Fields grid */
         .grid6 { display: grid; grid-template-columns: 1fr; gap: 7px; }
-        .field { display: flex; flex-direction: column; gap: 4px; }
+        .field { display: flex; flex-direction: column; gap: 6px; }
         .field label { font-size: 10.5px; font-weight: 700; color: #9A9A9A; letter-spacing: 0.05em; text-transform: uppercase; }
+        /* Assignee picker */
+        .tdm-ap-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+        .tdm-ap-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 7px 8px; border: 1.5px solid #E5E7EB; border-radius: 10px; background: white; cursor: pointer; font-family: inherit; transition: all 0.12s; min-width: 50px; }
+        .tdm-ap-item:hover { border-color: #1B2B4B; background: #F0F3F8; }
+        .tdm-ap-item--on { border-color: #1B2B4B; background: #EEF2FA; }
+        .tdm-ap-av { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; overflow: hidden; flex-shrink: 0; }
+        .tdm-ap-av--none { background: #E5E7EB; color: #9CA3AF; font-size: 14px; font-weight: 400; }
+        .tdm-ap-name { font-size: 10.5px; font-weight: 600; color: #374151; white-space: nowrap; max-width: 56px; overflow: hidden; text-overflow: ellipsis; }
+        /* Client picker */
+        .tdm-cl-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+        .tdm-cl-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 7px 8px; border: 1.5px solid #E5E7EB; border-radius: 10px; background: white; cursor: pointer; font-family: inherit; transition: all 0.12s; min-width: 50px; }
+        .tdm-cl-item:hover { border-color: #1B2B4B; background: #F0F3F8; }
+        .tdm-cl-item--on { border-color: #1B2B4B; background: #EEF2FA; }
+        .tdm-cl-logo { width: 32px; height: 32px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; overflow: hidden; flex-shrink: 0; }
+        .tdm-cl-logo--none { background: #E5E7EB; color: #9CA3AF; font-size: 14px; font-weight: 400; }
+        .tdm-cl-name { font-size: 10.5px; font-weight: 600; color: #374151; white-space: nowrap; max-width: 56px; overflow: hidden; text-overflow: ellipsis; }
         .field select, .field input {
           height: 34px; padding: 0 9px; border: 1.5px solid #E8E8E8; border-radius: 7px;
           font-size: 12.5px; color: #0a0a0a; background: #FAFAFA; outline: none;
