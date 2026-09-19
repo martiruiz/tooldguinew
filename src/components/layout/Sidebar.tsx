@@ -59,6 +59,12 @@ function DropboxIcon({ size = 18 }: { size?: number }) {
   )
 }
 
+function AsobalTVIcon({ size = 18 }: { size?: number }) {
+  return (
+    <img src="/logoasobal.png" width={size} height={size} alt="Asobal TV" style={{ objectFit: 'contain', display: 'block' }} />
+  )
+}
+
 function GmailIcon({ size = 18 }: { size?: number }) {
   return (
     <img src="/gmail-logo.webp" width={size} height={size} alt="Gmail" style={{ objectFit: 'contain', display: 'block' }} />
@@ -377,7 +383,7 @@ export function Sidebar({ user }: Props) {
             {serviceLinks.map(s => {
               const sa = s as any
               const href = sa.fixed ? s.href : (s.abbr === 'G' ? driveUrl : s.abbr === 'D' ? dropboxUrl : s.href)
-              const ServiceIcon = s.abbr === 'G' ? GoogleDriveIcon : s.abbr === 'GM' ? GmailIcon : s.abbr === 'GC' ? GoogleCalendarIcon : s.abbr === 'GMe' ? GoogleMeetIcon : s.abbr === 'M' ? MetricoolIcon : s.abbr === 'BR' ? BrevoIcon : DropboxIcon
+              const ServiceIcon = s.abbr === 'G' ? GoogleDriveIcon : s.abbr === 'GM' ? GmailIcon : s.abbr === 'GC' ? GoogleCalendarIcon : s.abbr === 'GMe' ? GoogleMeetIcon : s.abbr === 'M' ? MetricoolIcon : s.abbr === 'BR' ? BrevoIcon : s.abbr === 'AT' ? AsobalTVIcon : DropboxIcon
               if (sa.gmail) {
                 return (
                   <a key={s.abbr} href="https://mail.google.com" target="_blank" rel="noopener noreferrer"
@@ -407,7 +413,7 @@ export function Sidebar({ user }: Props) {
               const key = s.abbr === 'G' ? 'drive' : 'dropbox'
               const href = sa.fixed ? s.href : (s.abbr === 'G' ? driveUrl : s.abbr === 'D' ? dropboxUrl : s.href)
               const isEditing = editingService === key && !sa.fixed && !sa.gmail
-              const ServiceIcon = s.abbr === 'G' ? GoogleDriveIcon : s.abbr === 'GM' ? GmailIcon : s.abbr === 'GC' ? GoogleCalendarIcon : s.abbr === 'GMe' ? GoogleMeetIcon : s.abbr === 'M' ? MetricoolIcon : s.abbr === 'BR' ? BrevoIcon : DropboxIcon
+              const ServiceIcon = s.abbr === 'G' ? GoogleDriveIcon : s.abbr === 'GM' ? GmailIcon : s.abbr === 'GC' ? GoogleCalendarIcon : s.abbr === 'GMe' ? GoogleMeetIcon : s.abbr === 'M' ? MetricoolIcon : s.abbr === 'BR' ? BrevoIcon : s.abbr === 'AT' ? AsobalTVIcon : DropboxIcon
 
               if (sa.gmail) {
                 return (
