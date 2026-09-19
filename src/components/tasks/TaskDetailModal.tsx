@@ -56,48 +56,59 @@ function ClientPickerDropdown({ clients, value, onChange }: {
   const selected = clients.find(c => c.id === value)
   const filtered = clients.filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()))
 
+  const triggerBg = selected ? 'white' : '#F3F4F6'
+  const triggerBorder = selected ? '#E5E7EB' : '#D1D5DB'
+
   return (
     <div>
-      <button type="button" className="tdm-cl-trigger" onClick={() => { setOpen(o => !o); setSearch('') }}>
+      <button type="button" onClick={() => { setOpen(o => !o); setSearch('') }}
+        style={{ display:'flex', alignItems:'center', gap:9, width:'100%', height:40, padding:'0 12px', border:`1.5px solid ${open ? '#1B2B4B' : triggerBorder}`, borderRadius:10, background: open ? 'white' : triggerBg, cursor:'pointer', fontFamily:'inherit', transition:'all 0.15s', boxSizing:'border-box' }}>
         {selected ? (
           <>
-            <div style={{ ...LOGO_STYLE, background: avColor(selected.name) }}>
+            <div style={{ ...LOGO_STYLE, background: avColor(selected.name), width:26, height:26 }}>
               {selected.logo_url ? <img src={selected.logo_url} alt="" style={IMG_STYLE}/> : getInitials(selected.name)}
             </div>
-            <span className="tdm-cl-trigger-name">{selected.name}</span>
+            <span style={{ fontSize:13, fontWeight:600, color:'#111827', flex:1, textAlign:'left', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{selected.name}</span>
           </>
         ) : (
-          <span style={{ color: '#9CA3AF', fontSize: 13, flex: 1, textAlign: 'left' }}>Sense client</span>
+          <>
+            <div style={{ width:26, height:26, borderRadius:6, background:'#E5E7EB', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="2" stroke="#9CA3AF" strokeWidth="1.5"/><path d="M4.5 7h5M7 4.5v5" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            </div>
+            <span style={{ fontSize:13, color:'#6B7280', fontWeight:500, flex:1, textAlign:'left' }}>Sense client</span>
+          </>
         )}
-        <span style={{ color: '#9CA3AF', fontSize: 10, marginLeft: 'auto', flexShrink: 0 }}>{open ? '▴' : '▾'}</span>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color:'#9CA3AF', flexShrink:0, transform: open ? 'rotate(180deg)' : 'none', transition:'transform 0.15s' }}><path d="M3.5 5.5l3.5 3.5 3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
       </button>
 
       {open && (
-        <div style={{ marginTop: 6, border: '1.5px solid #E5E7EB', borderRadius: 12, background: 'white', padding: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }}>
-          <input
-            style={{ width: '100%', height: 32, padding: '0 10px', border: '1.5px solid #E5E7EB', borderRadius: 7, fontSize: 12.5, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
-            placeholder="Cerca client..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            autoFocus
-          />
-          <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 220, overflowY: 'auto' }}>
+        <div style={{ marginTop:6, border:'1.5px solid #E5E7EB', borderRadius:12, background:'white', padding:'8px 6px', boxShadow:'0 8px 24px rgba(0,0,0,0.12)' }}>
+          <div style={{ padding:'0 4px 6px' }}>
+            <input
+              style={{ width:'100%', height:34, padding:'0 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:12.5, fontFamily:'inherit', outline:'none', boxSizing:'border-box', background:'#F9FAFB' }}
+              placeholder="Cerca client..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', maxHeight:190, overflowY:'auto' }}>
             <button type="button"
               onClick={() => { onChange(''); setOpen(false) }}
-              style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 8px', border:'none', borderRadius:8, background: !value ? '#EEF2FA' : 'transparent', cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
-              <div style={{ ...LOGO_STYLE, background: '#E5E7EB', color: '#9CA3AF', fontSize: 14, fontWeight: 400 }}>—</div>
-              <span style={{ fontSize:13, fontWeight: !value ? 700 : 500, color: !value ? '#1B2B4B' : '#374151' }}>Sense client</span>
-              {!value && <span style={{ marginLeft:'auto', color:'#1B2B4B', fontSize:12 }}>✓</span>}
+              style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 10px', border:'none', borderRadius:8, background: !value ? '#EEF2FA' : 'transparent', cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
+              <div style={{ width:26, height:26, borderRadius:6, background:'#E5E7EB', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:14, color:'#9CA3AF' }}>—</div>
+              <span style={{ fontSize:13, fontWeight: !value ? 700 : 500, color: !value ? '#1B2B4B' : '#374151', flex:1 }}>Sense client</span>
+              {!value && <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink:0 }}><path d="M2 6l3 3 5-5" stroke="#1B2B4B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
             </button>
             {filtered.map(c => (
               <button key={c.id} type="button"
                 onClick={() => { onChange(c.id); setOpen(false) }}
-                style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 8px', border:'none', borderRadius:8, background: value === c.id ? '#EEF2FA' : 'transparent', cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
-                <div style={{ ...LOGO_STYLE, background: avColor(c.name) }}>
+                style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 10px', border:'none', borderRadius:8, background: value === c.id ? '#EEF2FA' : 'transparent', cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
+                <div style={{ ...LOGO_STYLE, background: avColor(c.name), width:26, height:26 }}>
                   {c.logo_url ? <img src={c.logo_url} alt={c.name} style={IMG_STYLE}/> : getInitials(c.name)}
                 </div>
                 <span style={{ fontSize:13, fontWeight: value === c.id ? 700 : 500, color: value === c.id ? '#1B2B4B' : '#374151', flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{c.name}</span>
-                {value === c.id && <span style={{ color:'#1B2B4B', fontSize:12, flexShrink:0 }}>✓</span>}
+                {value === c.id && <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink:0 }}><path d="M2 6l3 3 5-5" stroke="#1B2B4B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
               </button>
             ))}
           </div>

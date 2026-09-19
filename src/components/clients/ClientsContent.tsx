@@ -13,10 +13,7 @@ const healthConfig: Record<string, { label: string; bg: string; color: string; d
   risk: { label: 'No client', bg: '#FEF2F2', color: '#DC2626', dot: '#DC2626' },
 }
 
-const statusFilter = ['Tots', 'Actius', 'Pausats', 'Inactius']
-const statusMap: Record<string, string> = { Actius: 'active', Pausats: 'paused', Inactius: 'inactive' }
-const agreementFilter = ['Tots', 'Puntual', 'Recurrent']
-const agreementMap: Record<string, string> = { Puntual: 'puntual', Recurrent: 'recurrent' }
+const clientTypeFilter = ['Tots', 'Clients', 'No clients']
 
 interface Props {
   clients: Client[]
@@ -28,7 +25,6 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
   const [clients, setClients] = useState(initialClients)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('Tots')
-  const [filterAgreement, setFilterAgreement] = useState('Tots')
   const [view, setView] = useState<'grid' | 'list' | 'table'>('grid')
   const [isMobile, setIsMobile] = useState(false)
 
@@ -52,14 +48,16 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
 
   const filtered = clients.filter((c) => {
     const matchSearch = c.name.toLowerCase().includes(search.toLowerCase())
-    const matchStatus = filter === 'Tots' || c.status === statusMap[filter]
-    const matchAgreement = filterAgreement === 'Tots' || (c as any).agreement_type === agreementMap[filterAgreement]
-    return matchSearch && matchStatus && matchAgreement
+    const matchType =
+      filter === 'Tots' ? true :
+      filter === 'Clients' ? c.status === 'active' :
+      filter === 'No clients' ? (c.status === 'paused' || c.status === 'inactive') :
+      true
+    return matchSearch && matchType
   })
 
   function changeSearch(v: string) { setSearch(v) }
   function changeFilter(f: string) { setFilter(f) }
-  function changeAgreement(f: string) { setFilterAgreement(f) }
 
   const canManage = userRole === 'superadmin' || userRole === 'manager'
 
@@ -169,23 +167,11 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
         {/* Row 2: filtres */}
         <div className="clients-filters-row">
           <div className="clients-filters">
-            {statusFilter.map((f) => (
+            {clientTypeFilter.map((f) => (
               <button
                 key={f}
                 onClick={() => changeFilter(f)}
                 className={cn('filter-btn', filter === f && 'filter-btn--active')}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-          <div className="filters-sep" />
-          <div className="clients-filters">
-            {agreementFilter.map((f) => (
-              <button
-                key={f}
-                onClick={() => changeAgreement(f)}
-                className={cn('filter-btn filter-btn--agreement', filterAgreement === f && 'filter-btn--active')}
               >
                 {f}
               </button>
