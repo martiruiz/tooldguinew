@@ -807,113 +807,50 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
       />
 
       <style jsx>{`
-        .crm-bottom-link { text-decoration: none; display: block; margin-top: 28px; }
+        .crm-bottom-link { text-decoration: none; display: block; margin-top: 24px; }
         .crm-bottom {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          background: white;
-          border: 1px solid rgba(0,0,0,0.07);
-          border-radius: 16px;
-          padding: 18px 22px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-          cursor: pointer;
-          transition: box-shadow 0.15s, transform 0.15s;
+          display: flex; align-items: center; justify-content: space-between;
+          background: white; border: 1px solid #E8E8E8; border-radius: 14px; padding: 16px 20px;
+          cursor: pointer; transition: box-shadow 0.15s;
         }
-        .crm-bottom:hover {
-          box-shadow: 0 6px 20px rgba(37,64,103,0.1);
-          transform: translateY(-1px);
-        }
-        .crm-bottom-left {
-          display: flex;
-          align-items: center;
-          gap: 14px;
-        }
-        .crm-bottom-icon {
-          width: 38px; height: 38px; border-radius: 10px;
-          background: linear-gradient(135deg, #254067, #3a6fa8);
-          display: flex; align-items: center; justify-content: center;
-          color: white; flex-shrink: 0;
-        }
-        .crm-bottom-label {
-          font-size: 11.5px;
-          font-weight: 600;
-          color: #A0A9BB;
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-          margin-bottom: 2px;
-        }
-        .crm-bottom-main {
-          font-size: 26px;
-          font-weight: 800;
-          color: #0F1B2D;
-          letter-spacing: -1px;
-          line-height: 1;
-        }
-        .crm-bottom-right {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-        .crm-pill {
-          font-size: 12px;
-          font-weight: 600;
-          color: #4A5568;
-          background: #F4F7FB;
-          border-radius: 20px;
-          padding: 5px 12px;
-        }
+        .crm-bottom:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+        .crm-bottom-left { display: flex; align-items: center; gap: 12px; }
+        .crm-bottom-icon { width: 38px; height: 38px; border-radius: 10px; background: #1B2B4B; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0; }
+        .crm-bottom-label { font-size: 11px; font-weight: 600; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px; }
+        .crm-bottom-main { font-size: 24px; font-weight: 800; color: #0F1B2D; letter-spacing: -1px; line-height: 1; }
+        .crm-bottom-right { display: flex; align-items: center; gap: 8px; }
+        .crm-pill { font-size: 12px; font-weight: 500; color: #5C6B80; background: #F4F4F4; border-radius: 20px; padding: 4px 12px; }
 
         .dash {
-          flex: 1;
-          padding: 28px 28px 40px;
-          overflow-y: auto;
-          overflow-x: hidden;
+          flex: 1; padding: 28px 28px 40px;
+          overflow-y: auto; overflow-x: hidden;
+          width: 100%; max-width: 100%; box-sizing: border-box;
+          background: #F8F8F8;
         }
 
         @media (max-width: 767px) {
-          /* Page shell */
           .dash { padding: 14px 12px 100px; }
-
-          /* ── Header ── */
           .dash-header { flex-direction: column; gap: 10px; margin-bottom: 16px; }
           .dash-greeting { font-size: 20px; }
           .dash-subtitle { font-size: 12.5px; margin-top: 3px; }
           .dash-quick-actions { width: 100%; gap: 6px; flex-wrap: wrap; }
-          .quick-btn {
-            flex: 1; justify-content: center;
-            white-space: nowrap; overflow: hidden;
-            font-size: 12.5px; font-weight: 600;
-            height: 38px; padding: 0 10px;
-            border-radius: 10px; gap: 5px;
-          }
-          /* Nova tasca ocupa tota la fila */
+          .quick-btn { flex: 1; justify-content: center; white-space: nowrap; overflow: hidden; font-size: 12.5px; font-weight: 600; height: 38px; padding: 0 10px; border-radius: 10px; gap: 5px; }
           .quick-btn--primary { flex: 0 0 100%; height: 42px; font-size: 14px; }
-
-          /* ── Stats ── */
           .dash-stats { gap: 8px; grid-template-columns: repeat(2, 1fr); margin-bottom: 16px; }
-          .stat-card { padding: 12px 10px; gap: 8px; border-radius: 14px; }
+          .stat-card { padding: 12px 10px; gap: 8px; border-radius: 12px; }
           .stat-icon { width: 34px; height: 34px; border-radius: 10px; }
           .stat-value { font-size: 20px; }
           .stat-label { font-size: 11px; margin-top: 2px; }
-
-          /* ── Grid & Widgets ── */
-          .dash-grid { gap: 10px; }
-          .dash-widget { border-radius: 14px; }
-
-          /* Amagar botons de rearranjar en mòbil (no útils sense drag) */
+          .dash-grid { gap: 10px; width: 100%; }
+          .dash-col { min-width: 0; width: 100%; }
+          .dash-widget { border-radius: 14px; min-width: 0; width: 100%; box-sizing: border-box; }
+          .widget-move-btns { display: none !important; }
           .widget-move-btn { display: none !important; }
-
           .widget-header { padding: 11px 14px 10px; gap: 6px; }
-          .widget-title {
-            font-size: 13px; min-width: 0;
-            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-          }
+          .widget-title { font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
           .widget-link { white-space: nowrap; flex-shrink: 0; font-size: 11.5px; }
           .widget-empty { padding: 18px 14px; }
           .widget-empty p { font-size: 12.5px; }
-
-          /* Padding inferior — la vora rodona del widget (14px) necessita espai */
           .task-list { padding-bottom: 10px; }
           .meeting-list { padding-bottom: 10px; }
           .attention-list { padding-bottom: 6px; }
@@ -921,27 +858,16 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           .activity-list { padding-bottom: 10px; }
           .priority-task-list { padding-bottom: 10px; }
           .task-row { padding: 9px 14px; }
-          /* Últim element sense border-bottom en totes les llistes */
           .task-row:last-child { border-bottom: none; }
-
-          /* ── Attention widget ── */
           .attention-block { margin-bottom: 0; }
           .attention-header { padding: 10px 14px; }
           .attention-item { padding: 9px 12px; gap: 8px; }
-          .attention-item-title {
-            font-size: 12.5px;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-          }
-          .attention-item-sub {
-            font-size: 11px;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-          }
+          .attention-item-title { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .attention-item-sub { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .attention-actions { gap: 4px; flex-shrink: 0; }
           .attn-btn--resolve { display: none; }
           .attn-btn--primary { height: 26px; padding: 0 8px; font-size: 11px; white-space: nowrap; }
           .attn-btn--dismiss { width: 24px; font-size: 12px; }
-
-          /* ── Priority tasks ── */
           .priority-task-item { padding: 9px 14px; }
           .priority-task-title { font-size: 12.5px; }
           .priority-badge { font-size: 9.5px; }
@@ -951,535 +877,202 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
         }
 
         .dash-header {
-          display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 24px;
-          margin-bottom: 24px;
-          flex-wrap: wrap;
+          display: flex; align-items: flex-start; justify-content: space-between;
+          gap: 20px; margin-bottom: 22px; flex-wrap: wrap;
         }
-
-        .dash-greeting {
-          font-size: 23px;
-          font-weight: 800;
-          color: #0F1B2D;
-          letter-spacing: -0.03em;
-        }
-
-        .dash-subtitle {
-          font-size: 13.5px;
-          color: #8A94A6;
-          margin-top: 5px;
-          font-weight: 500;
-        }
-
-        .dash-quick-actions {
-          display: flex;
-          gap: 8px;
-          flex-wrap: wrap;
-        }
+        .dash-greeting { font-size: 22px; font-weight: 800; color: #0F1B2D; letter-spacing: -0.03em; }
+        .dash-subtitle { font-size: 13px; color: #8A94A6; margin-top: 4px; font-weight: 500; }
+        .dash-quick-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
         .quick-btn {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          height: 36px;
-          padding: 0 14px;
-          border-radius: 10px;
-          font-size: 13px;
-          font-weight: 500;
-          cursor: pointer;
-          border: 1px solid rgba(0,0,0,0.08);
-          background: white;
-          color: #5C6B80;
-          transition: all 0.2s ease;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+          display: flex; align-items: center; gap: 6px;
+          height: 36px; padding: 0 14px; border-radius: 9px;
+          font-size: 13px; font-weight: 500; cursor: pointer;
+          border: 1px solid #E5E7EB; background: white; color: #5C6B80;
+          transition: all 0.15s;
         }
-
-        .quick-btn:hover {
-          border-color: rgba(0,0,0,0.14);
-          background: #F8FAFB;
-          color: #0F1B2D;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-          transform: translateY(-1px);
-        }
-
-        .quick-btn--primary {
-          background: linear-gradient(135deg, #1B2B4B, #254067);
-          border-color: transparent;
-          color: white;
-          box-shadow: 0 2px 8px rgba(37,64,103,0.3);
-        }
-
-        .quick-btn--primary:hover {
-          background: linear-gradient(135deg, #0F1E33, #1a2e4a);
-          border-color: transparent;
-          color: white;
-          box-shadow: 0 4px 14px rgba(37,64,103,0.38);
-          transform: translateY(-1px);
-        }
-
-        /* Attention block */
-        .attention-block {
-          background: white;
-          border: 1px solid rgba(220,38,38,0.2);
-          border-radius: 18px;
-          margin-bottom: 20px;
-          overflow: hidden;
-          box-shadow: 0 2px 8px rgba(220,38,38,0.06), 0 1px 2px rgba(0,0,0,0.03);
-        }
-
-        .attention-header {
-          display: flex; align-items: center; gap: 8px;
-          padding: 13px 18px; border-bottom: 1px solid rgba(220,38,38,0.1);
-          background: rgba(254,242,242,0.7);
-        }
-
-        .attention-title {
-          font-size: 13px; font-weight: 700; color: #DC2626; flex: 1; letter-spacing: -0.1px;
-        }
-
-        .attention-count {
-          min-width: 22px; height: 22px; padding: 0 7px;
-          background: linear-gradient(135deg, #F87171, #DC2626); color: white;
-          font-size: 11px; font-weight: 700;
-          border-radius: 11px; display: flex; align-items: center; justify-content: center;
-        }
-
-        .attention-list { padding: 4px 0; }
-
-        .attention-item {
-          display: flex; align-items: center; gap: 12px;
-          padding: 11px 18px; border-bottom: 1px solid rgba(254,226,226,0.5);
-          transition: background 0.15s;
-        }
-        .attention-item:last-child { border-bottom: none; }
-        .attention-item:hover { background: #FFFAFA; }
-
-        .attention-dot {
-          width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-        }
-
-        .attention-info { flex: 1; min-width: 0; }
-
-        .attention-item-title {
-          font-size: 13.5px; font-weight: 600; color: #0a0a0a;
-          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-
-        .attention-item-sub {
-          font-size: 11.5px; color: #9A9A9A; margin-top: 2px;
-        }
-
-        .attention-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-
-        .attn-btn {
-          height: 28px; padding: 0 10px; border-radius: 6px; font-size: 12px;
-          font-weight: 500; cursor: pointer; font-family: inherit; transition: all 0.15s;
-          white-space: nowrap;
-        }
-
-        .attn-btn--primary {
-          background: linear-gradient(135deg, #1B2B4B, #254067); color: white; border: none;
-          box-shadow: 0 2px 6px rgba(37,64,103,0.25);
-        }
-        .attn-btn--primary:hover { background: linear-gradient(135deg, #0F1E33, #1a2e4a); }
-
-        .attn-btn--resolve {
-          background: white; color: #059669; border: 1px solid #A7F3D0;
-        }
-        .attn-btn--resolve:hover { background: #F0FDF4; }
-
-        .attn-btn--dismiss {
-          width: 28px; padding: 0; background: none; border: none;
-          color: #C0C0C0; font-size: 13px;
-        }
-        .attn-btn--dismiss:hover { color: #5C5C5C; }
+        .quick-btn:hover { border-color: #C8D0DA; color: #0F1B2D; background: #FAFBFC; }
+        .quick-btn--primary { background: #1B2B4B; border-color: #1B2B4B; color: white; }
+        .quick-btn--primary:hover { background: #162038; border-color: #162038; color: white; }
 
         /* Stats */
         .dash-stats {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-          gap: 14px;
-          margin-bottom: 24px;
+          display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+          gap: 12px; margin-bottom: 22px;
         }
-
         .stat-card {
-          background: white;
-          border: 1px solid rgba(0,0,0,0.06);
-          border-radius: 18px;
-          padding: 18px 20px;
-          display: flex;
-          align-items: center;
-          gap: 14px;
-          min-width: 0;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
-          transition: box-shadow 0.2s ease, transform 0.2s ease;
+          background: white; border: 1px solid #E8E8E8; border-radius: 14px;
+          padding: 16px 18px; display: flex; align-items: center; gap: 12px; min-width: 0;
         }
-
-        .stat-card:hover {
-          box-shadow: 0 6px 20px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
-          transform: translateY(-1px);
-        }
-
-        .stat-icon {
-          width: 40px;
-          height: 40px;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-        }
-
-        .stat-icon--blue { background: linear-gradient(135deg, #254067, #1B2B4B); color: white; }
-        .stat-icon--indigo { background: linear-gradient(135deg, #818CF8, #254067); color: white; }
-        .stat-icon--amber { background: linear-gradient(135deg, #FBBF24, #D97706); color: white; }
-        .stat-icon--green { background: linear-gradient(135deg, #34D399, #059669); color: white; }
-
-        .stat-value {
-          font-size: 24px;
-          font-weight: 800;
-          color: #0F1B2D;
-          letter-spacing: -0.03em;
-          line-height: 1;
-        }
-
-        .stat-label {
-          font-size: 12px;
-          color: #A0A9BB;
-          margin-top: 4px;
-          font-weight: 500;
-        }
+        .stat-icon { width: 40px; height: 40px; border-radius: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .stat-icon--blue   { background: #1B2B4B; color: white; }
+        .stat-icon--indigo { background: #4F46E5; color: white; }
+        .stat-icon--amber  { background: #D97706; color: white; }
+        .stat-icon--green  { background: #059669; color: white; }
+        .stat-value { font-size: 24px; font-weight: 800; color: #0F1B2D; letter-spacing: -0.03em; line-height: 1; }
+        .stat-label { font-size: 11.5px; color: #9A9A9A; margin-top: 3px; font-weight: 500; }
 
         /* Grid */
-        .dash-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 18px;
-        }
-
-        @media (min-width: 1100px) {
-          .dash-grid {
-            grid-template-columns: 1.1fr 1fr;
-          }
-        }
-
-        .dash-col {
-          display: flex;
-          flex-direction: column;
-          gap: 18px;
-        }
+        .dash-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+        @media (min-width: 1100px) { .dash-grid { grid-template-columns: 1.1fr 1fr; } }
+        .dash-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
         /* Widget */
         .dash-widget {
-          background: white;
-          border: 1px solid rgba(0,0,0,0.06);
-          border-radius: 18px;
-          overflow: hidden;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
-          transition: box-shadow 0.2s ease, transform 0.2s ease;
+          background: white; border: 1px solid #E8E8E8;
+          border-radius: 16px; overflow: hidden; min-width: 0;
         }
 
-        .dash-widget:hover {
-          box-shadow: 0 6px 20px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
-          transform: translateY(-1px);
-        }
-
-        .widget-move-btns {
-          display: flex;
-          flex-direction: column;
-          gap: 1px;
-          opacity: 0;
-          transition: opacity 0.15s;
-          flex-shrink: 0;
-        }
+        .widget-move-btns { display: flex; flex-direction: column; gap: 1px; opacity: 0; transition: opacity 0.15s; flex-shrink: 0; }
         .dash-widget:hover .widget-move-btns { opacity: 1; }
-        .widget-move-btn {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: none;
-          border: none;
-          padding: 1px 3px;
-          cursor: pointer;
-          color: #9CA3AF;
-          border-radius: 3px;
-          line-height: 1;
-          transition: color 0.12s, background 0.12s;
-        }
+        .widget-move-btn { display: flex; align-items: center; justify-content: center; background: none; border: none; padding: 1px 3px; cursor: pointer; color: #9CA3AF; border-radius: 3px; line-height: 1; transition: color 0.12s, background 0.12s; }
         .widget-move-btn:hover:not(:disabled) { color: #2563EB; background: #EFF6FF; }
         .widget-move-btn:disabled { opacity: 0.2; cursor: default; }
 
         .widget-header {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 16px 18px 13px;
-          border-bottom: 1px solid rgba(0,0,0,0.05);
+          display: flex; align-items: center; gap: 8px;
+          padding: 14px 16px 12px; border-bottom: 1px solid #F0F0F0;
         }
-
-        .widget-title {
-          font-size: 13.5px;
-          font-weight: 700;
-          color: #0F1B2D;
-          flex: 1;
-          letter-spacing: -0.2px;
-        }
+        .widget-title { font-size: 13.5px; font-weight: 700; color: #0F1B2D; flex: 1; letter-spacing: -0.2px; }
 
         :global(.widget-link) {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          font-size: 12px;
-          color: #254067;
-          text-decoration: none;
-          font-weight: 600;
-          transition: color 0.15s;
+          display: flex; align-items: center; gap: 4px;
+          font-size: 12px; color: #6B7280; text-decoration: none; font-weight: 500;
+          transition: color 0.15s; white-space: nowrap;
         }
-
-        :global(.widget-link:hover) {
-          color: #1a2e4a;
-        }
+        :global(.widget-link:hover) { color: #1B2B4B; }
 
         .widget-empty {
-          padding: 28px 16px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 8px;
-          color: #9A9A9A;
-          font-size: 13px;
-          text-align: center;
+          padding: 28px 16px; display: flex; flex-direction: column;
+          align-items: center; gap: 8px; color: #9A9A9A; font-size: 13px; text-align: center;
         }
 
-        /* Today sections inside widget */
-        .today-section { padding-bottom: 0; }
-        .today-section--border { border-top: 1px solid #F0F0F0; }
-
-        .today-section-label {
-          font-size: 10px; font-weight: 700; color: #A0A9BB;
-          text-transform: uppercase; letter-spacing: 0.07em;
-          padding: 11px 18px 6px;
+        /* Attention */
+        .attention-block {
+          background: white; border: 1px solid rgba(220,38,38,0.2);
+          border-radius: 16px; overflow: hidden;
         }
-
-        /* Priority task list */
-        .priority-task-list { padding: 4px 0 8px; }
-
-        .priority-task-item {
-          display: flex; align-items: center; gap: 10px;
-          padding: 10px 18px; border-bottom: 1px solid rgba(0,0,0,0.04);
-          transition: background 0.15s;
+        .attention-header {
+          display: flex; align-items: center; gap: 8px;
+          padding: 12px 16px; border-bottom: 1px solid rgba(220,38,38,0.1);
+          background: #FFF5F5;
         }
-        .priority-task-item:last-child { border-bottom: none; }
-        .priority-task-item:hover { background: #F8FAFF; }
-
-        .priority-task-check {
-          border: none; background: none; cursor: pointer;
-          padding: 0; display: flex; align-items: center; flex-shrink: 0;
-          transition: transform 0.1s;
-        }
-        .priority-task-check:hover { transform: scale(1.1); }
-
-        .priority-task-title {
-          font-size: 13px; font-weight: 500; color: #0a0a0a;
-          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-
-        .priority-task-client {
-          font-size: 11px; color: #9A9A9A; margin-top: 1px;
-        }
-
-        .priority-badge {
-          font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
-          padding: 2px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0;
-        }
-
-        /* Tasks */
-        .task-list {
-          padding: 6px 0;
-        }
-
-        /* Meetings */
-        .meeting-list {
-          padding: 6px 0;
-        }
-
-        .meeting-item {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 10px 16px;
-          border-bottom: 1px solid #F8F8F8;
-          transition: background 0.1s;
-        }
-
-        .meeting-item:last-child { border-bottom: none; }
-        .meeting-item:hover { background: #FAFAFA; }
-
-        .meeting-time {
-          font-size: 12px;
-          font-weight: 600;
-          color: #1B2B4B;
-          min-width: 40px;
-        }
-
-        .meeting-info { flex: 1; min-width: 0; }
-
-        .meeting-title {
-          font-size: 13.5px;
-          font-weight: 500;
-          color: #0a0a0a;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .meeting-client {
-          font-size: 12px;
-          color: #9A9A9A;
-          margin-top: 2px;
-        }
-
-        .meeting-join {
-          font-size: 12px;
-          font-weight: 500;
-          color: #1B2B4B;
-          text-decoration: none;
-          padding: 4px 10px;
-          border: 1px solid #1B2B4B30;
-          border-radius: 6px;
-          background: #1B2B4B08;
-          white-space: nowrap;
-          transition: all 0.15s;
-        }
-
-        .meeting-join:hover { background: #1B2B4B18; }
-
-        /* Projects */
-        .project-list { padding: 6px 0; }
-
-        :global(.project-item) {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 10px 16px;
-          border-bottom: 1px solid #F8F8F8;
-          text-decoration: none;
-          transition: background 0.1s;
-        }
-
-        :global(.project-item:last-child) { border-bottom: none; }
-        :global(.project-item:hover) { background: #FAFAFA; }
-
-        .project-client-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: #1B2B4B;
-          flex-shrink: 0;
-        }
-
-        .project-info { flex: 1; min-width: 0; }
-
-        .project-name {
-          font-size: 13.5px;
-          font-weight: 500;
-          color: #0a0a0a;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .project-client {
-          font-size: 12px;
-          color: #9A9A9A;
-          margin-top: 2px;
-        }
-
-        /* Inbox */
-        .inbox-badge {
+        .attention-title { font-size: 13px; font-weight: 700; color: #DC2626; flex: 1; letter-spacing: -0.1px; }
+        .attention-count {
           min-width: 20px; height: 20px; padding: 0 6px;
-          background: #1B2B4B; color: white;
-          font-size: 11px; font-weight: 700;
+          background: #DC2626; color: white; font-size: 10.5px; font-weight: 700;
           border-radius: 10px; display: flex; align-items: center; justify-content: center;
         }
-
-        .inbox-item {
-          display: flex; align-items: flex-start; gap: 10px;
-          padding: 10px 16px; border-bottom: 1px solid #F8F8F8;
-          transition: background 0.1s;
+        .attention-list { padding: 2px 0; }
+        .attention-item {
+          display: flex; align-items: center; gap: 10px;
+          padding: 10px 16px; border-bottom: 1px solid #FEF2F2; transition: background 0.1s;
         }
+        .attention-item:last-child { border-bottom: none; }
+        .attention-item:hover { background: #FFFBFB; }
+        .attention-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+        .attention-info { flex: 1; min-width: 0; }
+        .attention-item-title { font-size: 13px; font-weight: 600; color: #0F1B2D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .attention-item-sub { font-size: 11.5px; color: #9A9A9A; margin-top: 2px; }
+        .attention-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .attn-btn { height: 28px; padding: 0 10px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all 0.15s; white-space: nowrap; }
+        .attn-btn--primary { background: #1B2B4B; color: white; border: none; }
+        .attn-btn--primary:hover { background: #162038; }
+        .attn-btn--resolve { background: white; color: #059669; border: 1px solid #A7F3D0; }
+        .attn-btn--resolve:hover { background: #F0FDF4; }
+        .attn-btn--dismiss { width: 28px; padding: 0; background: none; border: none; color: #C0C0C0; font-size: 13px; }
+        .attn-btn--dismiss:hover { color: #5C5C5C; }
+
+        /* Today sections */
+        .today-section { padding-bottom: 0; }
+        .today-section--border { border-top: 1px solid #F0F0F0; }
+        .today-section-label { font-size: 10px; font-weight: 700; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.07em; padding: 10px 16px 5px; }
+
+        /* Priority tasks */
+        .priority-task-list { padding: 4px 0 6px; }
+        .priority-task-item {
+          display: flex; align-items: center; gap: 10px;
+          padding: 9px 16px; border-bottom: 1px solid #F8F8F8; transition: background 0.1s;
+        }
+        .priority-task-item:last-child { border-bottom: none; }
+        .priority-task-item:hover { background: #FAFAFA; }
+        .priority-task-check { border: none; background: none; cursor: pointer; padding: 0; display: flex; align-items: center; flex-shrink: 0; transition: transform 0.1s; }
+        .priority-task-check:hover { transform: scale(1.1); }
+        .priority-task-title { font-size: 13px; font-weight: 500; color: #0F1B2D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .priority-task-client { font-size: 11px; color: #9A9A9A; margin-top: 1px; }
+        .priority-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.03em; padding: 2px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; }
+
+        /* Task list */
+        .task-list { padding: 4px 0; }
+        .meeting-list { padding: 4px 0; }
+
+        /* Meetings */
+        .meeting-item {
+          display: flex; align-items: center; gap: 10px;
+          padding: 9px 16px; border-bottom: 1px solid #F8F8F8; transition: background 0.1s;
+        }
+        .meeting-item:last-child { border-bottom: none; }
+        .meeting-item:hover { background: #FAFAFA; }
+        .meeting-time { font-size: 12px; font-weight: 600; color: #1B2B4B; min-width: 38px; }
+        .meeting-info { flex: 1; min-width: 0; }
+        .meeting-title { font-size: 13px; font-weight: 500; color: #0F1B2D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .meeting-client { font-size: 11.5px; color: #9A9A9A; margin-top: 2px; }
+        .meeting-join {
+          font-size: 12px; font-weight: 500; color: #1B2B4B; text-decoration: none;
+          padding: 4px 10px; border: 1px solid #1B2B4B30; border-radius: 6px;
+          background: #1B2B4B08; white-space: nowrap; transition: background 0.15s;
+        }
+        .meeting-join:hover { background: #1B2B4B14; }
+
+        /* Projects */
+        .project-list { padding: 4px 0; }
+        :global(.project-item) {
+          display: flex; align-items: center; gap: 10px;
+          padding: 9px 16px; border-bottom: 1px solid #F8F8F8;
+          text-decoration: none; transition: background 0.1s;
+        }
+        :global(.project-item:last-child) { border-bottom: none; }
+        :global(.project-item:hover) { background: #FAFAFA; }
+        .project-client-dot { width: 7px; height: 7px; border-radius: 50%; background: #1B2B4B; flex-shrink: 0; }
+        .project-info { flex: 1; min-width: 0; }
+        .project-name { font-size: 13px; font-weight: 500; color: #0F1B2D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .project-client { font-size: 11.5px; color: #9A9A9A; margin-top: 2px; }
+
+        /* Inbox */
+        .inbox-badge { min-width: 20px; height: 20px; padding: 0 6px; background: #1B2B4B; color: white; font-size: 10.5px; font-weight: 700; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+        .inbox-item { display: flex; align-items: flex-start; gap: 10px; padding: 9px 16px; border-bottom: 1px solid #F8F8F8; transition: background 0.1s; }
         .inbox-item:last-child { border-bottom: none; }
         .inbox-item:hover { background: #FAFAFA; }
-
-        .inbox-type-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
-
+        .inbox-type-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
         .inbox-content { flex: 1; min-width: 0; }
-        .inbox-title { font-size: 13px; font-weight: 600; color: #0a0a0a; line-height: 1.3; }
+        .inbox-title { font-size: 13px; font-weight: 600; color: #0F1B2D; line-height: 1.3; }
         .inbox-body { font-size: 12px; color: #5C5C5C; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .inbox-time { font-size: 11px; color: #C0C0C0; white-space: nowrap; margin-top: 2px; }
-
-        .inbox-more {
-          padding: 10px 16px; font-size: 12px; color: #9A9A9A;
-          border-top: 1px solid #F4F4F4; text-align: center;
-        }
+        .inbox-time { font-size: 10.5px; color: #C0C0C0; white-space: nowrap; margin-top: 2px; }
+        .inbox-more { padding: 9px 16px; font-size: 12px; color: #9A9A9A; border-top: 1px solid #F4F4F4; text-align: center; }
 
         /* Bloquejos */
-        .dash-widget--blocked {
-          border-color: rgba(217,119,6,0.2);
-          box-shadow: 0 2px 8px rgba(217,119,6,0.06), 0 1px 2px rgba(0,0,0,0.03);
-        }
-
-        .blocked-list { padding: 4px 0; }
-
-        .blocked-item {
-          display: flex; align-items: center; gap: 10px;
-          padding: 11px 18px; border-bottom: 1px solid rgba(253,230,138,0.4);
-          transition: background 0.15s;
-        }
+        .dash-widget--blocked { border-color: rgba(217,119,6,0.2); }
+        .blocked-list { padding: 2px 0; }
+        .blocked-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid rgba(253,230,138,0.4); transition: background 0.1s; }
         .blocked-item:last-child { border-bottom: none; }
         .blocked-item:hover { background: #FFFDF5; }
-
-        .blocked-dot {
-          width: 8px; height: 8px; border-radius: 50%;
-          background: linear-gradient(135deg, #FBBF24, #D97706); flex-shrink: 0;
-        }
-
+        .blocked-dot { width: 7px; height: 7px; border-radius: 50%; background: #D97706; flex-shrink: 0; }
         .blocked-info { flex: 1; min-width: 0; }
-        .blocked-title { font-size: 13.5px; font-weight: 600; color: #0a0a0a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .blocked-title { font-size: 13px; font-weight: 600; color: #0F1B2D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .blocked-meta { font-size: 11.5px; color: #9A9A9A; margin-top: 2px; }
-
-        .unblock-btn {
-          height: 28px; padding: 0 10px; border-radius: 6px; font-size: 12px;
-          font-weight: 600; cursor: pointer; font-family: inherit;
-          background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A;
-          transition: all 0.15s; white-space: nowrap; flex-shrink: 0;
-        }
+        .unblock-btn { height: 28px; padding: 0 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A; transition: background 0.15s; white-space: nowrap; flex-shrink: 0; }
         .unblock-btn:hover { background: #FEF3C7; }
 
         /* Activity */
-        .activity-list { padding: 6px 0; }
-
-        .activity-item {
-          display: flex; align-items: flex-start; gap: 10px;
-          padding: 9px 16px; border-bottom: 1px solid #F8F8F8;
-        }
+        .activity-list { padding: 4px 0; }
+        .activity-item { display: flex; align-items: flex-start; gap: 10px; padding: 9px 16px; border-bottom: 1px solid #F8F8F8; }
         .activity-item:last-child { border-bottom: none; }
-
-        .activity-emoji { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
-
-        .activity-body {
-          flex: 1; font-size: 13px; line-height: 1.4; color: #5C5C5C;
-        }
-
-        .activity-user { font-weight: 600; color: #0a0a0a; }
+        .activity-emoji { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+        .activity-body { flex: 1; font-size: 13px; line-height: 1.4; color: #5C5C5C; }
+        .activity-user { font-weight: 600; color: #0F1B2D; }
         .activity-text { color: #5C5C5C; }
         .activity-entity { font-weight: 500; color: #1B2B4B; }
-
-        .activity-time {
-          font-size: 11px; color: #C0C0C0; white-space: nowrap; margin-top: 2px;
-        }
+        .activity-time { font-size: 11px; color: #C0C0C0; white-space: nowrap; margin-top: 2px; }
       `}</style>
     </div>
   )

@@ -570,6 +570,16 @@ export function ProfileContent({ profile, allMembers = [] }: Props) {
                 </div>
                 <ChevronRight size={16} color="#C0C0C0" className="tool-arrow" />
               </Link>
+              <a href="https://asobal.tv" target="_blank" rel="noopener noreferrer" className="tool-card">
+                <div className="tool-icon" style={{ background: '#F5F5F5', padding: 0, overflow: 'hidden' }}>
+                  <img src="/logoasobal.png" alt="Asobal" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 6 }} />
+                </div>
+                <div className="tool-info">
+                  <div className="tool-name">Asobal TV</div>
+                  <div className="tool-desc">Plataforma de contingut d'Asobal</div>
+                </div>
+                <ChevronRight size={16} color="#C0C0C0" className="tool-arrow" />
+              </a>
               <IdiomesCard profileId={profile.id} />
               <ServeisCard profileId={profile.id} />
             </div>

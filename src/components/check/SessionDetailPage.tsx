@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, FileText, Upload, Trash2, Loader2, Camera, Video, Image, Mic, X,
@@ -101,9 +102,8 @@ const DELIVERABLE_ESTAT_CFG: Record<string, { label: string; color: string; bg: 
   publicat:  { label: 'Publicat',  color: '#16A34A', bg: '#F0FDF4' },
 }
 
-const EQUIP_ROLES: { key: keyof Equip; label: string }[] = [
-  { key: 'fotografa',       label: 'Fotògraf/a' },
-  { key: 'videografa',      label: 'Videògraf/a' },
+const EQUIP_ROLES: { key: keyof Equip; label: string; sync?: keyof Equip }[] = [
+  { key: 'fotografa', label: 'Fotògraf/a · Videògraf/a', sync: 'videografa' },
   { key: 'content_creator', label: 'Content creator' },
   { key: 'editor',          label: 'Editor/a' },
   { key: 'social_media',    label: 'Social media' },
@@ -112,30 +112,31 @@ const EQUIP_ROLES: { key: keyof Equip; label: string }[] = [
 ]
 
 const CL_PREPRODUCIO = [
-  { key: 'briefing_revisat',     label: 'Briefing revisat' },
+  { key: 'pla_contingut',        label: 'Pla de contingut fet' },
   { key: 'objectius_definits',   label: 'Objectius definits' },
-  { key: 'deliverables_definits',label: 'Deliverables definits' },
   { key: 'guions_preparats',     label: 'Guions preparats' },
   { key: 'referencies_aprovades',label: 'Referències creatives aprovades' },
+  { key: 'formats_definits',     label: 'Formats necessaris definits' },
 ]
 const CL_PRODUCCIO = [
   { key: 'cameras',     label: 'Càmeres' },
-  { key: 'optiques',    label: 'Òptiques' },
   { key: 'bateries',    label: 'Bateries' },
   { key: 'targetes',    label: 'Targetes' },
   { key: 'tripodes',    label: 'Trípodes' },
   { key: 'micros',      label: 'Micros' },
-  { key: 'illuminacio', label: 'Il·luminació' },
-  { key: 'atrezzo',     label: 'Atrezzo' },
-  { key: 'assets_logos',label: 'Assets / logos' },
+  { key: 'illuminacio',        label: 'Il·luminació' },
+  { key: 'material_necessari', label: 'Material necessari' },
+  { key: 'vestuari',           label: 'Vestuari / equipacions confirmats' },
+  { key: 'permisos_imatge',    label: 'Permisos d\'imatge confirmats' },
 ]
 const CL_LOGISTICA = [
   { key: 'localitzacio',   label: 'Localització confirmada' },
   { key: 'horaris',        label: 'Horaris confirmats' },
   { key: 'participants',   label: 'Participants confirmats' },
-  { key: 'permisos',       label: 'Permisos' },
+  { key: 'permisos',       label: 'Permisos legals' },
   { key: 'aparcament',     label: 'Aparcament / accés' },
-  { key: 'contacte_client',label: 'Contacte client informat' },
+  { key: 'contacte_client',label: 'Client informat' },
+  { key: 'gimbal',         label: 'Gimbal / estabilitzador' },
 ]
 
 const DEFAULT_CHECKLIST_SECTIONS: ChecklistSections = {
@@ -205,20 +206,352 @@ function StatusBadge({ value, onChange }: { value: string; onChange: (v: string)
   )
 }
 
+// ─── LocalitzacioInput ────────────────────────────────────────────────────────
+
+function LocalitzacioInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [open, setOpen] = useState(false)
+  const [dropStyle, setDropStyle] = useState<React.CSSProperties>({})
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const fetchSuggestions = useCallback(async (q: string) => {
+    if (q.length < 2) { setSuggestions([]); setOpen(false); return }
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=7&countrycodes=es&accept-language=ca,es&featuretype=settlement`
+      const res = await fetch(url, { headers: { 'Accept-Language': 'ca' } })
+      const data = await res.json()
+      const names: string[] = []
+      const seen = new Set<string>()
+      for (const item of data) {
+        const parts = (item.display_name as string).split(',')
+        const short = parts.slice(0, 2).join(',').trim()
+        if (!seen.has(short)) { seen.add(short); names.push(short) }
+      }
+      setSuggestions(names)
+      if (triggerRef.current) {
+        const r = triggerRef.current.getBoundingClientRect()
+        setDropStyle({ position:'fixed', top: r.bottom + 4, left: r.left, width: r.width, zIndex: 9999 })
+      }
+      setOpen(names.length > 0)
+    } catch { setSuggestions([]); setOpen(false) }
+  }, [])
+
+  const handleChange = (v: string) => {
+    onChange(v)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => fetchSuggestions(v), 300)
+  }
+
+  const select = (s: string) => { onChange(s); setOpen(false); setSuggestions([]) }
+
+  return (
+    <>
+      <div ref={triggerRef} style={{ position: 'relative' }}>
+        <input
+          className="obj-trigger"
+          style={{ fontFamily:'inherit', fontSize:13, color: value ? '#0a0a0a' : '#9A9A9A', cursor:'text' }}
+          value={value}
+          onChange={e => handleChange(e.target.value)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onFocus={() => suggestions.length > 0 && setOpen(true)}
+          placeholder="Busca un municipi..."
+          autoComplete="off"
+        />
+      </div>
+      {open && createPortal(
+        <div className="loc-drop" style={dropStyle}>
+          {suggestions.map(s => (
+            <button key={s} type="button" className="loc-option" onMouseDown={() => select(s)}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9A9A9A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}>
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+              </svg>
+              {s}
+            </button>
+          ))}
+          <style jsx>{`
+            .loc-drop {
+              background: white; border: 1.5px solid #E5E7EB; border-radius: 12px;
+              box-shadow: 0 8px 28px rgba(0,0,0,0.12); overflow: hidden; padding: 4px;
+            }
+            .loc-option {
+              display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px;
+              border: none; background: none; border-radius: 7px; cursor: pointer;
+              font-family: inherit; text-align: left; font-size: 13px; color: #0a0a0a;
+              transition: background 0.1s;
+            }
+            .loc-option:hover { background: #F4F6FB; }
+          `}</style>
+        </div>,
+        document.body
+      )}
+    </>
+  )
+}
+
+// ─── ObjectiuSelect ───────────────────────────────────────────────────────────
+
+const DEFAULT_OBJECTIUS = [
+  'Presentació de producte',
+  'Contingut per a xarxes socials',
+  'Vídeo corporatiu',
+  'Sessió de fotos de marca',
+  'Campanya publicitària',
+  'Testimonial de client',
+  'Tutorial / How-to',
+  'Event recap',
+  'Entrevista / Podcast',
+  'Contingut UGC',
+]
+
+function ObjectiuSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [custom, setCustom] = useState<string[]>([])
+  const [dropStyle, setDropStyle] = useState<React.CSSProperties>({})
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  const allOptions = [...DEFAULT_OBJECTIUS, ...custom]
+  const filtered = allOptions.filter(o => o.toLowerCase().includes(search.toLowerCase()))
+  const canCreate = search.trim() && !allOptions.some(o => o.toLowerCase() === search.trim().toLowerCase())
+
+  const handleOpen = () => {
+    if (!open && triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - r.bottom
+      const dropH = Math.min(320, spaceBelow > 140 ? spaceBelow - 12 : r.top - 12)
+      const above = spaceBelow < 140
+      setDropStyle({
+        position: 'fixed',
+        top: above ? undefined : r.bottom + 4,
+        bottom: above ? window.innerHeight - r.top + 4 : undefined,
+        left: r.left,
+        width: Math.max(r.width, 260),
+        maxHeight: dropH,
+        zIndex: 9999,
+      })
+    }
+    setOpen(o => !o)
+    setTimeout(() => searchRef.current?.focus(), 60)
+  }
+
+  const select = (v: string) => { onChange(v); setOpen(false); setSearch('') }
+
+  const create = () => {
+    const v = search.trim()
+    setCustom(prev => [...prev, v])
+    select(v)
+  }
+
+  return (
+    <>
+      <button ref={triggerRef} type="button" className="obj-trigger" onClick={handleOpen}>
+        <span className={value ? 'obj-val' : 'obj-ph'}>{value || '—'}</span>
+        {value && (
+          <span className="obj-clear" onClick={e => { e.stopPropagation(); onChange('') }}>
+            <X size={11} />
+          </span>
+        )}
+        <ChevronDown size={13} className={`ps-caret${open ? ' ps-caret--open' : ''}`} />
+      </button>
+
+      {open && createPortal(
+        <>
+          <div style={{ position:'fixed', inset:0, zIndex:9998 }} onClick={() => { setOpen(false); setSearch('') }} />
+          <div className="obj-drop" style={dropStyle}>
+            <div className="obj-search-row">
+              <input
+                ref={searchRef}
+                className="obj-search"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Buscar o crear objectiu..."
+                onKeyDown={e => { if (e.key === 'Enter' && canCreate) create() }}
+              />
+            </div>
+            <div className="obj-list">
+              {filtered.map(o => (
+                <button key={o} type="button" className="obj-option" onClick={() => select(o)}>
+                  <span className="obj-option-text">{o}</span>
+                  {value === o && <Check size={12} color="#1B2B4B" style={{ flexShrink:0 }} />}
+                </button>
+              ))}
+              {canCreate && (
+                <button type="button" className="obj-option obj-option--create" onClick={create}>
+                  <Plus size={12} />
+                  <span>Crear «{search.trim()}»</span>
+                </button>
+              )}
+              {filtered.length === 0 && !canCreate && (
+                <div className="obj-empty">Cap resultat</div>
+              )}
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
+
+      <style jsx>{`
+        .obj-trigger {
+          display: flex; align-items: center; gap: 6px; width: 100%;
+          padding: 8px 10px; border: 1.5px solid #E5E7EB; border-radius: 10px;
+          background: white; cursor: pointer; font-family: inherit; text-align: left;
+          transition: border-color 0.15s, box-shadow 0.15s; min-height: 38px;
+        }
+        .obj-trigger:hover { border-color: #C0C8D8; }
+        .obj-val { font-size: 13px; font-weight: 500; color: #0a0a0a; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .obj-ph { font-size: 13px; color: #9A9A9A; flex: 1; }
+        .obj-clear { display:flex; align-items:center; color:#9A9A9A; padding:2px; border-radius:4px; }
+        .obj-clear:hover { color:#374151; background:#F0F0F0; }
+        .obj-drop {
+          background: white; border: 1.5px solid #E5E7EB; border-radius: 14px;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.14); overflow: hidden;
+          display: flex; flex-direction: column;
+        }
+        .obj-search-row { padding: 8px 8px 4px; border-bottom: 1px solid #F0F0F0; }
+        .obj-search {
+          width: 100%; border: 1.5px solid #E8E8E8; border-radius: 8px; padding: 7px 10px;
+          font-size: 13px; font-family: inherit; outline: none; color: #0a0a0a;
+          transition: border-color 0.15s;
+        }
+        .obj-search:focus { border-color: #1B2B4B; }
+        .obj-list { overflow-y: auto; padding: 4px; flex: 1; }
+        .obj-option {
+          display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px;
+          border: none; background: none; border-radius: 8px; cursor: pointer;
+          font-family: inherit; text-align: left; transition: background 0.1s; font-size: 13px; color: #0a0a0a;
+        }
+        .obj-option:hover { background: #F4F6FB; }
+        .obj-option-text { flex: 1; }
+        .obj-option--create { color: #1B2B4B; font-weight: 600; }
+        .obj-option--create:hover { background: #EEF2FA; }
+        .obj-empty { padding: 16px; text-align: center; color: #9A9A9A; font-size: 13px; }
+      `}</style>
+    </>
+  )
+}
+
 // ─── ProfileSelect ────────────────────────────────────────────────────────────
 
-function ProfileSelect({ value, onChange, profiles, placeholder = 'Selecciona...' }: {
+function getInitialsPS(name: string) {
+  return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
+}
+
+const AV_COLORS = ['#254067','#7C3AED','#059669','#D97706','#DC2626','#2563EB','#0891B2','#65A30D']
+function avColorPS(name: string) {
+  let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) % AV_COLORS.length
+  return AV_COLORS[Math.abs(h)]
+}
+
+function ProfileSelect({ value, onChange, profiles, placeholder = '—' }: {
   value: string; onChange: (v: string) => void; profiles: UserProfile[]; placeholder?: string
 }) {
+  const [open, setOpen] = useState(false)
+  const [dropStyle, setDropStyle] = useState<React.CSSProperties>({})
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const selected = profiles.find(p => p.full_name === value)
+
+  const handleOpen = () => {
+    if (!open && triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - r.bottom
+      const dropH = Math.min(260, spaceBelow > 120 ? spaceBelow - 12 : r.top - 12)
+      const above = spaceBelow < 120
+      setDropStyle({
+        position: 'fixed',
+        top: above ? undefined : r.bottom + 4,
+        bottom: above ? window.innerHeight - r.top + 4 : undefined,
+        left: r.left,
+        width: Math.max(r.width, 200),
+        maxHeight: dropH,
+        zIndex: 9999,
+      })
+    }
+    setOpen(o => !o)
+  }
+
   return (
-    <select
-      className="sdp-brief-select"
-      value={value}
-      onChange={e => onChange(e.target.value)}
-    >
-      <option value="">{placeholder}</option>
-      {profiles.map(p => <option key={p.id} value={p.full_name}>{p.full_name}</option>)}
-    </select>
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        className="ps-trigger"
+        onClick={handleOpen}
+      >
+        {selected ? (
+          <>
+            <div className="ps-av" style={{ background: avColorPS(selected.full_name) }}>
+              {selected.avatar_url
+                ? <img src={selected.avatar_url} alt={selected.full_name} style={{ width:'100%',height:'100%',objectFit:'cover' }} />
+                : getInitialsPS(selected.full_name)}
+            </div>
+            <span className="ps-name">{selected.full_name}</span>
+          </>
+        ) : (
+          <span className="ps-placeholder">{placeholder}</span>
+        )}
+        <ChevronDown size={13} className={`ps-caret${open ? ' ps-caret--open' : ''}`} />
+      </button>
+
+      {open && createPortal(
+        <>
+          <div style={{ position:'fixed', inset:0, zIndex:9998 }} onClick={() => setOpen(false)} />
+          <div className="ps-drop" style={dropStyle}>
+            <button type="button" className="ps-option" onClick={() => { onChange(''); setOpen(false) }}>
+              <div className="ps-av ps-av--empty">—</div>
+              <span className="ps-name" style={{ color:'#9A9A9A' }}>{placeholder}</span>
+              {!value && <Check size={12} color="#1B2B4B" style={{ marginLeft:'auto', flexShrink:0 }} />}
+            </button>
+            {profiles.map(p => (
+              <button key={p.id} type="button" className="ps-option" onClick={() => { onChange(p.full_name); setOpen(false) }}>
+                <div className="ps-av" style={{ background: avColorPS(p.full_name) }}>
+                  {p.avatar_url
+                    ? <img src={p.avatar_url} alt={p.full_name} style={{ width:'100%',height:'100%',objectFit:'cover' }} />
+                    : getInitialsPS(p.full_name)}
+                </div>
+                <span className="ps-name">{p.full_name}</span>
+                {value === p.full_name && <Check size={12} color="#1B2B4B" style={{ marginLeft:'auto', flexShrink:0 }} />}
+              </button>
+            ))}
+          </div>
+        </>,
+        document.body
+      )}
+
+      <style jsx>{`
+        .ps-trigger {
+          display: flex; align-items: center; gap: 8px; width: 100%;
+          padding: 7px 10px; border: 1.5px solid #E5E7EB; border-radius: 10px;
+          background: white; cursor: pointer; font-family: inherit; text-align: left;
+          transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .ps-trigger:hover { border-color: #C0C8D8; }
+        .ps-trigger:focus-visible { outline: none; border-color: #1B2B4B; box-shadow: 0 0 0 3px rgba(27,43,75,0.1); }
+        .ps-av {
+          width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 9px; font-weight: 700; color: white; overflow: hidden;
+        }
+        .ps-av--empty { background: #F0F0F0; color: #9A9A9A; font-size: 12px; }
+        .ps-name { font-size: 13px; font-weight: 500; color: #0a0a0a; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ps-placeholder { font-size: 13px; color: #9A9A9A; flex: 1; }
+        .ps-caret { color: #9A9A9A; flex-shrink: 0; transition: transform 0.15s; }
+        .ps-caret--open { transform: rotate(180deg); }
+        .ps-drop {
+          background: white; border: 1.5px solid #E5E7EB; border-radius: 12px;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.14); overflow-y: auto; overflow-x: hidden;
+          display: flex; flex-direction: column; padding: 4px;
+          scrollbar-width: thin;
+        }
+        .ps-option {
+          display: flex; align-items: center; gap: 9px; padding: 7px 9px;
+          border: none; background: none; border-radius: 8px; cursor: pointer;
+          font-family: inherit; text-align: left; width: 100%; transition: background 0.1s;
+        }
+        .ps-option:hover { background: #F4F6FB; }
+      `}</style>
+    </>
   )
 }
 
@@ -671,7 +1004,7 @@ export function SessionDetailPage({
 
               {/* Documents */}
               <div className="sdp-subsection">
-                <div className="sdp-section-title">Documents</div>
+                <div className="sdp-section-title">Documents / Plans de contingut</div>
                 <p className="sdp-section-desc">Adjunta els documents de la sessió (PDFs, arxius, etc.)</p>
                 {previaFiles.length > 0 && (
                   <div className="sdp-files-list">
@@ -721,32 +1054,6 @@ export function SessionDetailPage({
                 />
               </div>
 
-              {/* Import plan from PDF */}
-              <div className="sdp-subsection">
-                <div className="sdp-section-title">Importar pla de continguts</div>
-                <p className="sdp-section-desc">Puja el PDF del pla de continguts per generar automàticament la shot list.</p>
-                {planImportError && <div className="sdp-error">{planImportError}</div>}
-                <button
-                  className="sdp-import-plan-btn"
-                  onClick={() => planImportRef.current?.click()}
-                  disabled={importingPlan}
-                >
-                  {importingPlan ? <Loader2 size={14} className="sdp-spin" /> : <FileUp size={14} />}
-                  {importingPlan ? 'Processant PDF...' : 'Importar pla (PDF)'}
-                </button>
-                <input
-                  ref={planImportRef}
-                  type="file"
-                  accept="application/pdf,.pdf"
-                  style={{ display: 'none' }}
-                  onChange={e => {
-                    const file = e.target.files?.[0]
-                    if (file) importPlanFromFile(file)
-                    e.target.value = ''
-                  }}
-                />
-              </div>
-
               <div className="sdp-divider" />
 
               {/* Informació general */}
@@ -755,11 +1062,11 @@ export function SessionDetailPage({
                 <div className="sdp-brief-grid">
                   <div className="sdp-brief-field">
                     <label className="sdp-brief-label">Objectiu de la sessió</label>
-                    <input className="sdp-brief-input" value={objectiu} onChange={e => setObjectiu(e.target.value)} placeholder="—" />
+                    <ObjectiuSelect value={objectiu} onChange={setObjectiu} />
                   </div>
                   <div className="sdp-brief-field">
                     <label className="sdp-brief-label">Localització</label>
-                    <input className="sdp-brief-input" value={localitzacio} onChange={e => setLocalitzacio(e.target.value)} placeholder="—" />
+                    <LocalitzacioInput value={localitzacio} onChange={setLocalitzacio} />
                   </div>
                 </div>
               </div>
@@ -775,153 +1082,12 @@ export function SessionDetailPage({
                       <label className="sdp-brief-label">{role.label}</label>
                       <ProfileSelect
                         value={equip[role.key]}
-                        onChange={v => setEquip(prev => ({ ...prev, [role.key]: v }))}
+                        onChange={v => setEquip(prev => ({ ...prev, [role.key]: v, ...(role.sync ? { [role.sync]: v } : {}) }))}
                         profiles={profiles}
                         placeholder="—"
                       />
                     </div>
                   ))}
-                </div>
-              </div>
-
-              <div className="sdp-divider" />
-
-              {/* Deliverables */}
-              <div className="sdp-subsection">
-                <div className="sdp-deliverables-header">
-                  <div className="sdp-section-title">Deliverables</div>
-                  <div className="sdp-deliverables-summary">
-                    {deliverables.length > 0 && (
-                      <>
-                        {Object.entries(DELIVERABLE_ESTAT_CFG).map(([k, cfg]) => {
-                          const count = deliverables.filter(d => d.estat === k).length
-                          if (!count) return null
-                          return (
-                            <span key={k} className="sdp-deliverable-count" style={{ color: cfg.color, background: cfg.bg }}>
-                              {count} {cfg.label.toLowerCase()}
-                            </span>
-                          )
-                        })}
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {deliverables.length > 0 && (
-                  <div className="sdp-table-wrap">
-                    <table className="sdp-table">
-                      <thead>
-                        <tr>
-                          <th>Contingut</th>
-                          <th>Format</th>
-                          <th style={{ width: 48, textAlign: 'center' }}>Q.</th>
-                          <th>Responsable</th>
-                          <th>Estat</th>
-                          <th style={{ width: 32 }} />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {deliverables.map((d, i) => (
-                          <tr key={d.id}>
-                            <td>
-                              <input
-                                className="sdp-table-input"
-                                value={d.contingut}
-                                onChange={e => updateDeliverable(i, { contingut: e.target.value })}
-                                placeholder="Reel presentació..."
-                              />
-                            </td>
-                            <td>
-                              <select className="sdp-table-select" value={d.format} onChange={e => updateDeliverable(i, { format: e.target.value })}>
-                                {DELIVERABLE_FORMATS.map(f => <option key={f}>{f}</option>)}
-                              </select>
-                            </td>
-                            <td>
-                              <input
-                                className="sdp-table-input sdp-table-input--num"
-                                type="number"
-                                min={1}
-                                value={d.quantitat}
-                                onChange={e => updateDeliverable(i, { quantitat: parseInt(e.target.value) || 1 })}
-                              />
-                            </td>
-                            <td>
-                              <ProfileSelect
-                                value={d.responsable}
-                                onChange={v => updateDeliverable(i, { responsable: v })}
-                                profiles={profiles}
-                                placeholder="—"
-                              />
-                            </td>
-                            <td>
-                              <select
-                                className="sdp-table-select"
-                                value={d.estat}
-                                onChange={e => updateDeliverable(i, { estat: e.target.value as Deliverable['estat'] })}
-                                style={{ color: DELIVERABLE_ESTAT_CFG[d.estat]?.color }}
-                              >
-                                {Object.entries(DELIVERABLE_ESTAT_CFG).map(([k, cfg]) => (
-                                  <option key={k} value={k} style={{ color: cfg.color }}>{cfg.label}</option>
-                                ))}
-                              </select>
-                            </td>
-                            <td>
-                              <button className="sdp-row-del" onClick={() => removeDeliverable(i)} title="Eliminar">
-                                <X size={13} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                <button className="sdp-add-row-btn" onClick={addDeliverable}>
-                  <Plus size={13} /> Afegir deliverable
-                </button>
-              </div>
-
-              <div className="sdp-divider" />
-
-              {/* Objectius de contingut */}
-              <div className="sdp-subsection">
-                <div className="sdp-section-title">Objectius de contingut</div>
-                <div className="sdp-brief-col">
-                  {[
-                    { label: 'Missatges que hem de transmetre', val: missatges, set: setMissatges },
-                    { label: 'CTA necessària', val: cta, set: setCta },
-                  ].map(({ label, val, set }) => (
-                    <div key={label} className="sdp-brief-field">
-                      <label className="sdp-brief-label">{label}</label>
-                      <textarea
-                        className="sdp-brief-textarea"
-                        rows={2}
-                        value={val}
-                        onChange={e => set(e.target.value)}
-                        placeholder="—"
-                      />
-                    </div>
-                  ))}
-                  <div className="sdp-brief-field">
-                    <label className="sdp-brief-label">Plataformes on es publicarà</label>
-                    <div className="sdp-plat-grid">
-                      {['Instagram', 'TikTok', 'YouTube', 'Facebook', 'LinkedIn', 'X (Twitter)', 'Pinterest'].map(p => {
-                        const active = plataformes.includes(p)
-                        return (
-                          <button
-                            key={p}
-                            type="button"
-                            className={`sdp-plat-btn${active ? ' sdp-plat-btn--on' : ''}`}
-                            onClick={() => setPlataformes(prev =>
-                              prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]
-                            )}
-                          >
-                            {p}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
                 </div>
               </div>
 
@@ -939,36 +1105,41 @@ export function SessionDetailPage({
                   </div>
                 )}
 
-                {([
-                  { key: 'preproducio' as const, label: 'Preproducció', items: CL_PREPRODUCIO },
-                  { key: 'produccio'   as const, label: 'Producció',    items: CL_PRODUCCIO },
-                  { key: 'logistica'  as const, label: 'Logística',    items: CL_LOGISTICA },
-                ]).map(section => {
-                  const sectionDone = section.items.filter(c => cl[section.key][c.key]).length
-                  return (
-                    <div key={section.key} className="sdp-cl-section">
-                      <div className="sdp-cl-section-title">
-                        {section.label}
-                        <span className="sdp-cl-section-count">{sectionDone}/{section.items.length}</span>
+                <div className="sdp-cl-grid">
+                  {([
+                    { key: 'preproducio' as const, label: 'Preproducció', items: CL_PREPRODUCIO },
+                    { key: 'produccio'   as const, label: 'Producció',    items: CL_PRODUCCIO },
+                    { key: 'logistica'  as const, label: 'Logística',    items: CL_LOGISTICA },
+                  ]).map(section => {
+                    const sectionDone = section.items.filter(c => cl[section.key][c.key]).length
+                    return (
+                      <div key={section.key} className="sdp-cl-col">
+                        <div className="sdp-cl-section-title">
+                          {section.label}
+                          <span className="sdp-cl-section-count">{sectionDone}/{section.items.length}</span>
+                        </div>
+                        <div className="sdp-cl-chips">
+                          {section.items.map(item => {
+                            const done = !!cl[section.key][item.key]
+                            return (
+                              <button
+                                key={item.key}
+                                type="button"
+                                className={`sdp-cl-chip${done ? ' sdp-cl-chip--done' : ''}`}
+                                onClick={() => toggleCl(section.key, item.key)}
+                              >
+                                <span className="sdp-cl-chip-check">
+                                  {done && <Check size={10} strokeWidth={3} />}
+                                </span>
+                                {item.label}
+                              </button>
+                            )
+                          })}
+                        </div>
                       </div>
-                      <div className="sdp-checklist">
-                        {section.items.map(item => (
-                          <label key={item.key} className="sdp-check-row">
-                            <input
-                              type="checkbox"
-                              className="sdp-check-input"
-                              checked={!!cl[section.key][item.key]}
-                              onChange={() => toggleCl(section.key, item.key)}
-                            />
-                            <span className={cl[section.key][item.key] ? 'sdp-check-label sdp-check-label--done' : 'sdp-check-label'}>
-                              {item.label}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
 
               {/* Autosave indicator */}
@@ -1249,23 +1420,29 @@ export function SessionDetailPage({
 
         /* ── Tabs ── */
         .sdp-tabs {
-          display: flex; border-bottom: 1px solid #F0F0F0;
+          display: flex; gap: 3px; padding: 4px;
+          background: #F0F2F5; border-radius: 12px; margin: 0 24px;
+          scrollbar-width: none;
         }
 
         .sdp-tab {
           display: flex; align-items: center; gap: 7px;
-          padding: 14px 22px; border: none; background: none;
-          font-size: 13.5px; font-weight: 600; color: #9A9A9A;
-          cursor: pointer; font-family: inherit; border-bottom: 2px solid transparent;
-          transition: all 0.15s; white-space: nowrap;
+          padding: 0 16px; height: 34px; border: none; background: transparent;
+          font-size: 13px; font-weight: 500; color: #6B7280;
+          cursor: pointer; font-family: inherit; border-radius: 8px;
+          transition: all 0.15s; white-space: nowrap; flex: 1; justify-content: center;
         }
-        .sdp-tab:hover { color: #0a0a0a; }
-        .sdp-tab--active { color: #1B2B4B; border-bottom-color: #1B2B4B; }
+        .sdp-tab:hover { background: rgba(255,255,255,0.65); color: #374151; }
+        .sdp-tab--active {
+          background: white; color: #1B2B4B; font-weight: 650;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.04);
+        }
 
         .sdp-tab-num {
-          width: 20px; height: 20px; border-radius: 50%;
-          background: #F0F0F0; color: #9A9A9A; font-size: 11px;
+          width: 18px; height: 18px; border-radius: 50%;
+          background: #E5E7EB; color: #6B7280; font-size: 10px;
           display: flex; align-items: center; justify-content: center; font-weight: 700;
+          flex-shrink: 0;
         }
         .sdp-tab--active .sdp-tab-num { background: #1B2B4B; color: white; }
 
@@ -1456,16 +1633,42 @@ export function SessionDetailPage({
           background: #EEF2FF; padding: 3px 10px; border-radius: 20px;
         }
 
-        .sdp-cl-section { margin-top: 8px; }
+        .sdp-cl-grid {
+          display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 8px;
+        }
+        @media (max-width: 767px) { .sdp-cl-grid { grid-template-columns: 1fr; } }
+
+        .sdp-cl-col { display: flex; flex-direction: column; gap: 6px; }
 
         .sdp-cl-section-title {
-          font-size: 12px; font-weight: 800; color: #6B7280;
+          font-size: 11px; font-weight: 800; color: #6B7280;
           text-transform: uppercase; letter-spacing: 0.07em;
-          padding: 6px 4px; display: flex; align-items: center; gap: 8px;
+          display: flex; align-items: center; gap: 6px; padding-bottom: 4px;
         }
         .sdp-cl-section-count {
-          font-size: 11px; font-weight: 600; color: #9CA3AF; font-style: normal;
-          letter-spacing: 0;
+          font-size: 10px; font-weight: 600; color: #9CA3AF; letter-spacing: 0;
+        }
+
+        .sdp-cl-chips { display: flex; flex-direction: column; gap: 3px; }
+
+        .sdp-cl-chip {
+          display: flex; align-items: center; gap: 7px;
+          padding: 6px 10px; border-radius: 8px; border: 1.5px solid #E5E7EB;
+          background: white; cursor: pointer; font-family: inherit; text-align: left;
+          font-size: 12.5px; color: #374151; font-weight: 500; transition: all 0.12s;
+          width: 100%;
+        }
+        .sdp-cl-chip:hover { border-color: #C0C8D8; background: #F8FAFF; }
+        .sdp-cl-chip--done {
+          background: #F0FDF4; border-color: #BBF7D0; color: #15803D;
+        }
+        .sdp-cl-chip-check {
+          width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid #D1D5DB;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0; transition: all 0.12s; background: white;
+        }
+        .sdp-cl-chip--done .sdp-cl-chip-check {
+          background: #16A34A; border-color: #16A34A; color: white;
         }
 
         .sdp-checklist { display: flex; flex-direction: column; gap: 2px; }

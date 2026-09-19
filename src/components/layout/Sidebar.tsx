@@ -37,13 +37,14 @@ const navDefs = [
 ]
 
 const serviceLinks = [
-  { label: 'Google Drive',     href: 'https://drive.google.com',                                            abbr: 'G',   color: '#1A73E8', bg: '#F0F4FF' },
-  { label: 'Gmail',            href: '',                                                                     abbr: 'GM',  color: '#EA4335', bg: '#FEF2F2', gmail: true },
-  { label: 'Google Calendar',  href: 'https://calendar.google.com',                                         abbr: 'GC',  color: '#1A73E8', bg: '#EEF4FF', fixed: true },
-  { label: 'Google Meet',      href: 'https://meet.google.com',                                             abbr: 'GMe', color: '#00897B', bg: '#E8F5E9', fixed: true },
-  { label: 'Dropbox',          href: 'https://www.dropbox.com',                                             abbr: 'D',   color: '#0061FF', bg: '#EEF3FF' },
-  { label: 'Metricool',        href: 'https://metricool.com/es/',                                           abbr: 'M',   color: '#E8521A', bg: '#FFF4EE', fixed: true },
-  { label: 'Brevo',            href: 'https://login.brevo.com/?target=https%3A%2F%2Fapp.brevo.com%2F',      abbr: 'BR',  color: '#0B7285', bg: '#EFF9FC', fixed: true },
+  { label: 'Google Drive',     href: 'https://drive.google.com',                                            abbr: 'G',   color: '#1A73E8', bg: 'rgba(255,255,255,0.12)' },
+  { label: 'Gmail',            href: '',                                                                     abbr: 'GM',  color: '#EA4335', bg: 'rgba(255,255,255,0.12)', gmail: true },
+  { label: 'Google Calendar',  href: 'https://calendar.google.com',                                         abbr: 'GC',  color: '#1A73E8', bg: 'rgba(255,255,255,0.12)', fixed: true },
+  { label: 'Google Meet',      href: 'https://meet.google.com',                                             abbr: 'GMe', color: '#00897B', bg: 'rgba(255,255,255,0.12)', fixed: true },
+  { label: 'Dropbox',          href: 'https://www.dropbox.com',                                             abbr: 'D',   color: '#0061FF', bg: 'rgba(255,255,255,0.12)' },
+  { label: 'Metricool',        href: 'https://metricool.com/es/',                                           abbr: 'M',   color: '#E8521A', bg: 'rgba(255,255,255,0.12)', fixed: true },
+  { label: 'Brevo',            href: 'https://login.brevo.com/?target=https%3A%2F%2Fapp.brevo.com%2F',      abbr: 'BR',  color: '#0B7285', bg: 'rgba(255,255,255,0.12)', fixed: true },
+  { label: 'Asobal TV',        href: 'https://asobal.tv',                                                   abbr: 'AT',  color: '#254067', bg: 'rgba(255,255,255,0.12)', fixed: true },
 ]
 
 function GoogleDriveIcon({ size = 18 }: { size?: number }) {

@@ -166,6 +166,8 @@ export function PostPanel({ sessionId, initialData, onSaved }: Props) {
     <div className="pp-wrap">
       {error && <div className="pp-error">{error}</div>}
 
+      <div className="pp-cols">
+
       {/* ── Material ── */}
       <div className="pp-section">
         <div className="pp-section-title">Material</div>
@@ -261,6 +263,8 @@ export function PostPanel({ sessionId, initialData, onSaved }: Props) {
         </div>
       </div>
 
+      </div>{/* end pp-cols */}
+
       {autoSave !== 'idle' && (
         <div className="pp-saving">
           {autoSave === 'saving'
@@ -271,6 +275,7 @@ export function PostPanel({ sessionId, initialData, onSaved }: Props) {
 
       <style jsx>{`
         .pp-wrap { display: flex; flex-direction: column; gap: 24px; }
+        .pp-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
 
         .pp-error {
           background: #FEF2F2; color: #DC2626; font-size: 12.5px;

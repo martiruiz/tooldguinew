@@ -457,6 +457,257 @@ function ItemModal({
   )
 }
 
+// ── Client Filter Picker ──
+function ClientFilterPicker({ clients, value, onChange }: {
+  clients: { id: string; name: string; logo_url?: string | null }[]
+  value: string
+  onChange: (id: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [q, setQ] = useState('')
+  const ref = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const selected = clients.find(c => c.id === value)
+  const filtered = q ? clients.filter(c => c.name.toLowerCase().includes(q.toLowerCase())) : clients
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setQ('') } }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  const select = (id: string) => { onChange(id); setOpen(false); setQ('') }
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button className="cfp-trigger" onClick={() => { setOpen(o => !o); setTimeout(() => inputRef.current?.focus(), 50) }}>
+        {selected ? (
+          <>
+            {selected.logo_url
+              ? <img src={selected.logo_url} alt="" className="cfp-logo" />
+              : <div className="cfp-av" style={{ background: avColor(selected.name) }}>{selected.name.slice(0,1)}</div>}
+            <span className="cfp-name">{selected.name}</span>
+            <button className="cfp-clear" onClick={e => { e.stopPropagation(); onChange('') }}>✕</button>
+          </>
+        ) : (
+          <span className="cfp-placeholder">Tots els clients</span>
+        )}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 'auto', opacity: 0.35, flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+
+      {open && (
+        <div className="cfp-drop">
+          <div className="cfp-search-row">
+            <Search size={12} style={{ color: '#9CA3AF', flexShrink: 0 }} />
+            <input ref={inputRef} className="cfp-search" placeholder="Cerca client..." value={q} onChange={e => setQ(e.target.value)} />
+            {q && <button className="cfp-clear-q" onClick={() => setQ('')}>×</button>}
+          </div>
+          <div className="cfp-grid">
+            <button className={`cfp-item${!value ? ' cfp-item--sel' : ''}`} onClick={() => select('')}>
+              <div className="cfp-item-av cfp-item-av--all">★</div>
+              <span className="cfp-item-name">Tots</span>
+            </button>
+            {filtered.map(c => (
+              <button key={c.id} className={`cfp-item${c.id === value ? ' cfp-item--sel' : ''}`} onClick={() => select(c.id)}>
+                {c.logo_url
+                  ? <img src={c.logo_url} alt="" className="cfp-item-logo" />
+                  : <div className="cfp-item-av" style={{ background: avColor(c.name) }}>{c.name.slice(0,1)}</div>}
+                <span className="cfp-item-name">{c.name}</span>
+                {c.id === value && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#254067" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        .cfp-trigger {
+          display: flex; align-items: center; gap: 7px;
+          height: 34px; padding: 0 10px;
+          border: 1px solid #E5E7EB; border-radius: 8px;
+          background: white; cursor: pointer; font-family: inherit;
+          font-size: 13px; color: #374151; min-width: 140px; max-width: 200px;
+          transition: border-color 0.15s;
+        }
+        .cfp-trigger:hover { border-color: #9CA3AF; }
+        .cfp-logo { width: 18px; height: 18px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
+        .cfp-av { width: 18px; height: 18px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: white; flex-shrink: 0; }
+        .cfp-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
+        .cfp-placeholder { flex: 1; color: #9CA3AF; font-size: 12.5px; white-space: nowrap; }
+        .cfp-clear { background: none; border: none; cursor: pointer; color: #9CA3AF; font-size: 13px; padding: 0 2px; line-height: 1; flex-shrink: 0; }
+        .cfp-clear:hover { color: #374151; }
+
+        .cfp-drop {
+          position: absolute; top: calc(100% + 6px); left: 0;
+          width: 320px; background: white;
+          border: 1px solid #E5E7EB; border-radius: 12px;
+          box-shadow: 0 12px 40px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.06);
+          z-index: 400; overflow: hidden;
+        }
+        .cfp-search-row {
+          display: flex; align-items: center; gap: 7px;
+          padding: 8px 12px; border-bottom: 1px solid #F3F4F6;
+        }
+        .cfp-search {
+          flex: 1; border: none; outline: none;
+          font-size: 13px; color: #111827; font-family: inherit; background: none;
+        }
+        .cfp-clear-q { background: none; border: none; cursor: pointer; color: #9CA3AF; font-size: 16px; padding: 0; }
+
+        .cfp-grid {
+          display: grid; grid-template-columns: repeat(2, 1fr);
+          gap: 3px; padding: 8px; max-height: 300px; overflow-y: auto;
+        }
+        .cfp-item {
+          display: flex; align-items: center; gap: 8px;
+          padding: 7px 9px; border: none; background: none;
+          cursor: pointer; border-radius: 8px; text-align: left;
+          font-family: inherit; transition: background 0.1s; min-width: 0;
+        }
+        .cfp-item:hover { background: #F5F7FB; }
+        .cfp-item--sel { background: #EFF6FF; }
+        .cfp-item-logo { width: 22px; height: 22px; border-radius: 5px; object-fit: cover; flex-shrink: 0; }
+        .cfp-item-av {
+          width: 22px; height: 22px; border-radius: 5px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 11px; font-weight: 800; color: white; flex-shrink: 0;
+        }
+        .cfp-item-av--all { background: #F3F4F6; color: #9CA3AF; font-size: 10px; }
+        .cfp-item-name {
+          font-size: 12px; color: #111827; flex: 1;
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+        }
+      `}</style>
+    </div>
+  )
+}
+
+// ── Member Filter Picker ──
+function MemberFilterPicker({ profiles, value, onChange }: {
+  profiles: { id: string; full_name: string; avatar_url?: string | null }[]
+  value: string
+  onChange: (id: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [q, setQ] = useState('')
+  const ref = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const selected = profiles.find(p => p.id === value)
+  const filtered = q ? profiles.filter(p => p.full_name.toLowerCase().includes(q.toLowerCase())) : profiles
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setQ('') } }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  const select = (id: string) => { onChange(id); setOpen(false); setQ('') }
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button className="mfp-trigger" onClick={() => { setOpen(o => !o); setTimeout(() => inputRef.current?.focus(), 50) }}>
+        {selected ? (
+          <>
+            {selected.avatar_url
+              ? <img src={selected.avatar_url} alt="" className="mfp-logo" />
+              : <div className="mfp-av" style={{ background: avColor(selected.full_name) }}>{selected.full_name.slice(0,1)}</div>}
+            <span className="mfp-name">{selected.full_name.split(' ')[0]}</span>
+            <button className="mfp-clear" onClick={e => { e.stopPropagation(); onChange('') }}>✕</button>
+          </>
+        ) : (
+          <span className="mfp-placeholder">Tots els membres</span>
+        )}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 'auto', opacity: 0.35, flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+
+      {open && (
+        <div className="mfp-drop">
+          <div className="mfp-search-row">
+            <Search size={12} style={{ color: '#9CA3AF', flexShrink: 0 }} />
+            <input ref={inputRef} className="mfp-search" placeholder="Cerca membre..." value={q} onChange={e => setQ(e.target.value)} />
+            {q && <button className="mfp-clear-q" onClick={() => setQ('')}>×</button>}
+          </div>
+          <div className="mfp-list">
+            <button className={`mfp-item${!value ? ' mfp-item--sel' : ''}`} onClick={() => select('')}>
+              <div className="mfp-item-av mfp-item-av--all">★</div>
+              <span className="mfp-item-name">Tots els membres</span>
+              {!value && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#254067" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+            </button>
+            {filtered.map(p => (
+              <button key={p.id} className={`mfp-item${p.id === value ? ' mfp-item--sel' : ''}`} onClick={() => select(p.id)}>
+                {p.avatar_url
+                  ? <img src={p.avatar_url} alt="" className="mfp-item-logo" />
+                  : <div className="mfp-item-av" style={{ background: avColor(p.full_name) }}>{p.full_name.slice(0,1)}</div>}
+                <span className="mfp-item-name">{p.full_name}</span>
+                {p.id === value && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#254067" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        .mfp-trigger {
+          display: flex; align-items: center; gap: 7px;
+          height: 34px; padding: 0 10px;
+          border: 1px solid #E5E7EB; border-radius: 8px;
+          background: white; cursor: pointer; font-family: inherit;
+          font-size: 13px; color: #374151; min-width: 140px; max-width: 200px;
+          transition: border-color 0.15s;
+        }
+        .mfp-trigger:hover { border-color: #9CA3AF; }
+        .mfp-logo { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+        .mfp-av { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: white; flex-shrink: 0; }
+        .mfp-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
+        .mfp-placeholder { flex: 1; color: #9CA3AF; font-size: 12.5px; white-space: nowrap; }
+        .mfp-clear { background: none; border: none; cursor: pointer; color: #9CA3AF; font-size: 13px; padding: 0 2px; line-height: 1; flex-shrink: 0; }
+        .mfp-clear:hover { color: #374151; }
+
+        .mfp-drop {
+          position: absolute; top: calc(100% + 6px); left: 0;
+          width: 240px; background: white;
+          border: 1px solid #E5E7EB; border-radius: 12px;
+          box-shadow: 0 12px 40px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.06);
+          z-index: 400; overflow: hidden;
+        }
+        .mfp-search-row {
+          display: flex; align-items: center; gap: 7px;
+          padding: 8px 12px; border-bottom: 1px solid #F3F4F6;
+        }
+        .mfp-search {
+          flex: 1; border: none; outline: none;
+          font-size: 13px; color: #111827; font-family: inherit; background: none;
+        }
+        .mfp-clear-q { background: none; border: none; cursor: pointer; color: #9CA3AF; font-size: 16px; padding: 0; }
+
+        .mfp-list {
+          display: flex; flex-direction: column;
+          gap: 2px; padding: 6px; max-height: 280px; overflow-y: auto;
+        }
+        .mfp-item {
+          display: flex; align-items: center; gap: 10px;
+          padding: 7px 10px; border: none; background: none;
+          cursor: pointer; border-radius: 8px; text-align: left;
+          font-family: inherit; transition: background 0.1s; min-width: 0;
+        }
+        .mfp-item:hover { background: #F5F7FB; }
+        .mfp-item--sel { background: #EFF6FF; }
+        .mfp-item-logo { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+        .mfp-item-av {
+          width: 26px; height: 26px; border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 11px; font-weight: 800; color: white; flex-shrink: 0;
+        }
+        .mfp-item-av--all { background: #F3F4F6; color: #9CA3AF; font-size: 10px; }
+        .mfp-item-name {
+          font-size: 13px; color: #111827; flex: 1;
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+        }
+      `}</style>
+    </div>
+  )
+}
+
 // ── Main Component ──
 export function ContentPipeline({ items: initialItems, clients, profiles, currentUserId }: Props) {
   const [items, setItems] = useState<ContentItem[]>(initialItems)
@@ -546,14 +797,8 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
           <Search size={13} style={{ color: '#9CA3AF', flexShrink: 0 }} />
           <input className="cp-search" placeholder="Cerca contingut..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <select className="cp-filter-sel" value={filterClient} onChange={e => setFilterClient(e.target.value)}>
-          <option value="">Tots els clients</option>
-          {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        <select className="cp-filter-sel" value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)}>
-          <option value="">Tots els membres</option>
-          {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
-        </select>
+        <ClientFilterPicker clients={clients} value={filterClient} onChange={setFilterClient} />
+        <MemberFilterPicker profiles={profiles} value={filterAssignee} onChange={setFilterAssignee} />
         <button className="cp-btn-new" onClick={() => setEditItem({})}>
           <Plus size={14} /> Nou contingut
         </button>

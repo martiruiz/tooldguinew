@@ -4,6 +4,7 @@
   background: #F8F8F8;
   width: 100%;
   max-width: 100%;
+  overflow-x: hidden;
 }
 
 .app-sidebar {
@@ -16,8 +17,9 @@
   flex-direction: column;
   min-width: 0;
   min-height: 100vh;
-  /* prevent horizontal overflow from inner components */
   overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
 }
 
 .app-mobile-nav {
@@ -35,7 +37,7 @@
 
 @media (max-width: 1023px) {
   .app-main {
-    /* account for mobile nav (64px) + safe area on notch devices */
-    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    /* account for mobile nav (60px) + safe area on notch devices */
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
   }
 }

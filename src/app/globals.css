@@ -45,6 +45,15 @@
   font-display: swap;
 }
 
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 :root {
   /* Guinew Brand Colors */
   --color-guinew-blue: #1B2B4B;
