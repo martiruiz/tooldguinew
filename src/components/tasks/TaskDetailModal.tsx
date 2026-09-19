@@ -480,32 +480,6 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
     if (d) logActivity('drive_removed', { name: d.name })
   }
 
-  const openDropboxChooser = () => {
-    const appKey = process.env.NEXT_PUBLIC_DROPBOX_APP_KEY || ''
-    if (!(window as any).Dropbox) {
-      const s = document.createElement('script')
-      s.src = 'https://www.dropbox.com/static/api/2/dropins.js'
-      s.id = 'dropboxjs'
-      s.setAttribute('data-app-key', appKey)
-      s.onload = () => launchDropbox()
-      document.head.appendChild(s)
-    } else {
-      launchDropbox()
-    }
-  }
-  const launchDropbox = () => {
-    ;(window as any).Dropbox.choose({
-      success: (files: { link: string; name: string }[]) => {
-        const f = files[0]
-        if (!f) return
-        const items = [...driveLinks, { id: crypto.randomUUID(), url: f.link, name: f.name }]
-        setDriveLinks(items); persist({ drive_links: items })
-      },
-      linkType: 'preview',
-      multiselect: false,
-    })
-  }
-
   // Photos & Videos
   const uploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -1063,16 +1037,6 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
                       <path d="M73.4 26.5l-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
                     </svg>
                     Drive
-                  </button>
-                  <button className="ghost-btn-sm" onClick={openDropboxChooser}>
-                    <svg width="11" height="11" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M8 2L0 7.5 8 13l8-5.5L8 2z" fill="#0061FF"/>
-                      <path d="M24 2l-8 5.5 8 5.5 8-5.5L24 2z" fill="#0061FF"/>
-                      <path d="M0 18.5L8 24l8-5.5-8-5.5L0 18.5z" fill="#0061FF"/>
-                      <path d="M24 13l-8 5.5 8 5.5 8-5.5L24 13z" fill="#0061FF"/>
-                      <path d="M8 25.5L16 31l8-5.5-8-5.5L8 25.5z" fill="#0061FF"/>
-                    </svg>
-                    Dropbox
                   </button>
                   <button className="ghost-btn-sm" onClick={() => { setShowDriveInput(v => !v); setShowDrivePicker(false) }}>
                     <Link2 size={11} />URL
