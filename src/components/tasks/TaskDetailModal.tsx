@@ -43,6 +43,9 @@ function avColor(name: string) {
   return colors[Math.abs(h)]
 }
 
+const LOGO_STYLE: React.CSSProperties = { width: 28, height: 28, borderRadius: 6, flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'white' }
+const IMG_STYLE: React.CSSProperties = { width: '100%', height: '100%', objectFit: 'cover', display: 'block' }
+
 function ClientPickerDropdown({ clients, value, onChange }: {
   clients: { id: string; name: string; logo_url?: string | null }[]
   value: string
@@ -50,58 +53,49 @@ function ClientPickerDropdown({ clients, value, onChange }: {
 }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [])
-
   const selected = clients.find(c => c.id === value)
   const filtered = clients.filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()))
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
+    <div>
       <button type="button" className="tdm-cl-trigger" onClick={() => { setOpen(o => !o); setSearch('') }}>
         {selected ? (
           <>
-            <div className="tdm-cl-trigger-logo" style={{ background: avColor(selected.name) }}>
-              {selected.logo_url
-                ? <img src={selected.logo_url} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',borderRadius:5 }}/>
-                : getInitials(selected.name)}
+            <div style={{ ...LOGO_STYLE, background: avColor(selected.name) }}>
+              {selected.logo_url ? <img src={selected.logo_url} alt="" style={IMG_STYLE}/> : getInitials(selected.name)}
             </div>
             <span className="tdm-cl-trigger-name">{selected.name}</span>
           </>
         ) : (
-          <span style={{ color: '#9CA3AF', fontSize: 13 }}>Sense client</span>
+          <span style={{ color: '#9CA3AF', fontSize: 13, flex: 1, textAlign: 'left' }}>Sense client</span>
         )}
-        <span style={{ marginLeft:'auto', color:'#9CA3AF', fontSize:10 }}>▾</span>
+        <span style={{ color: '#9CA3AF', fontSize: 10, marginLeft: 'auto', flexShrink: 0 }}>{open ? '▴' : '▾'}</span>
       </button>
 
       {open && (
-        <div className="tdm-cl-drop">
-          <div className="tdm-cl-search-wrap">
-            <input className="tdm-cl-search" placeholder="Cerca client..." value={search}
-              onChange={e => setSearch(e.target.value)} autoFocus />
-          </div>
-          <div className="tdm-cl-drop-grid">
+        <div style={{ marginTop: 6, border: '1.5px solid #E5E7EB', borderRadius: 12, background: 'white', padding: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }}>
+          <input
+            style={{ width: '100%', height: 32, padding: '0 10px', border: '1.5px solid #E5E7EB', borderRadius: 7, fontSize: 12.5, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+            placeholder="Cerca client..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            autoFocus
+          />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, maxHeight: 200, overflowY: 'auto' }}>
             <button type="button"
-              className={`tdm-cl-item${!value ? ' tdm-cl-item--on' : ''}`}
-              onClick={() => { onChange(''); setOpen(false) }}>
-              <div className="tdm-cl-logo tdm-cl-logo--none">—</div>
-              <span className="tdm-cl-name">Cap</span>
+              onClick={() => { onChange(''); setOpen(false) }}
+              style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3, padding:'6px 8px', border: `1.5px solid ${!value ? '#1B2B4B' : '#E5E7EB'}`, borderRadius:9, background: !value ? '#EEF2FA' : 'white', cursor:'pointer', fontFamily:'inherit', minWidth:48 }}>
+              <div style={{ ...LOGO_STYLE, background: '#E5E7EB', color: '#9CA3AF', fontSize: 14, fontWeight: 400 }}>—</div>
+              <span style={{ fontSize:10, fontWeight:600, color:'#374151' }}>Cap</span>
             </button>
             {filtered.map(c => (
               <button key={c.id} type="button"
-                className={`tdm-cl-item${value === c.id ? ' tdm-cl-item--on' : ''}`}
-                onClick={() => { onChange(c.id); setOpen(false) }}>
-                <div className="tdm-cl-logo" style={{ background: avColor(c.name) }}>
-                  {c.logo_url
-                    ? <img src={c.logo_url} alt={c.name} style={{ width:'100%',height:'100%',objectFit:'cover',borderRadius:6 }}/>
-                    : getInitials(c.name)}
+                onClick={() => { onChange(c.id); setOpen(false) }}
+                style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3, padding:'6px 8px', border: `1.5px solid ${value === c.id ? '#1B2B4B' : '#E5E7EB'}`, borderRadius:9, background: value === c.id ? '#EEF2FA' : 'white', cursor:'pointer', fontFamily:'inherit', minWidth:48 }}>
+                <div style={{ ...LOGO_STYLE, background: avColor(c.name) }}>
+                  {c.logo_url ? <img src={c.logo_url} alt={c.name} style={IMG_STYLE}/> : getInitials(c.name)}
                 </div>
-                <span className="tdm-cl-name">{c.name.split(' ')[0]}</span>
+                <span style={{ fontSize:10, fontWeight:600, color:'#374151', whiteSpace:'nowrap', maxWidth:54, overflow:'hidden', textOverflow:'ellipsis' }}>{c.name.split(' ')[0]}</span>
               </button>
             ))}
           </div>
