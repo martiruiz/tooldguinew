@@ -43,8 +43,8 @@ type ChatTarget =
   | { kind: 'dm'; peer: Profile }
   | { kind: 'conv'; convId: string; name: string; color?: string }
 
-function MiniChat({ target, currentUserId, profiles, onBack }: {
-  target: ChatTarget; currentUserId: string; profiles: Profile[]; onBack: () => void
+function MiniChat({ target, currentUserId, profiles, onBack, onClose }: {
+  target: ChatTarget; currentUserId: string; profiles: Profile[]; onBack: () => void; onClose: () => void
 }) {
   const [messages, setMessages] = useState<any[]>([])
   const [input, setInput] = useState('')
@@ -166,6 +166,9 @@ function MiniChat({ target, currentUserId, profiles, onBack }: {
         <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {target.kind === 'global' ? "Chat de l'equip" : target.kind === 'dm' ? target.peer.full_name : target.name}
         </span>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', display: 'flex', padding: 4, borderRadius: 8, flexShrink: 0 }}>
+          <X size={15} />
+        </button>
       </div>
 
       {/* Messages */}
@@ -391,7 +394,7 @@ export function ChatFab({ currentUserId, profiles = [] }: Props) {
 
           {/* Chat view or list view */}
           {target && currentUserId ? (
-            <MiniChat target={target} currentUserId={currentUserId} profiles={profiles} onBack={() => setTarget(null)} />
+            <MiniChat target={target} currentUserId={currentUserId} profiles={profiles} onBack={() => setTarget(null)} onClose={() => setOpen(false)} />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
               {/* Search */}
@@ -512,23 +515,25 @@ export function ChatFab({ currentUserId, profiles = [] }: Props) {
         </div>
       )}
 
-      {/* FAB button */}
-      <button onClick={toggleFab} title="Missatgeria" style={{
-        position: 'fixed', bottom: isMobile ? 76 : 24, right: isMobile ? 16 : 24, width: 52, height: 52, borderRadius: '50%', border: 'none',
-        background: open ? 'linear-gradient(135deg,#1B3A6B,#1E4080)' : 'linear-gradient(135deg,#1B4B82,#2563EB)',
-        color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 200, boxShadow: open ? '0 4px 20px rgba(27,75,130,0.5)' : '0 4px 20px rgba(37,99,235,0.45)',
-        transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)', transform: open ? 'scale(0.92)' : 'scale(1)',
-      }}
-        onMouseEnter={e => { if (!open) e.currentTarget.style.transform = 'scale(1.08)' }}
-        onMouseLeave={e => { e.currentTarget.style.transform = open ? 'scale(0.92)' : 'scale(1)' }}>
-        {open ? <X size={20} /> : <MessageCircle size={22} strokeWidth={1.8} />}
-        {unread > 0 && !open && (
-          <span style={{ position: 'absolute', top: 0, right: 0, minWidth: 18, height: 18, background: '#EF4444', borderRadius: 9, fontSize: 10, fontWeight: 700, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', border: '2px solid white' }}>
-            {unread > 9 ? '9+' : unread}
-          </span>
-        )}
-      </button>
+      {/* FAB button — amagat en mòbil quan el panell és obert */}
+      {!(open && isMobile) && (
+        <button onClick={toggleFab} title="Missatgeria" style={{
+          position: 'fixed', bottom: isMobile ? 76 : 24, right: isMobile ? 16 : 24, width: 52, height: 52, borderRadius: '50%', border: 'none',
+          background: open ? 'linear-gradient(135deg,#1B3A6B,#1E4080)' : 'linear-gradient(135deg,#1B4B82,#2563EB)',
+          color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 200, boxShadow: open ? '0 4px 20px rgba(27,75,130,0.5)' : '0 4px 20px rgba(37,99,235,0.45)',
+          transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)', transform: open ? 'scale(0.92)' : 'scale(1)',
+        }}
+          onMouseEnter={e => { if (!open) e.currentTarget.style.transform = 'scale(1.08)' }}
+          onMouseLeave={e => { e.currentTarget.style.transform = open ? 'scale(0.92)' : 'scale(1)' }}>
+          {open ? <X size={20} /> : <MessageCircle size={22} strokeWidth={1.8} />}
+          {unread > 0 && !open && (
+            <span style={{ position: 'absolute', top: 0, right: 0, minWidth: 18, height: 18, background: '#EF4444', borderRadius: 9, fontSize: 10, fontWeight: 700, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', border: '2px solid white' }}>
+              {unread > 9 ? '9+' : unread}
+            </span>
+          )}
+        </button>
+      )}
 
       <style>{`
         @keyframes fabPanelIn {

@@ -523,11 +523,11 @@ function ClientFilterPicker({ clients, value, onChange }: {
       <style jsx>{`
         .cfp-trigger {
           display: flex; align-items: center; gap: 7px;
-          height: 34px; padding: 0 10px;
+          height: 36px; padding: 0 10px;
           border: 1px solid #E5E7EB; border-radius: 8px;
           background: white; cursor: pointer; font-family: inherit;
           font-size: 13px; color: #374151; min-width: 140px; max-width: 200px;
-          transition: border-color 0.15s;
+          transition: border-color 0.15s; width: 100%;
         }
         .cfp-trigger:hover { border-color: #9CA3AF; }
         .cfp-logo { width: 18px; height: 18px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
@@ -543,6 +543,10 @@ function ClientFilterPicker({ clients, value, onChange }: {
           border: 1px solid #E5E7EB; border-radius: 12px;
           box-shadow: 0 12px 40px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.06);
           z-index: 400; overflow: hidden;
+        }
+        @media (max-width: 900px) {
+          .cfp-drop { left: auto; right: 0; width: min(300px, calc(100vw - 32px)); }
+          .cfp-grid { grid-template-columns: 1fr; }
         }
         .cfp-search-row {
           display: flex; align-items: center; gap: 7px;
@@ -649,11 +653,11 @@ function MemberFilterPicker({ profiles, value, onChange }: {
       <style jsx>{`
         .mfp-trigger {
           display: flex; align-items: center; gap: 7px;
-          height: 34px; padding: 0 10px;
+          height: 36px; padding: 0 10px;
           border: 1px solid #E5E7EB; border-radius: 8px;
           background: white; cursor: pointer; font-family: inherit;
           font-size: 13px; color: #374151; min-width: 140px; max-width: 200px;
-          transition: border-color 0.15s;
+          transition: border-color 0.15s; width: 100%;
         }
         .mfp-trigger:hover { border-color: #9CA3AF; }
         .mfp-logo { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
@@ -669,6 +673,9 @@ function MemberFilterPicker({ profiles, value, onChange }: {
           border: 1px solid #E5E7EB; border-radius: 12px;
           box-shadow: 0 12px 40px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.06);
           z-index: 400; overflow: hidden;
+        }
+        @media (max-width: 900px) {
+          .mfp-drop { width: min(240px, calc(100vw - 32px)); }
         }
         .mfp-search-row {
           display: flex; align-items: center; gap: 7px;
@@ -855,12 +862,12 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
         /* Layout */
         .cp-root { display: flex; flex-direction: column; height: calc(100vh - 60px); padding: 20px 24px; gap: 16px; overflow: hidden; }
 
-        /* Toolbar */
-        .cp-toolbar { display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
+        /* Toolbar — desktop */
+        .cp-toolbar { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
         .cp-search-wrap { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 180px; background: white; border: 1.5px solid #E5E7EB; border-radius: 9px; padding: 0 12px; height: 36px; }
         .cp-search { flex: 1; border: none; outline: none; font-size: 13px; font-family: inherit; background: transparent; color: #111827; }
         .cp-filter-sel { height: 36px; padding: 0 10px; border: 1.5px solid #E5E7EB; border-radius: 9px; font-size: 13px; font-family: inherit; color: #374151; background: white; cursor: pointer; outline: none; }
-        .cp-btn-new { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 16px; background: #1B2B4B; color: white; border: none; border-radius: 9px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; white-space: nowrap; }
+        .cp-btn-new { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 16px; background: #1B2B4B; color: white; border: none; border-radius: 9px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
         .cp-btn-new:hover { background: #254067; }
 
         /* Board */
@@ -868,8 +875,17 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
         .cp-col { display: flex; flex-direction: column; background: #F8F9FB; border-radius: 14px; min-height: 0; overflow: hidden; }
 
         @media (max-width: 900px) {
-          .cp-root { overflow-x: hidden; padding: 14px 16px 90px; }
-          .cp-board { display: flex !important; flex-direction: row; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding-bottom: 8px; flex: none; min-height: 0; height: calc(100vh - 160px); }
+          .cp-root { overflow-x: hidden; padding: 14px 16px 90px; gap: 10px; }
+          /* Toolbar: fila 1 = cerca + botó, fila 2 = filtres */
+          .cp-toolbar { flex-wrap: wrap; gap: 8px; }
+          .cp-search-wrap { flex: 1; min-width: 0; order: 0; }
+          .cp-btn-new { order: 1; flex-shrink: 0; }
+          /* Els pickers van a la fila 2, cada un 50% */
+          .cp-toolbar > div:nth-child(2),
+          .cp-toolbar > div:nth-child(3) {
+            order: 2; flex: 1; min-width: 0;
+          }
+          .cp-board { display: flex !important; flex-direction: row; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding-bottom: 8px; flex: none; min-height: 0; height: calc(100vh - 175px); }
           .cp-col { min-width: 240px; max-width: 240px; scroll-snap-align: start; flex-shrink: 0; height: 100%; }
           .cp-col-body { flex: 1; overflow-y: auto; }
         }
