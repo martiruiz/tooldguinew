@@ -545,7 +545,7 @@ function ClientFilterPicker({ clients, value, onChange }: {
           z-index: 400; overflow: hidden;
         }
         @media (max-width: 900px) {
-          .cfp-drop { left: auto; right: 0; width: min(300px, calc(100vw - 32px)); }
+          .cfp-drop { left: 0; right: auto; width: min(320px, calc(100vw - 32px)); }
           .cfp-grid { grid-template-columns: 1fr; }
         }
         .cfp-search-row {
@@ -675,7 +675,7 @@ function MemberFilterPicker({ profiles, value, onChange }: {
           z-index: 400; overflow: hidden;
         }
         @media (max-width: 900px) {
-          .mfp-drop { width: min(240px, calc(100vw - 32px)); }
+          .mfp-drop { left: auto; right: 0; width: min(260px, calc(100vw - 32px)); }
         }
         .mfp-search-row {
           display: flex; align-items: center; gap: 7px;
@@ -800,15 +800,19 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
     <div className="cp-root">
       {/* Toolbar */}
       <div className="cp-toolbar">
-        <div className="cp-search-wrap">
-          <Search size={13} style={{ color: '#9CA3AF', flexShrink: 0 }} />
-          <input className="cp-search" placeholder="Cerca contingut..." value={search} onChange={e => setSearch(e.target.value)} />
+        <div className="cp-toolbar-top">
+          <div className="cp-search-wrap">
+            <Search size={13} style={{ color: '#9CA3AF', flexShrink: 0 }} />
+            <input className="cp-search" placeholder="Cerca contingut..." value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          <button className="cp-btn-new" onClick={() => setEditItem({})}>
+            <Plus size={14} /> Nou contingut
+          </button>
         </div>
-        <ClientFilterPicker clients={clients} value={filterClient} onChange={setFilterClient} />
-        <MemberFilterPicker profiles={profiles} value={filterAssignee} onChange={setFilterAssignee} />
-        <button className="cp-btn-new" onClick={() => setEditItem({})}>
-          <Plus size={14} /> Nou contingut
-        </button>
+        <div className="cp-filters-row">
+          <ClientFilterPicker clients={clients} value={filterClient} onChange={setFilterClient} />
+          <MemberFilterPicker profiles={profiles} value={filterAssignee} onChange={setFilterAssignee} />
+        </div>
       </div>
 
       {/* Kanban board */}
@@ -862,10 +866,18 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
         /* Layout */
         .cp-root { display: flex; flex-direction: column; height: calc(100vh - 60px); padding: 20px 24px; gap: 16px; overflow: hidden; }
 
-        /* Toolbar — desktop */
-        .cp-toolbar { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-        .cp-search-wrap { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 180px; background: white; border: 1.5px solid #E5E7EB; border-radius: 9px; padding: 0 12px; height: 36px; }
-        .cp-search { flex: 1; border: none; outline: none; font-size: 13px; font-family: inherit; background: transparent; color: #111827; }
+        /* Toolbar */
+        .cp-toolbar { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+        .cp-toolbar-top { display: flex; align-items: center; gap: 10px; }
+        .cp-filters-row { display: flex; gap: 8px; }
+        .cp-filters-row > div { flex: 1; min-width: 0; }
+        @media (min-width: 901px) {
+          .cp-toolbar { flex-direction: row; align-items: center; }
+          .cp-toolbar-top { flex: 1; }
+          .cp-filters-row { flex-shrink: 0; }
+        }
+        .cp-search-wrap { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; background: white; border: 1.5px solid #E5E7EB; border-radius: 9px; padding: 0 12px; height: 36px; }
+        .cp-search { flex: 1; border: none; outline: none; font-size: 13px; font-family: inherit; background: transparent; color: #111827; min-width: 0; }
         .cp-filter-sel { height: 36px; padding: 0 10px; border: 1.5px solid #E5E7EB; border-radius: 9px; font-size: 13px; font-family: inherit; color: #374151; background: white; cursor: pointer; outline: none; }
         .cp-btn-new { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 16px; background: #1B2B4B; color: white; border: none; border-radius: 9px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
         .cp-btn-new:hover { background: #254067; }
@@ -876,16 +888,9 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
 
         @media (max-width: 900px) {
           .cp-root { overflow-x: hidden; padding: 14px 16px 90px; gap: 10px; }
-          /* Toolbar: fila 1 = cerca + botó, fila 2 = filtres */
-          .cp-toolbar { flex-wrap: wrap; gap: 8px; }
-          .cp-search-wrap { flex: 1; min-width: 0; order: 0; }
-          .cp-btn-new { order: 1; flex-shrink: 0; }
-          /* Els pickers van a la fila 2, cada un 50% */
-          .cp-toolbar > div:nth-child(2),
-          .cp-toolbar > div:nth-child(3) {
-            order: 2; flex: 1; min-width: 0;
-          }
-          .cp-board { display: flex !important; flex-direction: row; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding-bottom: 8px; flex: none; min-height: 0; height: calc(100vh - 175px); }
+          .cp-toolbar-top { width: 100%; }
+          .cp-filters-row { width: 100%; }
+          .cp-board { display: flex !important; flex-direction: row; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding-bottom: 8px; flex: none; min-height: 0; height: calc(100vh - 200px); }
           .cp-col { min-width: 240px; max-width: 240px; scroll-snap-align: start; flex-shrink: 0; height: 100%; }
           .cp-col-body { flex: 1; overflow-y: auto; }
         }
