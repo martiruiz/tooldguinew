@@ -1566,8 +1566,8 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         .progress-fill { height: 100%; background: #16A34A; border-radius: 2px; transition: width 0.3s; }
 
         /* Photos grid */
-        .photos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
-        .photo-thumb { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; cursor: pointer; background: #F0F0F0; }
+        .photos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; }
+        .photo-thumb { position: relative; aspect-ratio: 4/5; border-radius: 8px; overflow: hidden; cursor: pointer; background: #F0F0F0; }
         .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .photo-video { width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer; }
         .photo-del { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: none; border-radius: 5px; background: rgba(0,0,0,0.65); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.15s; z-index: 10; }

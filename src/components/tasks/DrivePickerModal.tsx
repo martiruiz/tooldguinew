@@ -130,7 +130,31 @@ export function DrivePickerModal({ onSelect, onClose }: Props) {
               <span>Carregant...</span>
             </div>
           ) : error ? (
-            <div className="state-center error">{error}</div>
+            <div className="state-center error">
+              <svg width="40" height="40" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.35 }}>
+                <path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+                <path d="M43.65 25L29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z" fill="#00ac47"/>
+                <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.4 9.5z" fill="#ea4335"/>
+                <path d="M43.65 25L57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+                <path d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+                <path d="M73.4 26.5l-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+              </svg>
+              <span style={{ fontWeight: 600, color: '#374151', fontSize: 14 }}>Google Drive no connectat</span>
+              <span style={{ color: '#9A9A9A', fontSize: 12.5, textAlign: 'center', maxWidth: 260 }}>Connecta el teu compte de Google per accedir als teus fitxers de Drive.</span>
+              <a href="/api/auth/google" style={{ display:'inline-flex', alignItems:'center', gap:8, marginTop:4, padding:'9px 18px', background:'#1B2B4B', color:'white', borderRadius:9, fontSize:13, fontWeight:600, textDecoration:'none', transition:'background 0.15s' }}
+                onMouseOver={e => (e.currentTarget.style.background='#254067')}
+                onMouseOut={e => (e.currentTarget.style.background='#1B2B4B')}>
+                <svg width="14" height="14" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5z" fill="#fff"/>
+                  <path d="M43.65 25L29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z" fill="#fff"/>
+                  <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.4 9.5z" fill="#fff"/>
+                  <path d="M43.65 25L57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z" fill="#fff"/>
+                  <path d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#fff"/>
+                  <path d="M73.4 26.5l-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#fff"/>
+                </svg>
+                Connectar Google Drive
+              </a>
+            </div>
           ) : filtered.length === 0 ? (
             <div className="state-center">
               <Folder size={24} color="#D0D0D0" />
