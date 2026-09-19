@@ -733,108 +733,135 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
 
           <div className="modal-body">
 
-            {/* Responsible + Labels + Watchers */}
-            <div className="meta-row">
-              {/* Responsible chip */}
-              {(() => {
-                const rp = profiles.find(p => p.id === form.responsible_id) as any
-                return (
-                  <div className="rel-wrap">
-                    <button className="resp-chip" onClick={() => setShowResponsiblePicker(v => !v)}>
-                      {rp ? (
-                        <>
-                          <div className="resp-av">
-                            {rp.avatar_url ? <img src={rp.avatar_url} alt="" /> : getInitials(rp.full_name)}
-                          </div>
-                          <span className="resp-chip-name">{rp.full_name}</span>
-                        </>
-                      ) : (
-                        <>
-                          <div className="resp-av resp-av--empty">
-                            <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="3.5" r="2" stroke="currentColor" strokeWidth="1.5"/><path d="M1 10c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                          </div>
-                          <span className="resp-chip-name resp-chip-name--empty">Assignar</span>
-                        </>
-                      )}
-                    </button>
-                    {showResponsiblePicker && (
-                      <div className="resp-picker" onClick={e => e.stopPropagation()}>
-                        <button className="resp-picker-opt" onClick={() => { saveDropdown('responsible_id', ''); setShowResponsiblePicker(false) }}>
-                          <div className="resp-av resp-av--empty" style={{ fontSize: 14 }}>—</div>
-                          <span>Sense assignar</span>
-                        </button>
-                        {profiles.map(p => {
-                          const pa = p as any
-                          return (
-                            <button key={p.id}
-                              className={`resp-picker-opt${form.responsible_id === p.id ? ' resp-picker-opt--on' : ''}`}
-                              onClick={() => { saveDropdown('responsible_id', p.id); setShowResponsiblePicker(false) }}>
-                              <div className="resp-av">
-                                {pa.avatar_url ? <img src={pa.avatar_url} alt="" /> : getInitials(p.full_name)}
-                              </div>
-                              <span>{p.full_name}</span>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )
-              })()}
-
-              <div className="label-zone">
-                {activeLabels.map(l => (
-                  <span key={l.id} className="chip" style={{ color: l.color, background: `${l.color}18`, borderColor: `${l.color}30` }}>
-                    <span className="dot" style={{ background: l.color }} />{l.name}
-                    <button className="chip-rm" onClick={() => toggleLabel(l.id)}>×</button>
-                  </span>
-                ))}
-                <div className="rel-wrap">
-                  <button className="ghost-btn" onClick={() => setShowLabelPicker(v => !v)}><Tag size={11} />Etiqueta</button>
-                  {showLabelPicker && (
-                    <div className="picker-dd">
-                      {allLabels.length === 0 && <div className="picker-empty">Crea etiquetes primer</div>}
-                      {allLabels.map(l => (
-                        <button key={l.id} className={`picker-opt${labelIds.includes(l.id) ? ' picker-opt--on' : ''}`} onClick={() => { toggleLabel(l.id); setShowLabelPicker(false) }}>
-                          <span className="dot" style={{ background: l.color }} />
-                          <span style={{ color: l.color, fontWeight: labelIds.includes(l.id) ? 700 : 500 }}>{l.name}</span>
-                          {labelIds.includes(l.id) && <Check size={10} style={{ marginLeft: 'auto' }} />}
-                        </button>
-                      ))}
-                      <button className="picker-mgr" onClick={() => { setShowLabelPicker(false); setShowLabelManager(true) }}>
-                        <Settings2 size={11} />Gestionar etiquetes
+            {/* Meta card: Assignat / Etiquetes / Seguiment */}
+            {(() => {
+              const rp = profiles.find(p => p.id === form.responsible_id) as any
+              return (
+                <div className="meta-card">
+                  {/* Assignat a */}
+                  <div className="meta-col">
+                    <div className="meta-col-lbl">Assignat a</div>
+                    <div className="rel-wrap">
+                      <button className="mc-resp-btn" onClick={() => setShowResponsiblePicker(v => !v)}>
+                        {rp ? (
+                          <>
+                            <div className="mc-av">
+                              {rp.avatar_url ? <img src={rp.avatar_url} alt="" /> : getInitials(rp.full_name)}
+                            </div>
+                            <div className="mc-resp-info">
+                              <span className="mc-resp-name">{rp.full_name}</span>
+                              <span className="mc-resp-sub">Responsable</span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="mc-av mc-av--empty">
+                              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="4.5" r="2.5" stroke="currentColor" strokeWidth="1.6"/><path d="M1.5 13c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
+                            </div>
+                            <span className="mc-resp-name mc-resp-name--empty">Sense assignar</span>
+                          </>
+                        )}
+                        <svg className="mc-caret" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       </button>
+                      {showResponsiblePicker && (
+                        <div className="resp-picker" onClick={e => e.stopPropagation()}>
+                          <button className="resp-picker-opt" onClick={() => { saveDropdown('responsible_id', ''); setShowResponsiblePicker(false) }}>
+                            <div className="resp-av resp-av--empty" style={{ fontSize: 14 }}>—</div>
+                            <span>Sense assignar</span>
+                          </button>
+                          {profiles.map(p => {
+                            const pa = p as any
+                            return (
+                              <button key={p.id}
+                                className={`resp-picker-opt${form.responsible_id === p.id ? ' resp-picker-opt--on' : ''}`}
+                                onClick={() => { saveDropdown('responsible_id', p.id); setShowResponsiblePicker(false) }}>
+                                <div className="resp-av" style={{ background: avColor(p.full_name) }}>
+                                  {pa.avatar_url ? <img src={pa.avatar_url} alt="" /> : getInitials(p.full_name)}
+                                </div>
+                                <span>{p.full_name}</span>
+                                {form.responsible_id === p.id && <Check size={11} style={{ marginLeft: 'auto', color: '#1B2B4B' }} />}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="watcher-zone">
-                {watchers.map(w => (
-                  <div key={w.id} className="watcher-av" title={w.full_name}
-                    onClick={() => toggleWatcher(w.id)}>
-                    {w.avatar_url ? <img src={w.avatar_url} alt={w.full_name} /> : getInitials(w.full_name)}
                   </div>
-                ))}
-                <div className="rel-wrap">
-                  <button className="ghost-btn" onClick={() => setShowWatcherPicker(v => !v)}>
-                    <UserPlus size={11} />Seguiment
-                  </button>
-                  {showWatcherPicker && (
-                    <div className="picker-dd picker-dd--right">
-                      <div className="picker-label">Assignar seguiment</div>
-                      {profiles.map(p => (
-                        <button key={p.id} className={`picker-opt${watcherIds.includes(p.id) ? ' picker-opt--on' : ''}`} onClick={() => { toggleWatcher(p.id); setShowWatcherPicker(false) }}>
-                          <div className="mini-av">{p.avatar_url ? <img src={p.avatar_url} /> : getInitials(p.full_name)}</div>
-                          <span>{p.full_name}</span>
-                          {watcherIds.includes(p.id) && <Check size={10} style={{ marginLeft: 'auto', color: '#1B2B4B' }} />}
-                        </button>
+
+                  <div className="meta-sep" />
+
+                  {/* Etiquetes */}
+                  <div className="meta-col">
+                    <div className="meta-col-lbl">Etiquetes</div>
+                    <div className="mc-label-zone">
+                      {activeLabels.map(l => (
+                        <span key={l.id} className="mc-label-chip" style={{ color: l.color, background: `${l.color}18`, borderColor: `${l.color}35` }}>
+                          <span className="mc-label-dot" style={{ background: l.color }} />
+                          {l.name}
+                          <button className="mc-label-rm" onClick={() => toggleLabel(l.id)}>×</button>
+                        </span>
                       ))}
+                      <div className="rel-wrap">
+                        <button className="mc-add-btn" onClick={() => setShowLabelPicker(v => !v)}>
+                          <Plus size={11} />
+                        </button>
+                        {showLabelPicker && (
+                          <div className="picker-dd">
+                            {allLabels.length === 0 && <div className="picker-empty">Crea etiquetes primer</div>}
+                            {allLabels.map(l => (
+                              <button key={l.id} className={`picker-opt${labelIds.includes(l.id) ? ' picker-opt--on' : ''}`} onClick={() => { toggleLabel(l.id); setShowLabelPicker(false) }}>
+                                <span className="dot" style={{ background: l.color }} />
+                                <span style={{ color: l.color, fontWeight: labelIds.includes(l.id) ? 700 : 500 }}>{l.name}</span>
+                                {labelIds.includes(l.id) && <Check size={10} style={{ marginLeft: 'auto' }} />}
+                              </button>
+                            ))}
+                            <button className="picker-mgr" onClick={() => { setShowLabelPicker(false); setShowLabelManager(true) }}>
+                              <Settings2 size={11} />Gestionar etiquetes
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
+                  </div>
+
+                  <div className="meta-sep" />
+
+                  {/* Seguiment */}
+                  <div className="meta-col">
+                    <div className="meta-col-lbl">Seguiment</div>
+                    <div className="mc-watcher-zone">
+                      <div className="mc-av-stack">
+                        {watchers.slice(0, 4).map((w, i) => (
+                          <div key={w.id} className="mc-stack-av" style={{ zIndex: 10 - i }} title={w.full_name} onClick={() => toggleWatcher(w.id)}>
+                            {(w as any).avatar_url ? <img src={(w as any).avatar_url} alt={w.full_name} /> : getInitials(w.full_name)}
+                          </div>
+                        ))}
+                        {watchers.length > 4 && (
+                          <div className="mc-stack-av mc-stack-av--more">+{watchers.length - 4}</div>
+                        )}
+                      </div>
+                      <div className="rel-wrap">
+                        <button className="mc-add-btn" onClick={() => setShowWatcherPicker(v => !v)}>
+                          <UserPlus size={11} />
+                        </button>
+                        {showWatcherPicker && (
+                          <div className="picker-dd picker-dd--right">
+                            <div className="picker-label">Assignar seguiment</div>
+                            {profiles.map(p => (
+                              <button key={p.id} className={`picker-opt${watcherIds.includes(p.id) ? ' picker-opt--on' : ''}`} onClick={() => { toggleWatcher(p.id); setShowWatcherPicker(false) }}>
+                                <div className="mini-av">{(p as any).avatar_url ? <img src={(p as any).avatar_url} /> : getInitials(p.full_name)}</div>
+                                <span>{p.full_name}</span>
+                                {watcherIds.includes(p.id) && <Check size={10} style={{ marginLeft: 'auto', color: '#1B2B4B' }} />}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              )
+            })()}
 
             {/* Fields grid */}
             <div className="grid6">
@@ -1248,7 +1275,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
           display: flex; align-items: center; gap: 6px; font-size: 11px;
           font-weight: 700; padding: 4px 10px; border-radius: 20px;
         }
-        .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
         .hdr-right { display: flex; align-items: center; gap: 10px; }
         .txt-dirty { font-size: 12px; color: #D97706; font-weight: 500; }
         .txt-saved { font-size: 12px; color: #16A34A; font-weight: 600; }
@@ -1312,24 +1339,71 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         .resp-picker-opt:hover { background: #F5F7FB; }
         .resp-picker-opt--on { background: #F0F4FF; font-weight: 600; color: #1B2B4B; }
 
-        /* Meta row */
-        .meta-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-        .label-zone { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
-        .watcher-zone { display: flex; align-items: center; gap: 6px; }
-        .chip {
-          display: inline-flex; align-items: center; gap: 5px; font-size: 11px;
-          font-weight: 600; padding: 3px 8px; border-radius: 20px; border: 1px solid;
+        /* Meta card */
+        .meta-card {
+          display: flex; align-items: stretch;
+          background: #F8F9FC; border: 1.5px solid #ECEEF4; border-radius: 14px;
+          overflow: visible;
         }
-        .chip-rm { border: none; background: transparent; cursor: pointer; font-size: 13px; color: inherit; opacity: 0.6; padding: 0 0 0 2px; }
+        .meta-col { display: flex; flex-direction: column; gap: 7px; padding: 12px 14px; flex: 1; min-width: 0; }
+        .meta-col-lbl { font-size: 9.5px; font-weight: 800; color: #B0B4C0; letter-spacing: 0.08em; text-transform: uppercase; }
+        .meta-sep { width: 1.5px; background: #ECEEF4; flex-shrink: 0; margin: 10px 0; }
 
-        .watcher-av {
-          width: 26px; height: 26px; border-radius: 50%; background: #1B2B4B14; color: #1B2B4B;
-          font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center;
-          cursor: pointer; overflow: hidden; border: 2px solid white; box-shadow: 0 0 0 1px #E0E0E0;
-          transition: box-shadow 0.15s;
+        /* Responsible button inside meta-card */
+        .mc-resp-btn {
+          display: inline-flex; align-items: center; gap: 9px;
+          background: white; border: 1.5px solid #ECEEF4; border-radius: 10px;
+          padding: 6px 10px 6px 6px; cursor: pointer; font-family: inherit;
+          transition: all 0.15s; width: 100%; box-sizing: border-box;
         }
-        .watcher-av:hover { box-shadow: 0 0 0 2px #DC2626; }
-        .watcher-av img { width: 100%; height: 100%; object-fit: cover; }
+        .mc-resp-btn:hover { border-color: #1B2B4B; background: #F0F4FF; }
+        .mc-av {
+          width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 11px; font-weight: 800; color: white; overflow: hidden;
+          background: #1B2B4B;
+        }
+        .mc-av img { width: 100%; height: 100%; object-fit: cover; }
+        .mc-av--empty { background: #ECEEF4; color: #9CA3AF; }
+        .mc-resp-info { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; text-align: left; }
+        .mc-resp-name { font-size: 12.5px; font-weight: 700; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mc-resp-name--empty { font-size: 12.5px; font-weight: 500; color: #B0B4C0; flex: 1; text-align: left; }
+        .mc-resp-sub { font-size: 10px; color: #9CA3AF; font-weight: 500; }
+        .mc-caret { color: #B0B4C0; flex-shrink: 0; }
+
+        /* Label zone inside meta-card */
+        .mc-label-zone { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; min-height: 28px; }
+        .mc-label-chip {
+          display: inline-flex; align-items: center; gap: 4px; font-size: 11px;
+          font-weight: 600; padding: 3px 8px 3px 6px; border-radius: 20px; border: 1px solid;
+        }
+        .mc-label-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .mc-label-rm { border: none; background: transparent; cursor: pointer; font-size: 13px; color: inherit; opacity: 0.5; padding: 0 0 0 1px; line-height: 1; }
+        .mc-label-rm:hover { opacity: 1; }
+
+        /* Watcher zone inside meta-card */
+        .mc-watcher-zone { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+        .mc-av-stack { display: flex; align-items: center; }
+        .mc-stack-av {
+          width: 30px; height: 30px; border-radius: 50%; border: 2.5px solid #F8F9FC;
+          background: #1B2B4B; color: white; font-size: 9px; font-weight: 800;
+          display: flex; align-items: center; justify-content: center;
+          overflow: hidden; cursor: pointer; margin-left: -8px; flex-shrink: 0;
+          transition: transform 0.15s; box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+        }
+        .mc-stack-av:first-child { margin-left: 0; }
+        .mc-stack-av:hover { transform: translateY(-2px); z-index: 20 !important; }
+        .mc-stack-av img { width: 100%; height: 100%; object-fit: cover; }
+        .mc-stack-av--more { background: #E5E7EB; color: #6B7280; font-size: 10px; font-weight: 700; cursor: default; }
+        .mc-stack-av--more:hover { transform: none; }
+
+        /* Generic add button inside meta-card */
+        .mc-add-btn {
+          width: 28px; height: 28px; border: 1.5px dashed #D1D5DB; border-radius: 50%;
+          background: white; cursor: pointer; display: flex; align-items: center; justify-content: center;
+          color: #9CA3AF; transition: all 0.15s; flex-shrink: 0;
+        }
+        .mc-add-btn:hover { border-color: #1B2B4B; color: #1B2B4B; background: #EEF2FA; border-style: solid; }
 
         .rel-wrap { position: relative; }
         .ghost-btn {
@@ -1338,6 +1412,12 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
           padding: 3px 10px; cursor: pointer; font-family: inherit; transition: all 0.15s;
         }
         .ghost-btn:hover { color: #5C5C5C; border-color: #C0C0C0; }
+        .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .chip {
+          display: inline-flex; align-items: center; gap: 5px; font-size: 11px;
+          font-weight: 600; padding: 3px 8px; border-radius: 20px; border: 1px solid;
+        }
+        .chip-rm { border: none; background: transparent; cursor: pointer; font-size: 13px; color: inherit; opacity: 0.6; padding: 0 0 0 2px; }
         .ghost-btn-sm {
           display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #9A9A9A;
           border: none; background: transparent; cursor: pointer; font-family: inherit;
