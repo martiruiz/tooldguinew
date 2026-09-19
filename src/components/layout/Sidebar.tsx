@@ -28,12 +28,12 @@ const financeNavDefs = [
 
 const navDefs = [
   { href: '/dashboard', icon: LayoutDashboard, labelKey: 'dashboard' as keyof typeof TRANSLATIONS },
-  { href: '/inbox',     icon: Inbox,           labelKey: 'inbox'     as keyof typeof TRANSLATIONS },
   { href: '/clients',   icon: Users,           labelKey: 'clients'   as keyof typeof TRANSLATIONS },
-  { href: '/check',     icon: ClipboardList,   labelKey: 'sessions'  as keyof typeof TRANSLATIONS },
+  { href: '/tasks',     icon: CheckSquare,     labelKey: 'tasks'     as keyof typeof TRANSLATIONS },
   { href: '/contingut', icon: Layers,          labelKey: 'content'   as keyof typeof TRANSLATIONS },
   { href: '/projects',  icon: FolderKanban,    labelKey: 'campaigns' as keyof typeof TRANSLATIONS },
-  { href: '/tasks',     icon: CheckSquare,     labelKey: 'tasks'     as keyof typeof TRANSLATIONS },
+  { href: '/check',     icon: ClipboardList,   labelKey: 'sessions'  as keyof typeof TRANSLATIONS },
+  { href: '/inbox',     icon: Inbox,           labelKey: 'inbox'     as keyof typeof TRANSLATIONS },
 ]
 
 const serviceLinks = [
