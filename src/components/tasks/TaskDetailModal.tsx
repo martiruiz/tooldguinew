@@ -81,21 +81,23 @@ function ClientPickerDropdown({ clients, value, onChange }: {
             onChange={e => setSearch(e.target.value)}
             autoFocus
           />
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, maxHeight: 200, overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 220, overflowY: 'auto' }}>
             <button type="button"
               onClick={() => { onChange(''); setOpen(false) }}
-              style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3, padding:'6px 8px', border: `1.5px solid ${!value ? '#1B2B4B' : '#E5E7EB'}`, borderRadius:9, background: !value ? '#EEF2FA' : 'white', cursor:'pointer', fontFamily:'inherit', minWidth:48 }}>
+              style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 8px', border:'none', borderRadius:8, background: !value ? '#EEF2FA' : 'transparent', cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
               <div style={{ ...LOGO_STYLE, background: '#E5E7EB', color: '#9CA3AF', fontSize: 14, fontWeight: 400 }}>—</div>
-              <span style={{ fontSize:10, fontWeight:600, color:'#374151' }}>Cap</span>
+              <span style={{ fontSize:13, fontWeight: !value ? 700 : 500, color: !value ? '#1B2B4B' : '#374151' }}>Sense client</span>
+              {!value && <span style={{ marginLeft:'auto', color:'#1B2B4B', fontSize:12 }}>✓</span>}
             </button>
             {filtered.map(c => (
               <button key={c.id} type="button"
                 onClick={() => { onChange(c.id); setOpen(false) }}
-                style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3, padding:'6px 8px', border: `1.5px solid ${value === c.id ? '#1B2B4B' : '#E5E7EB'}`, borderRadius:9, background: value === c.id ? '#EEF2FA' : 'white', cursor:'pointer', fontFamily:'inherit', minWidth:48 }}>
+                style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 8px', border:'none', borderRadius:8, background: value === c.id ? '#EEF2FA' : 'transparent', cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
                 <div style={{ ...LOGO_STYLE, background: avColor(c.name) }}>
                   {c.logo_url ? <img src={c.logo_url} alt={c.name} style={IMG_STYLE}/> : getInitials(c.name)}
                 </div>
-                <span style={{ fontSize:10, fontWeight:600, color:'#374151', whiteSpace:'nowrap', maxWidth:54, overflow:'hidden', textOverflow:'ellipsis' }}>{c.name.split(' ')[0]}</span>
+                <span style={{ fontSize:13, fontWeight: value === c.id ? 700 : 500, color: value === c.id ? '#1B2B4B' : '#374151', flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{c.name}</span>
+                {value === c.id && <span style={{ color:'#1B2B4B', fontSize:12, flexShrink:0 }}>✓</span>}
               </button>
             ))}
           </div>
