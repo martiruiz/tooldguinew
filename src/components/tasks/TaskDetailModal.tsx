@@ -900,15 +900,35 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
             {/* Fields grid */}
             <div className="grid6">
               <div className="field"><label>Estat</label>
-                <select value={form.status} onChange={e => saveDropdown('status', e.target.value)}>
-                  {STATUS_COLS.map(c => <option key={c.status} value={c.status}>{c.label}</option>)}
-                </select>
+                <div className="fld-chips">
+                  {STATUS_COLS.map(c => (
+                    <button key={c.status} type="button"
+                      onClick={() => saveDropdown('status', c.status)}
+                      className={`fld-chip${form.status === c.status ? ' fld-chip--on' : ''}`}
+                      style={form.status === c.status ? { background: `${c.color}18`, borderColor: c.color, color: c.color } : {}}>
+                      <span className="fld-chip-dot" style={{ background: c.color }} />
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="field"><label>Prioritat</label>
-                <select value={form.priority} onChange={e => saveDropdown('priority', e.target.value)}>
-                  <option value="low">Baixa</option><option value="medium">Mitja</option>
-                  <option value="high">Alta</option><option value="urgent">Urgent</option>
-                </select>
+                <div className="fld-chips">
+                  {[
+                    { value: 'low',    label: 'Baixa',  color: '#6B7280' },
+                    { value: 'medium', label: 'Mitja',  color: '#2563EB' },
+                    { value: 'high',   label: 'Alta',   color: '#D97706' },
+                    { value: 'urgent', label: 'Urgent', color: '#DC2626' },
+                  ].map(p => (
+                    <button key={p.value} type="button"
+                      onClick={() => saveDropdown('priority', p.value)}
+                      className={`fld-chip${form.priority === p.value ? ' fld-chip--on' : ''}`}
+                      style={form.priority === p.value ? { background: `${p.color}18`, borderColor: p.color, color: p.color } : {}}>
+                      <span className="fld-chip-dot" style={{ background: p.color }} />
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="field"><label>Responsable</label>
                 <div className="tdm-ap-grid">
@@ -1493,6 +1513,18 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         .grid6 { display: grid; grid-template-columns: 1fr; gap: 7px; }
         .field { display: flex; flex-direction: column; gap: 6px; }
         .field label { font-size: 10.5px; font-weight: 700; color: #9A9A9A; letter-spacing: 0.05em; text-transform: uppercase; }
+        /* Field chip selectors (Estat, Prioritat) */
+        .fld-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+        .fld-chip {
+          display: inline-flex; align-items: center; gap: 5px;
+          padding: 5px 11px; border: 1.5px solid #E5E7EB; border-radius: 20px;
+          background: white; cursor: pointer; font-family: inherit;
+          font-size: 12px; font-weight: 500; color: #6B7280;
+          transition: all 0.15s;
+        }
+        .fld-chip:hover { border-color: #D1D5DB; background: #F9FAFB; }
+        .fld-chip--on { font-weight: 700; }
+        .fld-chip-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
         /* Assignee picker */
         .tdm-ap-grid { display: flex; flex-wrap: wrap; gap: 6px; }
         .tdm-ap-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 7px 8px; border: 1.5px solid #E5E7EB; border-radius: 10px; background: white; cursor: pointer; font-family: inherit; transition: all 0.12s; min-width: 50px; }
