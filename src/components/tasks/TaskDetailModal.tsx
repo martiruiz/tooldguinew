@@ -53,16 +53,33 @@ function ClientPickerDropdown({ clients, value, onChange }: {
 }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [dropStyle, setDropStyle] = useState<React.CSSProperties>({})
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const selected = clients.find(c => c.id === value)
   const filtered = clients.filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()))
 
-  const triggerBg = selected ? 'white' : '#F3F4F6'
-  const triggerBorder = selected ? '#E5E7EB' : '#D1D5DB'
+  const handleToggle = () => {
+    if (!open && triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - r.bottom
+      const dropH = Math.min(280, spaceBelow - 12)
+      setDropStyle({
+        position: 'fixed',
+        top: r.bottom + 4,
+        left: r.left,
+        width: r.width,
+        maxHeight: dropH,
+        zIndex: 9999,
+      })
+    }
+    setOpen(o => !o)
+    setSearch('')
+  }
 
   return (
-    <div>
-      <button type="button" onClick={() => { setOpen(o => !o); setSearch('') }}
-        style={{ display:'flex', alignItems:'center', gap:9, width:'100%', height:40, padding:'0 12px', border:`1.5px solid ${open ? '#1B2B4B' : triggerBorder}`, borderRadius:10, background: open ? 'white' : triggerBg, cursor:'pointer', fontFamily:'inherit', transition:'all 0.15s', boxSizing:'border-box' }}>
+    <>
+      <button ref={triggerRef} type="button" onClick={handleToggle}
+        style={{ display:'flex', alignItems:'center', gap:9, width:'100%', height:40, padding:'0 12px', border:`1.5px solid ${open ? '#1B2B4B' : selected ? '#E5E7EB' : '#D1D5DB'}`, borderRadius:10, background: open ? 'white' : selected ? 'white' : '#F3F4F6', cursor:'pointer', fontFamily:'inherit', transition:'all 0.15s', boxSizing:'border-box' }}>
         {selected ? (
           <>
             <div style={{ ...LOGO_STYLE, background: avColor(selected.name), width:26, height:26 }}>
@@ -81,40 +98,44 @@ function ClientPickerDropdown({ clients, value, onChange }: {
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color:'#9CA3AF', flexShrink:0, transform: open ? 'rotate(180deg)' : 'none', transition:'transform 0.15s' }}><path d="M3.5 5.5l3.5 3.5 3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
       </button>
 
-      {open && (
-        <div style={{ marginTop:6, border:'1.5px solid #E5E7EB', borderRadius:12, background:'white', padding:'8px 6px', boxShadow:'0 8px 24px rgba(0,0,0,0.12)' }}>
-          <div style={{ padding:'0 4px 6px' }}>
-            <input
-              style={{ width:'100%', height:34, padding:'0 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:12.5, fontFamily:'inherit', outline:'none', boxSizing:'border-box', background:'#F9FAFB' }}
-              placeholder="Cerca client..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              autoFocus
-            />
-          </div>
-          <div style={{ display:'flex', flexDirection:'column', maxHeight:190, overflowY:'auto' }}>
-            <button type="button"
-              onClick={() => { onChange(''); setOpen(false) }}
-              style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 10px', border:'none', borderRadius:8, background: !value ? '#EEF2FA' : 'transparent', cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
-              <div style={{ width:26, height:26, borderRadius:6, background:'#E5E7EB', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:14, color:'#9CA3AF' }}>—</div>
-              <span style={{ fontSize:13, fontWeight: !value ? 700 : 500, color: !value ? '#1B2B4B' : '#374151', flex:1 }}>Sense client</span>
-              {!value && <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink:0 }}><path d="M2 6l3 3 5-5" stroke="#1B2B4B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-            </button>
-            {filtered.map(c => (
-              <button key={c.id} type="button"
-                onClick={() => { onChange(c.id); setOpen(false) }}
-                style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 10px', border:'none', borderRadius:8, background: value === c.id ? '#EEF2FA' : 'transparent', cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
-                <div style={{ ...LOGO_STYLE, background: avColor(c.name), width:26, height:26 }}>
-                  {c.logo_url ? <img src={c.logo_url} alt={c.name} style={IMG_STYLE}/> : getInitials(c.name)}
-                </div>
-                <span style={{ fontSize:13, fontWeight: value === c.id ? 700 : 500, color: value === c.id ? '#1B2B4B' : '#374151', flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{c.name}</span>
-                {value === c.id && <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink:0 }}><path d="M2 6l3 3 5-5" stroke="#1B2B4B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+      {open && createPortal(
+        <>
+          <div style={{ position:'fixed', inset:0, zIndex:9998 }} onClick={() => setOpen(false)} />
+          <div style={{ ...dropStyle, border:'1.5px solid #E5E7EB', borderRadius:12, background:'white', boxShadow:'0 8px 28px rgba(0,0,0,0.14)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+            <div style={{ padding:'8px 8px 6px', flexShrink:0 }}>
+              <input
+                style={{ width:'100%', height:34, padding:'0 10px', border:'1.5px solid #E5E7EB', borderRadius:8, fontSize:12.5, fontFamily:'inherit', outline:'none', boxSizing:'border-box', background:'#F9FAFB' }}
+                placeholder="Cerca client..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div style={{ overflowY:'auto', flex:1, padding:'0 6px 6px' }}>
+              <button type="button"
+                onClick={() => { onChange(''); setOpen(false) }}
+                style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 10px', border:'none', borderRadius:8, background: !value ? '#EEF2FA' : 'transparent', cursor:'pointer', fontFamily:'inherit', textAlign:'left', width:'100%', boxSizing:'border-box' }}>
+                <div style={{ width:26, height:26, borderRadius:6, background:'#E5E7EB', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:14, color:'#9CA3AF' }}>—</div>
+                <span style={{ fontSize:13, fontWeight: !value ? 700 : 500, color: !value ? '#1B2B4B' : '#374151', flex:1 }}>Sense client</span>
+                {!value && <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink:0 }}><path d="M2 6l3 3 5-5" stroke="#1B2B4B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
               </button>
-            ))}
+              {filtered.map(c => (
+                <button key={c.id} type="button"
+                  onClick={() => { onChange(c.id); setOpen(false) }}
+                  style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 10px', border:'none', borderRadius:8, background: value === c.id ? '#EEF2FA' : 'transparent', cursor:'pointer', fontFamily:'inherit', textAlign:'left', width:'100%', boxSizing:'border-box' }}>
+                  <div style={{ ...LOGO_STYLE, background: avColor(c.name), width:26, height:26 }}>
+                    {c.logo_url ? <img src={c.logo_url} alt={c.name} style={IMG_STYLE}/> : getInitials(c.name)}
+                  </div>
+                  <span style={{ fontSize:13, fontWeight: value === c.id ? 700 : 500, color: value === c.id ? '#1B2B4B' : '#374151', flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{c.name}</span>
+                  {value === c.id && <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink:0 }}><path d="M2 6l3 3 5-5" stroke="#1B2B4B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        </>,
+        document.body
       )}
-    </div>
+    </>
   )
 }
 
