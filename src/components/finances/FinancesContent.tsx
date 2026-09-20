@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, Trash2, Save, ArrowUpRight, ArrowDownRight, Pencil, Download, ChevronUp, ChevronDown, ArrowLeft, Landmark } from 'lucide-react'
+import { Plus, Trash2, Save, ArrowUpRight, ArrowDownRight, Pencil, Download, ChevronUp, ChevronDown, ArrowLeft, Landmark, Search } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { FiscalitatSection, computeFiscalKpis, DEFAULT_FISCAL_DATA } from './FiscalitatSection'
 import type { FiscalData } from './FiscalitatSection'
@@ -533,6 +533,7 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
   const [filterTipo, setFilterTipo] = useState('all')
   const [filterRent, setFilterRent] = useState('all')
   const [filterEstat, setFilterEstat] = useState('all')
+  const [filterSearch, setFilterSearch] = useState('')
   const [sortCol, setSortCol] = useState('clientName')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set())
@@ -567,6 +568,7 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
 
   const filtered = useMemo(() => {
     let r = rows
+    if (filterSearch.trim()) r = r.filter((row: any) => row.clientName.toLowerCase().includes(filterSearch.toLowerCase().trim()))
     if (filterTipo !== 'all') r = r.filter((row: any) => row.tipo.toLowerCase() === filterTipo)
     if (filterRent !== 'all') r = r.filter((row: any) => row.rentKey === filterRent)
     if (filterEstat !== 'all') r = r.filter((row: any) => row.estado.toLowerCase() === filterEstat)
@@ -622,33 +624,47 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
       </div>
 
       <div className="ct-toolbar">
-        <div className="ct-filters">
-          {[
-            { label: 'Tipus', value: filterTipo, set: setFilterTipo, opts: [['all','Tots'],['recurrent','Recurrent'],['puntual','Puntual']] },
-            { label: 'Estat', value: filterEstat, set: setFilterEstat, opts: [['all','Tots'],['actiu','Actiu'],['inactiu','Inactiu']] },
-            { label: 'Rendibilitat', value: filterRent, set: setFilterRent, opts: [['all','Totes'],['adequate','Rendibilitat adequada'],['below','Per sota l\'objectiu'],['deficit','Deficitari']] },
-          ].map(f => (
-            <div key={f.label} className="ct-filter-group">
-              <label>{f.label}</label>
-              <select value={f.value} onChange={e => f.set(e.target.value)}>
-                {f.opts.map(([v,l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-            </div>
-          ))}
+        <div className="ct-search-wrap">
+          <Search size={13} style={{ color: '#9CA3AF', flexShrink: 0 }} />
+          <input
+            className="ct-search-input"
+            placeholder="Cerca client..."
+            value={filterSearch}
+            onChange={e => setFilterSearch(e.target.value)}
+          />
+          {filterSearch && (
+            <button className="ct-search-clear" onClick={() => setFilterSearch('')}>✕</button>
+          )}
         </div>
-        <div className="ct-sort-wrap">
-          <label className="ct-sort-label">Ordenar per</label>
-          <select className="ct-sort-select" value={sortCol} onChange={e => { setSortCol(e.target.value); setSortDir('asc') }}>
-            <option value="clientName">Nom</option>
-            <option value="fee">Fee</option>
-            <option value="dc">Cost directe</option>
-            <option value="margenEur">Marge €</option>
-            <option value="margenPct">Marge %</option>
-            <option value="rentKey">Rendibilitat</option>
-          </select>
-          <button className="ct-sort-dir" onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}>
-            {sortDir === 'asc' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
-          </button>
+        <div className="ct-toolbar-row">
+          <div className="ct-filters">
+            {[
+              { label: 'Tipus', value: filterTipo, set: setFilterTipo, opts: [['all','Tots'],['recurrent','Recurrent'],['puntual','Puntual']] },
+              { label: 'Estat', value: filterEstat, set: setFilterEstat, opts: [['all','Tots'],['actiu','Actiu'],['inactiu','Inactiu']] },
+              { label: 'Rendibilitat', value: filterRent, set: setFilterRent, opts: [['all','Totes'],['adequate','Rendibilitat adequada'],['below','Per sota l\'objectiu'],['deficit','Deficitari']] },
+            ].map(f => (
+              <div key={f.label} className="ct-filter-group">
+                <label>{f.label}</label>
+                <select value={f.value} onChange={e => f.set(e.target.value)}>
+                  {f.opts.map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
+          <div className="ct-sort-wrap">
+            <label className="ct-sort-label">Ordenar per</label>
+            <select className="ct-sort-select" value={sortCol} onChange={e => { setSortCol(e.target.value); setSortDir('asc') }}>
+              <option value="clientName">Nom</option>
+              <option value="fee">Fee</option>
+              <option value="dc">Cost directe</option>
+              <option value="margenEur">Marge €</option>
+              <option value="margenPct">Marge %</option>
+              <option value="rentKey">Rendibilitat</option>
+            </select>
+            <button className="ct-sort-dir" onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}>
+              {sortDir === 'asc' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -802,7 +818,13 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
         .ct-col-menu-item input[type="checkbox"] { width: 15px; height: 15px; accent-color: #254067; cursor: pointer; flex-shrink: 0; }
 
         /* ── Toolbar ── */
-        .ct-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+        .ct-toolbar { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+        .ct-toolbar-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+        .ct-search-wrap { display: flex; align-items: center; gap: 8px; background: white; border: 1.5px solid #E5E7EB; border-radius: 9px; padding: 0 12px; height: 36px; transition: border-color 0.12s; }
+        .ct-search-wrap:focus-within { border-color: #254067; }
+        .ct-search-input { flex: 1; border: none; outline: none; font-size: 13px; font-family: inherit; background: transparent; color: #111827; min-width: 0; width: 100%; }
+        .ct-search-clear { background: none; border: none; cursor: pointer; color: #9CA3AF; font-size: 13px; padding: 0 2px; line-height: 1; flex-shrink: 0; }
+        .ct-search-clear:hover { color: #374151; }
         .ct-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
         .ct-filter-group { display: flex; flex-direction: column; gap: 3px; }
         .ct-filter-group label { font-size: 10px; font-weight: 700; color: #9CA3AF; letter-spacing: 0.07em; text-transform: uppercase; }
@@ -901,6 +923,8 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
           .ct-card-left { width: 100%; }
           .ct-card-right { width: 100%; overflow-x: auto; padding-bottom: 4px; }
           .ct-toolbar { flex-direction: column; gap: 8px; }
+          .ct-toolbar-row { flex-direction: column; gap: 8px; }
+          .ct-search-wrap { width: 100%; }
           .ct-filters { width: 100%; }
           .ct-filter-group select { min-width: 0; width: 100%; }
         }
