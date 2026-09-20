@@ -6,7 +6,7 @@ import Link from 'next/link'
 import {
   CheckSquare, Square, Plus, Loader2, ChevronRight,
   Clock, User, AlertCircle, CheckCircle2, Circle, PlayCircle, Eye,
-  Pencil, Trash2, X, Check
+  Pencil, Trash2, X, Check, ShieldAlert,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
@@ -89,21 +89,68 @@ const STATUS_META: Record<string, { icon: React.ReactNode; label: string; color:
   done:        { icon: <CheckCircle2 size={13} />,  label: 'Fet',        color: '#16A34A' },
 }
 
+interface ProjectInsight {
+  id: string
+  severity: 'info' | 'warning' | 'critical'
+  title: string
+  created_at: string
+}
+
 interface Props {
   project: Project & { client?: { id: string; name: string; type: string } }
   tasks: Task[]
   profiles: { id: string; full_name: string; avatar_url?: string }[]
   currentUser: Profile
+  projectInsights?: ProjectInsight[]
 }
 
-export function ProjectDetail({ project, tasks: initialTasks, profiles, currentUser }: Props) {
+function computeRiskScore(tasks: Task[], project: Project): { score: number; label: string; color: string; reasons: string[] } {
+  const now = new Date()
+  const active = tasks.filter(t => t.status !== 'done' && (t.status as string) !== 'cancelled')
+  const overdue = active.filter(t => t.deadline && new Date(t.deadline) < now)
+  const blocked = active.filter(t => t.status === 'blocked')
+  const reasons: string[] = []
+
+  let score = 0
+
+  if (active.length > 0) {
+    const overduePct = overdue.length / active.length
+    if (overduePct > 0.5) { score += 40; reasons.push(`${overdue.length} tasques vençudes (${Math.round(overduePct * 100)}%)`) }
+    else if (overduePct > 0.2) { score += 20; reasons.push(`${overdue.length} tasques vençudes`) }
+  }
+
+  if (blocked.length > 0) { score += Math.min(blocked.length * 10, 30); reasons.push(`${blocked.length} tasques bloquejades`) }
+
+  if (project.end_date) {
+    const daysLeft = Math.ceil((new Date(project.end_date).getTime() - now.getTime()) / 86400000)
+    if (daysLeft < 0) { score += 30; reasons.push('Deadline superat') }
+    else if (daysLeft < 7) { score += 15; reasons.push(`${daysLeft} dies per al deadline`) }
+  }
+
+  if (project.status === 'at_risk') { score += 20; reasons.push('Marcat com a "en risc"') }
+  if (project.status === 'blocked') { score += 30; reasons.push('Projecte bloquejat') }
+
+  score = Math.min(score, 100)
+
+  let label = 'Baix'
+  let color = '#16A34A'
+  if (score >= 70) { label = 'Crític'; color = '#DC2626' }
+  else if (score >= 40) { label = 'Mig'; color = '#D97706' }
+  else if (score >= 15) { label = 'Baix-Mig'; color = '#D97706' }
+
+  return { score, label, color, reasons }
+}
+
+export function ProjectDetail({ project, tasks: initialTasks, profiles, currentUser, projectInsights = [] }: Props) {
   const router = useRouter()
   const sb = createClient()
 
   type TemplateItem = { title: string; description: string; priority: string }
 
+  const isPrivileged = currentUser.role === 'superadmin' || currentUser.role === 'manager'
   const baseTemplates = TASK_TEMPLATES[project.type] || TASK_TEMPLATES.custom
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
+  const [localInsights, setLocalInsights] = useState<ProjectInsight[]>(projectInsights)
   const [localTemplates, setLocalTemplates] = useState<TemplateItem[]>(baseTemplates)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [creating, setCreating] = useState(false)
@@ -234,6 +281,24 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
           </h1>
         )}
         {project.description && <p className="pd-desc">{project.description}</p>}
+
+        {/* Risk Score — superadmin + manager only */}
+        {isPrivileged && (() => {
+          const risk = computeRiskScore(tasks, project as any)
+          if (risk.score === 0) return null
+          return (
+            <div style={{
+              marginTop: '12px', display: 'flex', alignItems: 'center', gap: '10px',
+              padding: '10px 14px', background: risk.score >= 70 ? '#FEF2F2' : risk.score >= 40 ? '#FFFBEB' : '#F9FAFB',
+              border: `1px solid ${risk.score >= 70 ? '#FECACA' : risk.score >= 40 ? '#FDE68A' : '#E5E7EB'}`,
+              borderRadius: '8px',
+            }}>
+              <ShieldAlert size={14} color={risk.color} strokeWidth={2} style={{ flexShrink: 0 }} />
+              <span style={{ fontSize: '13px', fontWeight: 600, color: risk.color }}>Risk: {risk.label} ({risk.score}/100)</span>
+              <span style={{ fontSize: '12px', color: '#6B7280' }}>{risk.reasons.join(' · ')}</span>
+            </div>
+          )
+        })()}
       </div>
 
       <div className="pd-body">
@@ -390,6 +455,32 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
               Nova
             </button>
           </div>
+
+          {/* AI alerts for this project */}
+          {isPrivileged && localInsights.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
+              {localInsights.map(ins => (
+                <div key={ins.id} style={{
+                  display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px',
+                  background: ins.severity === 'critical' ? '#FEF2F2' : '#FFFBEB',
+                  border: `1px solid ${ins.severity === 'critical' ? '#FECACA' : '#FDE68A'}`,
+                  borderRadius: '6px', fontSize: '12px',
+                }}>
+                  <AlertCircle size={12} color={ins.severity === 'critical' ? '#DC2626' : '#D97706'} />
+                  <span style={{ flex: 1, color: '#1B2B4B' }}>{ins.title}</span>
+                  <button
+                    onClick={async () => {
+                      await fetch('/api/intelligence/insights', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: ins.id, resolved: true }) })
+                      setLocalInsights(prev => prev.filter(i => i.id !== ins.id))
+                    }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: '0 2px' }}
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {tasks.length === 0 ? (
             <div className="empty-tasks">

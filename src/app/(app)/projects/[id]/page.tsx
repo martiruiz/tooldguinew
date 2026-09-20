@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/serverAdmin'
 import { redirect, notFound } from 'next/navigation'
 import { Topbar } from '@/components/layout/Topbar'
 import { ProjectDetail } from '@/components/projects/ProjectDetail'
@@ -32,6 +33,23 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   if (!project) notFound()
 
+  const isPrivileged = profile?.role === 'superadmin' || profile?.role === 'manager'
+  let projectInsights: any[] = []
+  if (isPrivileged) {
+    try {
+      const admin = createAdminClient()
+      const { data: ins } = await admin
+        .from('ai_insights')
+        .select('id, severity, title, created_at')
+        .eq('entity_type', 'project')
+        .eq('entity_id', id)
+        .eq('resolved', false)
+        .order('severity', { ascending: true })
+        .limit(10)
+      projectInsights = ins ?? []
+    } catch {}
+  }
+
   return (
     <>
       <Topbar user={profile as Profile} title={(project as any).name} />
@@ -40,6 +58,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         tasks={tasks || []}
         profiles={profiles || []}
         currentUser={profile as Profile}
+        projectInsights={projectInsights}
       />
     </>
   )
