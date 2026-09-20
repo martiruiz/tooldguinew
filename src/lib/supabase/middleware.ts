@@ -27,8 +27,11 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
   const isPublicRoute = pathname === '/login' || pathname === '/forgot-password'
+  const isCronRoute = pathname.startsWith('/api/intelligence/') &&
+    request.headers.get('x-cron-secret') === process.env.CRON_SECRET &&
+    !!process.env.CRON_SECRET
 
-  if (!user && !isPublicRoute) {
+  if (!user && !isPublicRoute && !isCronRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
