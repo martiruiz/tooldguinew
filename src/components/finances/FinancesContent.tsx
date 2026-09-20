@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, Save, ArrowUpRight, ArrowDownRight, Pencil, Download, ChevronUp, ChevronDown, ArrowLeft, Landmark, Search } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { FiscalitatSection, computeFiscalKpis, DEFAULT_FISCAL_DATA } from './FiscalitatSection'
@@ -55,7 +56,7 @@ interface FinanceData {
   monthlyAccountingTotals?: number[]  // 12 values: total facturat per mes (per derivar recurrent = total - CRM)
 }
 
-const STORAGE_KEY = 'guinew_finances_v2'
+const STORAGE_KEY = 'guinew_finances_v2' // legacy key, used only for one-time migration
 
 function _uid(s: string) { return 'seed-' + s }
 
@@ -148,71 +149,251 @@ function recordDirectCost(r: ClientRecord) {
   return r.collaborators.reduce((s, c) => s + (c.cost || 0), 0) + r.otherCosts.reduce((s, c) => s + (c.amount || 0), 0)
 }
 
-const FISCAL_KEY = 'guinew_fiscal_v1'
+const FISCAL_KEY = 'guinew_fiscal_v1' // legacy key, used only for one-time migration
 
-export function FinancesContent({ clients, profiles }: { clients: ClientBasic[]; profiles: ProfileBasic[] }) {
+// ── helpers to convert between app types and DB row shapes ──
+
+function recordToRow(r: ClientRecord, userId: string) {
+  return {
+    id: r.id, user_id: userId,
+    client_id: r.clientId || null,
+    client_name: r.clientName,
+    tipo: r.tipo, estado: r.estado,
+    fee: r.fee, iva_pct: r.ivaPct ?? null,
+    margin_objective: r.marginObjective,
+    start_date: r.startDate, end_date: r.endDate,
+    responsible: r.responsible, services: r.services, observations: r.observations,
+    collaborators: r.collaborators, other_costs: r.otherCosts,
+    photo_url: r.photoUrl || null,
+  }
+}
+
+function rowToRecord(row: any): ClientRecord {
+  return {
+    id: row.id, clientId: row.client_id || undefined,
+    clientName: row.client_name, tipo: row.tipo, estado: row.estado,
+    fee: Number(row.fee), ivaPct: row.iva_pct != null ? Number(row.iva_pct) : undefined,
+    marginObjective: Number(row.margin_objective),
+    startDate: row.start_date || '', endDate: row.end_date || '',
+    responsible: row.responsible || '', services: row.services || '', observations: row.observations || '',
+    collaborators: row.collaborators || [], otherCosts: row.other_costs || [],
+    photoUrl: row.photo_url || undefined,
+  }
+}
+
+function supplierToRow(s: Supplier, userId: string) {
+  return {
+    id: s.id, user_id: userId,
+    name: s.name, category: s.category, contact: s.contact, notes: s.notes,
+    monthly_fee: s.monthlyFee, structure_amount: s.structureAmount,
+    irpf_pct: s.irpfPct ?? null, iva_pct: s.ivaPct ?? null,
+  }
+}
+
+function rowToSupplier(row: any): Supplier {
+  return {
+    id: row.id, name: row.name, category: row.category, contact: row.contact, notes: row.notes,
+    monthlyFee: Number(row.monthly_fee), structureAmount: Number(row.structure_amount),
+    irpfPct: row.irpf_pct != null ? Number(row.irpf_pct) : undefined,
+    ivaPct: row.iva_pct != null ? Number(row.iva_pct) : undefined,
+  }
+}
+
+function scToRow(sc: StructureCost, userId: string) {
+  return {
+    id: sc.id, user_id: userId,
+    name: sc.name, category: sc.category || '', amount: sc.amount,
+    supplier_ref: sc.supplierRef || '',
+    iva_pct: sc.ivaPct ?? null, iva_deduible_pct: sc.ivaDeduiblePct ?? null, irpf_pct: sc.irpfPct ?? null,
+  }
+}
+
+function rowToSC(row: any): StructureCost {
+  return {
+    id: row.id, name: row.name, category: row.category || undefined, amount: Number(row.amount),
+    supplierRef: row.supplier_ref || undefined,
+    ivaPct: row.iva_pct != null ? Number(row.iva_pct) : undefined,
+    ivaDeduiblePct: row.iva_deduible_pct != null ? Number(row.iva_deduible_pct) : undefined,
+    irpfPct: row.irpf_pct != null ? Number(row.irpf_pct) : undefined,
+  }
+}
+
+export function FinancesContent({ clients, profiles, userId }: { clients: ClientBasic[]; profiles: ProfileBasic[]; userId: string }) {
   const searchParams = useSearchParams()
   const section = (searchParams.get('s') as Section) || 'resum'
   const [data, setData] = useState<FinanceData>(defaultData)
+  const [loading, setLoading] = useState(true)
   const [saved, setSaved] = useState(false)
   const [fiscalData, setFiscalData] = useState<FiscalData>(DEFAULT_FISCAL_DATA)
+  const prevIdsRef = useRef<{ records: Set<string>; suppliers: Set<string>; structureCosts: Set<string> }>({
+    records: new Set(), suppliers: new Set(), structureCosts: new Set()
+  })
 
+  // ── Load from Supabase ──────────────────────────────────────
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        let changed = false
-        const hasSeededRecords = parsed.records?.some((r: ClientRecord) => r.id?.startsWith('seed-'))
-        if (!parsed.records || parsed.records.length === 0 || !hasSeededRecords) {
-          parsed.records = SEED_RECORDS; changed = true
+    const supabase = createClient()
+    async function load() {
+      setLoading(true)
+      const [
+        { data: dbRecords },
+        { data: dbSuppliers },
+        { data: dbSC },
+        { data: dbSettings },
+        { data: dbFiscal },
+      ] = await Promise.all([
+        supabase.from('finance_records').select('*').eq('user_id', userId),
+        supabase.from('finance_suppliers').select('*').eq('user_id', userId),
+        supabase.from('finance_structure_costs').select('*').eq('user_id', userId),
+        supabase.from('finance_settings').select('*').eq('user_id', userId).single(),
+        supabase.from('finance_fiscal_data').select('*').eq('user_id', userId).single(),
+      ])
+
+      const hasData = dbRecords && dbRecords.length > 0
+
+      if (hasData) {
+        // Data exists in Supabase — use it
+        const records = (dbRecords || []).map(rowToRecord)
+        const suppliers = (dbSuppliers || []).map(rowToSupplier)
+        const structureCosts = (dbSC || []).map(rowToSC)
+        const settings = dbSettings as any
+        const loaded: FinanceData = {
+          records,
+          suppliers: suppliers.length > 0 ? suppliers : SEED_SUPPLIERS,
+          structureCosts: structureCosts.length > 0 ? structureCosts : SEED_STRUCTURE_COSTS,
+          marginObjective: settings?.margin_objective != null ? Number(settings.margin_objective) : defaultData.marginObjective,
+          allocationMode: settings?.allocation_mode || defaultData.allocationMode,
+          monthlyAccountingTotals: settings?.monthly_accounting_totals || DEFAULT_ACCOUNTING_TOTALS,
         }
-        const hasSeededSuppliers = parsed.suppliers?.some((s: Supplier) => s.id?.startsWith('seed-sup-'))
-        if (!parsed.suppliers || parsed.suppliers.length === 0 || !hasSeededSuppliers) {
-          parsed.suppliers = SEED_SUPPLIERS; changed = true
+        setData(loaded)
+        prevIdsRef.current = {
+          records: new Set(records.map(r => r.id)),
+          suppliers: new Set(suppliers.map(s => s.id)),
+          structureCosts: new Set(structureCosts.map(sc => sc.id)),
         }
-        const hasSeededSC = parsed.structureCosts?.some((sc: StructureCost) => sc.id?.startsWith('seed-sc-'))
-        if (!parsed.structureCosts || parsed.structureCosts.length === 0 || !hasSeededSC) {
-          parsed.structureCosts = SEED_STRUCTURE_COSTS; changed = true
-        }
-        {
-          const saved: number[] = parsed.monthlyAccountingTotals || []
-          const merged = DEFAULT_ACCOUNTING_TOTALS.map((def, i) =>
-            (saved[i] === undefined || saved[i] === 0) ? def : saved[i]
-          )
-          if (JSON.stringify(merged) !== JSON.stringify(parsed.monthlyAccountingTotals)) {
-            parsed.monthlyAccountingTotals = merged; changed = true
-          }
-        }
-        if (changed) localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed))
-        setData(parsed)
       } else {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultData))
+        // No data yet — try to migrate from localStorage, otherwise use seeds
+        let migratedData = defaultData
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY)
+          if (raw) {
+            const parsed = JSON.parse(raw)
+            if (parsed.records?.length > 0) {
+              migratedData = {
+                records: parsed.records || SEED_RECORDS,
+                suppliers: parsed.suppliers || SEED_SUPPLIERS,
+                structureCosts: parsed.structureCosts || SEED_STRUCTURE_COSTS,
+                marginObjective: parsed.marginObjective || defaultData.marginObjective,
+                allocationMode: parsed.allocationMode || defaultData.allocationMode,
+                monthlyAccountingTotals: parsed.monthlyAccountingTotals || DEFAULT_ACCOUNTING_TOTALS,
+              }
+            }
+          }
+        } catch {}
+        setData(migratedData)
+        // Seed Supabase with initial data (fire & forget)
+        seedSupabase(supabase, migratedData, userId)
+        prevIdsRef.current = {
+          records: new Set(migratedData.records.map(r => r.id)),
+          suppliers: new Set(migratedData.suppliers.map(s => s.id)),
+          structureCosts: new Set(migratedData.structureCosts.map(sc => sc.id)),
+        }
       }
-    } catch {}
-    try {
-      const rawFiscal = localStorage.getItem(FISCAL_KEY)
-      if (rawFiscal) {
-        const pf = JSON.parse(rawFiscal)
+
+      // Fiscal data
+      if (dbFiscal?.data) {
+        const pf = dbFiscal.data as FiscalData
         if (!pf.config) pf.config = DEFAULT_FISCAL_DATA.config
         setFiscalData(pf)
+      } else {
+        try {
+          const rawFiscal = localStorage.getItem(FISCAL_KEY)
+          if (rawFiscal) {
+            const pf = JSON.parse(rawFiscal)
+            if (!pf.config) pf.config = DEFAULT_FISCAL_DATA.config
+            setFiscalData(pf)
+            // Migrate fiscal to Supabase
+            supabase.from('finance_fiscal_data').upsert({ user_id: userId, data: pf }, { onConflict: 'user_id' })
+          }
+        } catch {}
       }
-    } catch {}
-  }, [])
+      setLoading(false)
+    }
+    load()
+  }, [userId])
 
-  const save = useCallback((next: FinanceData) => {
+  async function seedSupabase(supabase: any, d: FinanceData, uid: string) {
+    await Promise.all([
+      supabase.from('finance_records').upsert(d.records.map(r => recordToRow(r, uid))),
+      supabase.from('finance_suppliers').upsert(d.suppliers.map(s => supplierToRow(s, uid))),
+      supabase.from('finance_structure_costs').upsert(d.structureCosts.map(sc => scToRow(sc, uid))),
+      supabase.from('finance_settings').upsert({
+        user_id: uid,
+        margin_objective: d.marginObjective,
+        allocation_mode: d.allocationMode || 'proportional',
+        monthly_accounting_totals: d.monthlyAccountingTotals || DEFAULT_ACCOUNTING_TOTALS,
+      }, { onConflict: 'user_id' }),
+    ])
+  }
+
+  // ── Save to Supabase ────────────────────────────────────────
+  const save = useCallback(async (next: FinanceData) => {
     setData(next)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-    setSaved(true)
-    setTimeout(() => setSaved(false), 1800)
-  }, [])
+    const supabase = createClient()
+    const prev = prevIdsRef.current
 
-  const saveFiscal = useCallback((next: FiscalData) => {
-    setFiscalData(next)
-    localStorage.setItem(FISCAL_KEY, JSON.stringify(next))
+    // Upsert records
+    if (next.records.length > 0) {
+      await supabase.from('finance_records').upsert(next.records.map(r => recordToRow(r, userId)))
+    }
+    // Delete removed records
+    const removedRecords = [...prev.records].filter(id => !next.records.find(r => r.id === id))
+    if (removedRecords.length > 0) {
+      await supabase.from('finance_records').delete().in('id', removedRecords)
+    }
+
+    // Upsert suppliers
+    if (next.suppliers.length > 0) {
+      await supabase.from('finance_suppliers').upsert(next.suppliers.map(s => supplierToRow(s, userId)))
+    }
+    const removedSuppliers = [...prev.suppliers].filter(id => !next.suppliers.find(s => s.id === id))
+    if (removedSuppliers.length > 0) {
+      await supabase.from('finance_suppliers').delete().in('id', removedSuppliers)
+    }
+
+    // Upsert structure costs
+    if (next.structureCosts.length > 0) {
+      await supabase.from('finance_structure_costs').upsert(next.structureCosts.map(sc => scToRow(sc, userId)))
+    }
+    const removedSC = [...prev.structureCosts].filter(id => !next.structureCosts.find(sc => sc.id === id))
+    if (removedSC.length > 0) {
+      await supabase.from('finance_structure_costs').delete().in('id', removedSC)
+    }
+
+    // Upsert settings
+    await supabase.from('finance_settings').upsert({
+      user_id: userId,
+      margin_objective: next.marginObjective,
+      allocation_mode: next.allocationMode || 'proportional',
+      monthly_accounting_totals: next.monthlyAccountingTotals || DEFAULT_ACCOUNTING_TOTALS,
+    }, { onConflict: 'user_id' })
+
+    prevIdsRef.current = {
+      records: new Set(next.records.map(r => r.id)),
+      suppliers: new Set(next.suppliers.map(s => s.id)),
+      structureCosts: new Set(next.structureCosts.map(sc => sc.id)),
+    }
+
     setSaved(true)
     setTimeout(() => setSaved(false), 1800)
-  }, [])
+  }, [userId])
+
+  const saveFiscal = useCallback(async (next: FiscalData) => {
+    setFiscalData(next)
+    const supabase = createClient()
+    await supabase.from('finance_fiscal_data').upsert({ user_id: userId, data: next }, { onConflict: 'user_id' })
+    setSaved(true)
+    setTimeout(() => setSaved(false), 1800)
+  }, [userId])
 
   const kpis = useMemo(() => {
     const records = data.records.filter(r => r.estado === 'Actiu')
@@ -252,6 +433,21 @@ export function FinancesContent({ clients, profiles }: { clients: ClientBasic[];
   const adequate = clientProfitability.filter(c => c.margin >= c.marginObjective)
   const belowObj = clientProfitability.filter(c => c.margin >= 0 && c.margin < c.marginObjective)
   const deficit = clientProfitability.filter(c => c.margin < 0)
+
+  if (loading) return (
+    <div className="fin-root">
+      <div className="fin-loading">
+        <div className="fin-loading-spinner" />
+        <span>Carregant finances...</span>
+      </div>
+      <style jsx>{`
+        .fin-root { padding: 28px 32px; background: #F6F8FC; min-height: calc(100vh - 60px); }
+        .fin-loading { display: flex; align-items: center; gap: 12px; padding: 60px 0; color: #9CA3AF; font-size: 14px; }
+        .fin-loading-spinner { width: 20px; height: 20px; border: 2px solid #E5E7EB; border-top-color: #254067; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
+    </div>
+  )
 
   return (
     <div className="fin-root">
@@ -579,7 +775,7 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
       if (av > bv) return sortDir === 'asc' ? 1 : -1
       return 0
     })
-  }, [rows, filterTipo, filterRent, filterEstat, sortCol, sortDir])
+  }, [rows, filterTipo, filterRent, filterEstat, filterSearch, sortCol, sortDir])
 
   const exportCSV = () => {
     const header = ['Client','Tipus','Estat','Fee','Cost directe','Marge €','Marge %','Responsable','Rendibilitat']

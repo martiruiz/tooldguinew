@@ -35,6 +35,8 @@ interface Props {
   currentUserId: string
   onClose: () => void
   onUpdated: (task: Task) => void
+  isNew?: boolean
+  onDiscard?: () => void
 }
 
 function avColor(name: string) {
@@ -139,7 +141,7 @@ function ClientPickerDropdown({ clients, value, onChange }: {
   )
 }
 
-export function TaskDetailModal({ task, profiles, clients, projects, currentUserId, onClose, onUpdated }: Props) {
+export function TaskDetailModal({ task, profiles, clients, projects, currentUserId, onClose, onUpdated, isNew, onDiscard }: Props) {
   const t = task as any
   const [form, setForm] = useState({
     title: t.title || '',
@@ -180,6 +182,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
   const [isDirty, setIsDirty] = useState(false)
   const [titleError, setTitleError] = useState(false)
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
+  const titleRef = useRef<HTMLTextAreaElement>(null)
   const commentRef = useRef<HTMLTextAreaElement>(null)
   const descRef = useRef<HTMLTextAreaElement>(null)
   const checkRef = useRef<HTMLInputElement>(null)
@@ -733,6 +736,18 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
   const doneSubtasks = subtasks.filter(s => s.done).length
   const activeLabels = allLabels.filter(l => labelIds.includes(l.id))
   const watchers = profiles.filter(p => watcherIds.includes(p.id))
+
+  const DEFAULT_TITLE = 'NOVA TASCA'
+  const isTitleDefault = () => !form.title.trim() || form.title.trim().toUpperCase() === DEFAULT_TITLE
+
+  const tryClose = async () => {
+    if (isNew && isTitleDefault()) {
+      onDiscard?.()
+      return
+    }
+    if (isDirty) await saveAll()
+    onClose()
+  }
   const mentionSuggestions = mentionQuery !== null
     ? profiles.filter(p => p.full_name.toLowerCase().includes(mentionQuery))
     : []
@@ -741,7 +756,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
 
   return createPortal(
     <>
-      <div className="overlay" onClick={async e => { if (e.target === e.currentTarget) { if (isDirty) await saveAll(); onClose() } }}>
+      <div className="overlay" onClick={async e => { if (e.target === e.currentTarget) await tryClose() }}>
         <div className="modal">
 
           {/* Header: status + close */}
@@ -750,20 +765,28 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
               <span className="dot" style={{ background: col.color }} />{col.label}
             </div>
             <div className="hdr-right">
+              {isNew && onDiscard && (
+                <button className="discard-btn" onClick={onDiscard}>Descartar</button>
+              )}
               {isDirty && <span className="txt-dirty">Canvis sense desar</span>}
               {saved && <span className="txt-saved">✓ Desat</span>}
-              <button className="close-btn" onClick={async () => { if (isDirty) await saveAll(); onClose() }}><X size={15} /></button>
+              <button className="close-btn" onClick={tryClose}><X size={15} /></button>
             </div>
           </div>
 
           {/* Title area — always visible, not scrollable */}
           <div className="modal-title-area">
-            <textarea className={`title-inp${titleError ? ' title-inp--error' : ''}`} value={form.title.toUpperCase()}
-              onChange={e => { setTitleError(false); dirty('title', e.target.value.toUpperCase()) }} rows={1}
+            <textarea
+              ref={titleRef}
+              className={`title-inp${titleError ? ' title-inp--error' : ''}`}
+              value={form.title.toUpperCase()}
+              onChange={e => { setTitleError(false); dirty('title', e.target.value.toUpperCase()) }}
+              rows={1}
               placeholder="TÍTOL DE LA TASCA..."
               onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
+              onFocus={e => { if (isNew && isTitleDefault()) e.currentTarget.select() }}
             />
-            {titleError && <span className="title-error-msg">Canvia el nom de la tasca abans de guardar</span>}
+            {titleError && !isNew && <span className="title-error-msg">Escriu un títol per desar la tasca</span>}
           </div>
 
           <div className="modal-body">
@@ -1264,10 +1287,14 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
               {isDirty && !saving && !saved && <span className="txt-autosave txt-autosave--dirty">Canvis sense guardar</span>}
             </div>
             <div className="ftr-right">
-              <button className="btn-cancel" onClick={onClose}>Tancar</button>
+              <button className="btn-cancel" onClick={tryClose}>Tancar</button>
               <button
                 className={`btn-save${saved && !isDirty ? ' btn-save--ok' : ''}`}
-                onClick={async () => { const ok = await saveAll(); if (ok !== false) onClose() }}
+                onClick={async () => {
+                  if (newComment.trim()) await submitComment()
+                  const ok = await saveAll()
+                  if (ok !== false) tryClose()
+                }}
                 disabled={saving}
               >
                 <Save size={13} strokeWidth={2.2} />
@@ -1351,13 +1378,21 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         .modal-body { padding: 16px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; flex: 1; }
 
         /* Title */
+        .discard-btn {
+          border: none; background: none; font-size: 12.5px; color: #9A9A9A; cursor: pointer;
+          font-family: inherit; font-weight: 500; padding: 4px 8px; border-radius: 6px;
+          transition: color 0.12s, background 0.12s;
+        }
+        .discard-btn:hover { color: #DC2626; background: #FEF2F2; }
         .title-inp {
           font-size: 17px; font-weight: 700; color: #0a0a0a; border: none; outline: none;
           resize: none; width: 100%; font-family: inherit; line-height: 1.3; background: transparent; padding: 0;
           text-transform: uppercase; letter-spacing: 0.01em; overflow: hidden;
         }
         .title-inp::placeholder { color: #D0D0D0; }
-        .title-inp--error { color: #DC2626 !important; }
+        .title-inp--error { animation: shake 0.35s ease; }
+        @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+        .title-inp--error::placeholder { color: #DC2626; }
         .title-error-msg {
           display: block; font-size: 11.5px; color: #DC2626; font-weight: 500;
           margin-top: 4px; letter-spacing: 0;

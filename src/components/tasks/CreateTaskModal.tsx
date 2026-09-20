@@ -83,9 +83,23 @@ export function CreateTaskModal({
   )
 
   const handleClose = () => {
-    if (!savedRef.current && task) {
-      // Keep the task with default title instead of discarding
+    if (savedRef.current) { onClose(); return }
+    // Only add to list if user gave a real title
+    if (task && task.title && task.title.trim().toUpperCase() !== 'NOVA TASCA') {
       onCreated(task)
+    } else if (task) {
+      handleDiscard()
+      return
+    }
+    onClose()
+  }
+
+  const handleDiscard = () => {
+    if (task) {
+      onDiscarded?.(task.id)
+      // Delete from DB silently
+      const supabase = createClient()
+      supabase.from('tasks').delete().eq('id', task.id).then(() => {})
     }
     onClose()
   }
@@ -97,6 +111,8 @@ export function CreateTaskModal({
       clients={clients}
       projects={projects}
       currentUserId={currentUserId}
+      isNew
+      onDiscard={handleDiscard}
       onClose={handleClose}
       onUpdated={(updated) => {
         savedRef.current = true

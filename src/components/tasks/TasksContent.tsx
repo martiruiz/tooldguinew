@@ -1111,22 +1111,26 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
           display: flex;
           align-items: center;
           gap: 8px;
-          padding: 11px 12px 11px 14px;
+          padding: 13px 12px 13px 14px;
           border-radius: 10px 10px 0 0;
           position: relative;
           transition: background 0.2s;
+          background-image: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(0,0,0,0.04) 100%);
         }
         .kcol-icon-btn {
-          background: rgba(0,0,0,0.15); border: none; border-radius: 6px;
-          width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+          background: rgba(255,255,255,0.22); border: none; border-radius: 7px;
+          width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
           cursor: pointer; flex-shrink: 0; transition: background 0.15s;
+          backdrop-filter: blur(4px);
         }
-        .kcol-icon-btn:hover { background: rgba(0,0,0,0.28); }
-        .kcol-label { font-size: 12.5px; font-weight: 700; color: white; flex: 1; letter-spacing: 0.01em; text-shadow: 0 1px 2px rgba(0,0,0,0.15); cursor: text; }
-        .kcol-label-input { font-size: 12.5px; font-weight: 700; color: white; flex: 1; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.5); border-radius: 4px; padding: 1px 5px; outline: none; width: 100%; min-width: 0; }
+        .kcol-icon-btn:hover { background: rgba(255,255,255,0.38); }
+        .kcol-label { font-size: 12px; font-weight: 700; color: white; flex: 1; letter-spacing: 0.04em; text-transform: uppercase; text-shadow: 0 1px 3px rgba(0,0,0,0.2); cursor: text; }
+        .kcol-label-input { font-size: 12px; font-weight: 700; color: white; flex: 1; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.5); border-radius: 4px; padding: 1px 5px; outline: none; width: 100%; min-width: 0; text-transform: uppercase; letter-spacing: 0.04em; }
         .kcol-count {
-          font-size: 11.5px; font-weight: 700; color: white;
-          background: rgba(0,0,0,0.18); padding: 1px 8px; border-radius: 10px;
+          font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.9);
+          background: rgba(0,0,0,0.2); padding: 2px 8px; border-radius: 20px;
+          border: 1px solid rgba(255,255,255,0.15);
+          backdrop-filter: blur(4px);
         }
 
         /* Editor popover */
@@ -1376,11 +1380,16 @@ function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onDra
       {/* Photos preview */}
       {photos.length > 0 && (
         <div className="kcard-photos">
-          {photos.slice(0, 3).map((p, i) => (
-            <img key={p.id || i} src={p.url} alt={p.name} className="kcard-photo" />
-          ))}
-          {photos.length > 3 && (
-            <div className="kcard-photo kcard-photo-more">+{photos.length - 3}</div>
+          <img src={photos[0].url} alt={photos[0].name} className="kcard-photo-main" />
+          {photos.length > 1 && (
+            <div className="kcard-thumbs">
+              {photos.slice(1, 3).map((p, i) => (
+                <img key={p.id || i} src={p.url} alt={p.name} className="kcard-thumb" />
+              ))}
+              {photos.length > 3 && (
+                <div className="kcard-thumb kcard-photo-more">+{photos.length - 3}</div>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -1482,13 +1491,28 @@ function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onDra
           border-radius: 6px;
           overflow: hidden;
         }
-        .kcard-photo {
+        .kcard-photo-main {
           flex: 1;
-          height: 72px;
+          aspect-ratio: 4/5;
           object-fit: cover;
           border-radius: 6px;
-          min-width: 0;
           display: block;
+          min-width: 0;
+        }
+        .kcard-thumbs {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+          width: 48px;
+          flex-shrink: 0;
+        }
+        .kcard-thumb {
+          width: 100%;
+          flex: 1;
+          object-fit: cover;
+          border-radius: 4px;
+          display: block;
+          min-height: 0;
         }
         .kcard-photo-more {
           background: #F0F0F0;
@@ -1498,7 +1522,7 @@ function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onDra
           display: flex;
           align-items: center;
           justify-content: center;
-          flex: 0 0 40px;
+          border-radius: 4px;
         }
 
         .kcard-title {

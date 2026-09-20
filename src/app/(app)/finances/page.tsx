@@ -22,7 +22,7 @@ export default async function FinancesPage() {
     <>
       <Topbar user={profile as Profile} title="Finances" />
       <Suspense fallback={<div style={{ padding: 40, color: '#999', fontSize: 14 }}>Carregant...</div>}>
-        <FinancesContent clients={clients || []} profiles={profiles || []} />
+        <FinancesContent clients={clients || []} profiles={profiles || []} userId={user.id} />
       </Suspense>
     </>
   )

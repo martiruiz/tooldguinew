@@ -723,7 +723,7 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
           .client-header-actions { flex-wrap: wrap; gap: 6px; }
           .client-fields { flex-direction: column; gap: 8px; }
           .field-group { min-width: 100%; }
-          .tab-btn { padding: 0 10px; font-size: 12.5px; }
+          .tab-btn { padding: 0 10px; font-size: 12px; }
           .tab-section { padding: 14px; }
         }
         @media (min-width: 768px) and (max-width: 1023px) {
@@ -895,34 +895,46 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
         /* Tabs */
         .tabs-bar {
           display: flex;
-          gap: 2px;
-          border-bottom: 1px solid #ECECEC;
+          gap: 3px;
+          padding: 4px;
+          background: #F0F2F5;
+          border-radius: 12px;
           margin-bottom: 20px;
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          border-bottom: none;
         }
+        .tabs-bar::-webkit-scrollbar { display: none; }
 
         .tab-btn {
-          height: 40px;
-          padding: 0 16px;
+          height: 34px;
+          padding: 0 14px;
           border: none;
-          background: none;
-          font-size: 13.5px;
+          background: transparent;
+          font-size: 13px;
           font-weight: 500;
-          color: #5C5C5C;
+          color: #6B7280;
           cursor: pointer;
           white-space: nowrap;
-          border-bottom: 2px solid transparent;
-          margin-bottom: -1px;
-          transition: color 0.15s, border-color 0.15s;
+          border-radius: 8px;
+          border-bottom: none;
+          margin-bottom: 0;
+          font-family: inherit;
+          transition: all 0.15s;
+          flex-shrink: 0;
         }
 
-        .tab-btn:hover { color: #0a0a0a; }
+        .tab-btn:hover {
+          background: rgba(255,255,255,0.65);
+          color: #374151;
+        }
 
         .tab-btn--active {
+          background: white;
           color: #1B2B4B;
-          border-bottom-color: #1B2B4B;
-          font-weight: 600;
+          font-weight: 650;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.04);
         }
 
         .tab-content { min-height: 200px; }
