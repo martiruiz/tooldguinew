@@ -17,6 +17,8 @@ import { NewProjectModal } from '@/components/projects/NewProjectModal'
 import { CommandPalette } from '@/components/layout/CommandPalette'
 import { PMControlCenter } from '@/components/dashboard/PMControlCenter'
 import { DailyChecklist } from '@/components/dashboard/DailyChecklist'
+import { AiAlertsWidget } from '@/components/dashboard/AiAlertsWidget'
+import type { AiInsightSummary } from '@/components/dashboard/AiAlertsWidget'
 import type { Profile, Task, Project, Meeting, ActivityLog, Notification } from '@/types'
 
 interface Stats {
@@ -48,6 +50,7 @@ interface Props {
   opportunities?: CRMOpportunity[]
   allProjectTasks?: Task[]
   pmProjects?: Project[]
+  aiInsights?: AiInsightSummary[]
 }
 
 function getGreetingKey(): 'greetMorning' | 'greetAfternoon' | 'greetEvening' {
@@ -64,7 +67,7 @@ const priorityColor: Record<string, string> = {
   low: '#9A9A9A',
 }
 
-export function DashboardContent({ user, tasks, projects, activity, meetings, stats, profiles, clients, allProjects, currentUserId, blockedTasks, inboxNotifs, opportunities = [], allProjectTasks = [], pmProjects = [] }: Props) {
+export function DashboardContent({ user, tasks, projects, activity, meetings, stats, profiles, clients, allProjects, currentUserId, blockedTasks, inboxNotifs, opportunities = [], allProjectTasks = [], pmProjects = [], aiInsights = [] }: Props) {
   const { t: tr } = useLanguage()
   const isSuperAdmin = user.role === 'superadmin'
   const isManager = user.role === 'manager'
@@ -390,6 +393,11 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           </div>
         )}
       </div>
+
+      {/* AI Alerts — only for superadmin + manager */}
+      {(isSuperAdmin || isManager) && aiInsights.length > 0 && (
+        <AiAlertsWidget insights={aiInsights} />
+      )}
 
       {/* PM Control Center — only for managers */}
       {isManager && (

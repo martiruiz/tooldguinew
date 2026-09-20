@@ -4,7 +4,9 @@ import { redirect } from 'next/navigation'
 import { Topbar } from '@/components/layout/Topbar'
 import { DashboardContent } from '@/components/dashboard/DashboardContent'
 import { getCalendarClientWithRefresh } from '@/lib/google'
+import { createAdminClient } from '@/lib/supabase/serverAdmin'
 import type { Profile, Meeting } from '@/types'
+import type { AiInsightSummary } from '@/components/dashboard/AiAlertsWidget'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -171,6 +173,24 @@ export default async function DashboardPage() {
     .order('created_at', { ascending: false })
     .limit(20)
 
+  // AI Insights (superadmin + manager only)
+  let aiInsights: AiInsightSummary[] = []
+  if (isSuperAdmin || isManager) {
+    try {
+      const admin = createAdminClient()
+      const { data: ins } = await admin
+        .from('ai_insights')
+        .select('id, type, severity, title, entity_type, entity_id, created_at')
+        .eq('resolved', false)
+        .order('severity', { ascending: true })
+        .order('created_at', { ascending: false })
+        .limit(20)
+      aiInsights = (ins ?? []) as AiInsightSummary[]
+    } catch (err) {
+      console.error('[dashboard] ai_insights fetch failed:', err)
+    }
+  }
+
   // Stats
   const { count: activeClientsCount } = await supabase
     .from('clients')
@@ -212,6 +232,7 @@ export default async function DashboardPage() {
         }}
         allProjectTasks={allProjectTasks || []}
         pmProjects={pmProjects || []}
+        aiInsights={aiInsights}
       />
     </>
   )
