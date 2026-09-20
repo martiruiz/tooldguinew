@@ -600,6 +600,18 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
           <div className="ct-sub">{filtered.length} {filtered.length === 1 ? 'client' : 'clients'}</div>
         </div>
         <div className="ct-actions">
+          <div className="ct-search-wrap">
+            <Search size={13} style={{ color: '#9CA3AF', flexShrink: 0 }} />
+            <input
+              className="ct-search-input"
+              placeholder="Cerca client..."
+              value={filterSearch}
+              onChange={e => setFilterSearch(e.target.value)}
+            />
+            {filterSearch && (
+              <button className="ct-search-clear" onClick={() => setFilterSearch('')}>✕</button>
+            )}
+          </div>
           <div style={{ position: 'relative' }}>
             <button className="ct-btn-export" onClick={() => setShowColMenu(v => !v)}>
               Columnes{hiddenCols.size > 0 ? ` (${CT_COLS.length - hiddenCols.size}/${CT_COLS.length})` : ' ▾'}
@@ -624,18 +636,6 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
       </div>
 
       <div className="ct-toolbar">
-        <div className="ct-search-wrap">
-          <Search size={13} style={{ color: '#9CA3AF', flexShrink: 0 }} />
-          <input
-            className="ct-search-input"
-            placeholder="Cerca client..."
-            value={filterSearch}
-            onChange={e => setFilterSearch(e.target.value)}
-          />
-          {filterSearch && (
-            <button className="ct-search-clear" onClick={() => setFilterSearch('')}>✕</button>
-          )}
-        </div>
         <div className="ct-toolbar-row">
           <div className="ct-filters">
             {[
@@ -820,9 +820,9 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
         /* ── Toolbar ── */
         .ct-toolbar { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
         .ct-toolbar-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-        .ct-search-wrap { display: flex; align-items: center; gap: 8px; background: white; border: 1.5px solid #E5E7EB; border-radius: 9px; padding: 0 12px; height: 36px; transition: border-color 0.12s; }
+        .ct-search-wrap { display: flex; align-items: center; gap: 8px; background: white; border: 1.5px solid #E5E7EB; border-radius: 8px; padding: 0 12px; height: 34px; transition: border-color 0.12s; width: 200px; }
         .ct-search-wrap:focus-within { border-color: #254067; }
-        .ct-search-input { flex: 1; border: none; outline: none; font-size: 13px; font-family: inherit; background: transparent; color: #111827; min-width: 0; width: 100%; }
+        .ct-search-input { flex: 1; border: none; outline: none; font-size: 13px; font-family: inherit; background: transparent; color: #111827; min-width: 0; }
         .ct-search-clear { background: none; border: none; cursor: pointer; color: #9CA3AF; font-size: 13px; padding: 0 2px; line-height: 1; flex-shrink: 0; }
         .ct-search-clear:hover { color: #374151; }
         .ct-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
@@ -917,7 +917,9 @@ function CarteraTable({ data, kpis, marginObjective, onNew, onEdit, onUpdate, on
 
         @media (max-width: 767px) {
           .ct-topbar { flex-direction: column; align-items: flex-start; gap: 10px; }
-          .ct-actions { width: 100%; justify-content: flex-end; }
+          .ct-actions { width: 100%; flex-wrap: wrap; gap: 8px; }
+          .ct-search-wrap { width: 100%; order: -1; }
+          .ct-toolbar-row { flex-direction: column; gap: 8px; }
           .ct-header { display: none; }
           .ct-card { flex-direction: column; align-items: flex-start; gap: 10px; padding: 12px 14px; }
           .ct-card-left { width: 100%; }
