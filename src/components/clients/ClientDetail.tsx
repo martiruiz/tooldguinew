@@ -7,6 +7,7 @@ import {
   CheckSquare, BarChart2, Globe,
   Circle, Clock, Camera, Phone, Mail, User, Save, Loader2, X, FileText,
   RefreshCw, Briefcase, Upload, ChevronDown, ChevronUp, Edit2, Check, Trash2,
+  AlertCircle, AlertTriangle, Info, Zap,
 } from 'lucide-react'
 import { cn, clientTypeLabels, projectStatusLabels, taskPriorityLabels, getInitials, formatDate } from '@/lib/utils'
 import { createClient as createSupabase } from '@/lib/supabase/client'
@@ -15,6 +16,124 @@ import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
 import { AnnualPlan } from '@/components/clients/AnnualPlan'
 import { ClientMetricsTab } from '@/components/clients/ClientMetricsTab'
 import type { Client, Project, Task } from '@/types'
+
+// ── ClientIntelligenceTab ─────────────────────────────────────────────────────
+const SEVERITY_ICON: Record<string, React.ElementType> = {
+  critical: AlertCircle, warning: AlertTriangle, info: Info,
+}
+const SEVERITY_COLOR: Record<string, string> = {
+  critical: '#DC2626', warning: '#D97706', info: '#2563EB',
+}
+
+function ClientIntelligenceTab({
+  clientId,
+  insights,
+  onResolve,
+}: {
+  clientId: string
+  insights: Array<{ id: string; type: string; severity: string; title: string; summary: string; evidence: Record<string, unknown>; created_at: string; resolved: boolean }>
+  onResolve: (id: string) => void
+}) {
+  const [resolving, setResolving] = useState<string | null>(null)
+  const [running, setRunning] = useState(false)
+  const [runMsg, setRunMsg] = useState('')
+
+  const handleResolve = async (id: string) => {
+    setResolving(id)
+    await fetch('/api/intelligence/insights', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, resolved: true }),
+    })
+    onResolve(id)
+    setResolving(null)
+  }
+
+  const handleRun = async () => {
+    setRunning(true)
+    setRunMsg('Executant detectors...')
+    const res = await fetch('/api/intelligence/run', { method: 'POST' })
+    if (res.ok) {
+      const d = await res.json()
+      setRunMsg(`✓ ${d.insights_created ?? 0} nous insights generats`)
+    } else {
+      setRunMsg('Error executant la intel·ligència')
+    }
+    setRunning(false)
+  }
+
+  if (insights.length === 0) {
+    return (
+      <div style={{ padding: '32px', textAlign: 'center' }}>
+        <Zap size={32} color="#D1D5DB" style={{ margin: '0 auto 12px' }} />
+        <p style={{ color: '#6B7280', fontSize: '14px', marginBottom: '16px' }}>
+          No hi ha alertes actives per a aquest client.
+        </p>
+        <button
+          onClick={handleRun}
+          disabled={running}
+          style={{ fontSize: '13px', color: '#1B2B4B', background: '#F3F4F6', border: '1px solid #E5E7EB', borderRadius: '6px', padding: '6px 16px', cursor: 'pointer' }}
+        >
+          {running ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : 'Executar detectors ara'}
+        </button>
+        {runMsg && <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '8px' }}>{runMsg}</p>}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ padding: '16px', maxWidth: '800px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#1B2B4B' }}>
+          Alertes actives · {insights.length}
+        </h3>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {runMsg && <span style={{ fontSize: '12px', color: '#6B7280' }}>{runMsg}</span>}
+          <button
+            onClick={handleRun}
+            disabled={running}
+            style={{ fontSize: '12px', color: '#6B7280', background: 'none', border: '1px solid #E5E7EB', borderRadius: '5px', padding: '4px 10px', cursor: 'pointer' }}
+          >
+            {running ? 'Executant...' : 'Actualitzar'}
+          </button>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {insights.map(ins => {
+          const Icon = SEVERITY_ICON[ins.severity] ?? Info
+          const color = SEVERITY_COLOR[ins.severity] ?? '#6B7280'
+          return (
+            <div
+              key={ins.id}
+              style={{
+                background: '#fff', border: '1px solid #E5E7EB', borderRadius: '8px',
+                padding: '12px 16px', display: 'flex', gap: '12px', alignItems: 'flex-start',
+              }}
+            >
+              <Icon size={15} color={color} strokeWidth={2} style={{ marginTop: '2px', flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: '13px', fontWeight: 500, color: '#1B2B4B', marginBottom: '2px' }}>{ins.title}</p>
+                {ins.summary && <p style={{ fontSize: '12px', color: '#6B7280' }}>{ins.summary}</p>}
+                <p style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '4px' }}>
+                  {new Date(ins.created_at).toLocaleDateString('ca-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </p>
+              </div>
+              <button
+                onClick={() => handleResolve(ins.id)}
+                disabled={resolving === ins.id}
+                title="Marcar com a resolt"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: '2px', flexShrink: 0 }}
+              >
+                {resolving === ins.id ? <Loader2 size={13} /> : <X size={13} />}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 const CONTRACTED_SERVICES = [
   'Estrategia digital',
@@ -50,7 +169,18 @@ const statusBadge: Record<string, { bg: string; color: string }> = {
   archived: { bg: '#F0F0F0', color: '#9A9A9A' },
 }
 
-type Tab = 'campanyes' | 'tasques' | 'briefing' | 'estrategia' | 'metriques' | 'resum' | 'pla' | 'vista360'
+type Tab = 'campanyes' | 'tasques' | 'briefing' | 'estrategia' | 'metriques' | 'resum' | 'pla' | 'vista360' | 'intel'
+
+interface AiInsight {
+  id: string
+  type: string
+  severity: 'info' | 'warning' | 'critical'
+  title: string
+  summary: string
+  evidence: Record<string, unknown>
+  created_at: string
+  resolved: boolean
+}
 
 interface Props {
   client: Client
@@ -62,12 +192,15 @@ interface Props {
   profiles?: { id: string; full_name: string }[]
   currentUserId?: string
   metricReports?: any[]
+  clientInsights?: AiInsight[]
 }
 
-export function ClientDetail({ client, projects, tasks, briefing, strategy, userRole, profiles = [], currentUserId = '', metricReports = [] }: Props) {
+export function ClientDetail({ client, projects, tasks, briefing, strategy, userRole, profiles = [], currentUserId = '', metricReports = [], clientInsights = [] }: Props) {
   const [tab, setTab] = useState<Tab>('resum')
   const [localTasks, setLocalTasks] = useState(tasks)
   const [localProjects, setLocalProjects] = useState(projects)
+  const [localInsights, setLocalInsights] = useState<AiInsight[]>(clientInsights)
+  const isPrivileged = userRole === 'superadmin' || userRole === 'manager'
   const [showNewTask, setShowNewTask] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showNewProject, setShowNewProject] = useState(false)
@@ -225,6 +358,7 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
     { key: 'estrategia', label: 'Estratègia' },
     { key: 'pla', label: 'Pla de contingut anual' },
     { key: 'metriques', label: 'Mètriques' },
+    ...(isPrivileged ? [{ key: 'intel' as Tab, label: `⚡ Intel·ligència${localInsights.length > 0 ? ` (${localInsights.length})` : ''}` }] : []),
   ]
 
   return (
@@ -675,6 +809,16 @@ export function ClientDetail({ client, projects, tasks, briefing, strategy, user
         {tab === 'vista360' && (
           <div className="tab-full">
             <Client360 clientId={client.id} clientName={client.name} profiles={profiles} />
+          </div>
+        )}
+
+        {tab === 'intel' && isPrivileged && (
+          <div className="tab-full">
+            <ClientIntelligenceTab
+              clientId={client.id}
+              insights={localInsights}
+              onResolve={(id) => setLocalInsights(prev => prev.filter(i => i.id !== id))}
+            />
           </div>
         )}
       </div>

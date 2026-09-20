@@ -1,6 +1,7 @@
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/Topbar'
 import { ClientDetail } from '@/components/clients/ClientDetail'
+import { createAdminClient } from '@/lib/supabase/serverAdmin'
 import { notFound } from 'next/navigation'
 import type { Profile } from '@/types'
 
@@ -39,6 +40,25 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   if (projErr) console.error('[ClientDetail] projects error:', projErr)
   if (tasksErr) console.error('[ClientDetail] tasks error:', tasksErr)
 
+  // AI insights for this client (superadmin + manager only)
+  const isPrivileged = profile?.role === 'superadmin' || profile?.role === 'manager'
+  let clientInsights: any[] = []
+  if (isPrivileged) {
+    try {
+      const admin = createAdminClient()
+      const { data: ins } = await admin
+        .from('ai_insights')
+        .select('id, type, severity, title, summary, evidence, created_at, resolved')
+        .eq('entity_type', 'client')
+        .eq('entity_id', id)
+        .eq('resolved', false)
+        .order('severity', { ascending: true })
+        .order('created_at', { ascending: false })
+        .limit(20)
+      clientInsights = ins ?? []
+    } catch {}
+  }
+
   return (
     <>
       <Topbar user={profile as Profile} />
@@ -52,6 +72,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         profiles={allProfiles || []}
         currentUserId={user!.id}
         metricReports={metricReports || []}
+        clientInsights={clientInsights}
       />
     </>
   )
