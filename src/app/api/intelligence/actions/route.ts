@@ -122,7 +122,7 @@ async function dispatchAction(
       if (!title) throw new Error('payload.title és obligatori')
       const { data, error } = await admin
         .from('tasks')
-        .insert({ title, project_id, responsible_id, due_date, status: 'todo' })
+        .insert({ title, project_id, responsible_id, deadline: due_date, status: 'todo' })
         .select('id')
         .single()
       if (error) throw new Error(error.message)

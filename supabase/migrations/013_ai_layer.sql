@@ -155,18 +155,18 @@ RETURNS TABLE (
     jsonb_build_object(
       'task_id',     t.id,
       'task_title',  t.title,
-      'due_date',    t.due_date,
-      'days_overdue', EXTRACT(day FROM now() - t.due_date)::int,
+      'due_date',    t.deadline,
+      'days_overdue', EXTRACT(day FROM now() - t.deadline)::int,
       'project_id',  t.project_id,
       'responsible_id', t.responsible_id
     ),
     CASE
-      WHEN t.due_date < now() - interval '7 days' THEN 'critical'
+      WHEN t.deadline < now() - interval '7 days' THEN 'critical'
       ELSE 'warning'
     END
   FROM public.tasks t
-  WHERE t.due_date IS NOT NULL
-    AND t.due_date < now()
+  WHERE t.deadline IS NOT NULL
+    AND t.deadline < now()
     AND t.status NOT IN ('done','cancelled')
 $$;
 
@@ -203,8 +203,8 @@ RETURNS TABLE (
       COUNT(*) FILTER (WHERE status NOT IN ('done','cancelled')) AS total,
       COUNT(*) FILTER (
         WHERE status NOT IN ('done','cancelled')
-          AND due_date IS NOT NULL
-          AND due_date < now()
+          AND deadline IS NOT NULL
+          AND deadline < now()
       ) AS overdue
     FROM public.tasks
     WHERE project_id IS NOT NULL
@@ -217,22 +217,22 @@ RETURNS TABLE (
     jsonb_build_object(
       'project_id',      p.id,
       'project_name',    p.name,
-      'deadline',        p.deadline,
+      'end_date',        p.end_date,
       'total_tasks',     COALESCE(ts.total, 0),
       'overdue_tasks',   COALESCE(ts.overdue, 0),
       'overdue_pct',     CASE WHEN ts.total > 0 THEN ROUND((ts.overdue::numeric / ts.total) * 100) ELSE 0 END,
       'days_to_deadline', CASE WHEN p.deadline IS NOT NULL THEN EXTRACT(day FROM p.deadline::timestamptz - now())::int END
     ),
     CASE
-      WHEN p.deadline IS NOT NULL AND p.deadline::timestamptz < now() THEN 'critical'
+      WHEN p.end_date IS NOT NULL AND p.end_date::timestamptz < now() THEN 'critical'
       WHEN COALESCE(ts.overdue, 0)::numeric / NULLIF(COALESCE(ts.total, 0), 0) > 0.5 THEN 'critical'
       ELSE 'warning'
     END
   FROM public.projects p
   LEFT JOIN task_stats ts ON ts.project_id = p.id
-  WHERE p.status NOT IN ('completed','cancelled')
+  WHERE p.status NOT IN ('completed','archived')
     AND (
-      (p.deadline IS NOT NULL AND p.deadline::timestamptz < now() + interval '7 days')
+      (p.end_date IS NOT NULL AND p.end_date::timestamptz < now() + interval '7 days')
       OR (ts.total > 0 AND (ts.overdue::numeric / ts.total) > 0.3)
     )
 $$;
@@ -277,7 +277,7 @@ RETURNS TABLE (
     ),
     'warning'::text
   FROM public.opportunities o
-  WHERE o.status NOT IN ('won','lost')
+  WHERE o.stage NOT IN ('won','lost')
     AND o.updated_at < now() - interval '14 days'
 $$;
 
@@ -299,8 +299,7 @@ RETURNS TABLE (
     'warning'::text
   FROM public.opportunities o
   WHERE (o.next_step IS NULL OR TRIM(o.next_step) = '')
-    AND o.status NOT IN ('won','lost')
-    AND o.stage NOT IN ('prospect')
+    AND o.stage NOT IN ('won','lost','prospect')
 $$;
 
 -- Detector 7: sessions properes sense briefing
@@ -316,24 +315,20 @@ RETURNS TABLE (
       'session_id',   s.id,
       'client_id',    s.client_id,
       'client_name',  c.name,
-      'session_date', s.date,
-      'has_briefing', EXISTS (
-        SELECT 1 FROM public.briefings b
-        WHERE b.client_id = s.client_id
-          AND b.created_at > now() - interval '7 days'
-          AND COALESCE(b.content, '') != ''
-      )
+      'session_date', s.session_date
     ),
     'warning'::text
-  FROM public.check_sessions s
+  FROM public.content_sessions s
   LEFT JOIN public.clients c ON c.id = s.client_id
-  WHERE s.date IS NOT NULL
-    AND s.date::timestamptz BETWEEN now() AND now() + interval '48 hours'
+  WHERE s.session_date IS NOT NULL
+    AND s.session_date::timestamptz BETWEEN now() AND now() + interval '48 hours'
     AND NOT EXISTS (
       SELECT 1 FROM public.briefings b
       WHERE b.client_id = s.client_id
         AND b.created_at > now() - interval '7 days'
-        AND COALESCE(b.content, '') != ''
+        AND b.content IS NOT NULL
+        AND b.content::text != '{}'
+        AND b.content::text != 'null'
     )
 $$;
 
@@ -345,19 +340,19 @@ RETURNS TABLE (
   SELECT
     'client'::text,
     ci.client_id,
-    'Contingut vençut: ' || COALESCE(ci.title, ci.platform),
+    'Contingut vençut: ' || COALESCE(ci.title, ci.channel),
     jsonb_build_object(
-      'content_id',      ci.id,
-      'client_id',       ci.client_id,
-      'platform',        ci.platform,
-      'scheduled_date',  ci.scheduled_date,
-      'days_overdue',    EXTRACT(day FROM now() - ci.scheduled_date::timestamptz)::int,
-      'status',          ci.status
+      'content_id',   ci.id,
+      'client_id',    ci.client_id,
+      'channel',      ci.channel,
+      'due_date',     ci.due_date,
+      'days_overdue', EXTRACT(day FROM now() - ci.due_date::timestamptz)::int,
+      'status',       ci.status
     ),
     'warning'::text
   FROM public.content_items ci
-  WHERE ci.scheduled_date IS NOT NULL
-    AND ci.scheduled_date::timestamptz < now()
+  WHERE ci.due_date IS NOT NULL
+    AND ci.due_date::timestamptz < now()
     AND ci.status NOT IN ('published','cancelled')
 $$;
 
@@ -369,24 +364,19 @@ RETURNS TABLE (
   SELECT
     'client'::text,
     m.client_id,
-    'Reunió sense notes: ' || COALESCE(m.title, 'Reunió ' || to_char(m.date, 'DD/MM')),
+    'Reunió sense descripció: ' || m.title,
     jsonb_build_object(
       'meeting_id',    m.id,
       'client_id',     m.client_id,
       'meeting_title', m.title,
-      'meeting_date',  m.date,
-      'has_notes',     COALESCE(m.notes, '') != '',
-      'has_actions',   COALESCE(m.action_items, '') != ''
+      'start_time',    m.start_time
     ),
     'info'::text
   FROM public.meetings m
-  WHERE m.date IS NOT NULL
-    AND m.date < now()
-    AND m.date > now() - interval '7 days'
-    AND (
-      COALESCE(m.notes, '') = ''
-      OR COALESCE(m.action_items, '') = ''
-    )
+  WHERE m.start_time < now()
+    AND m.start_time > now() - interval '7 days'
+    AND (m.description IS NULL OR TRIM(m.description) = '')
+    AND m.client_id IS NOT NULL
 $$;
 
 -- Detector 10: anomalies de negoci (0 activitat en 7 dies)
