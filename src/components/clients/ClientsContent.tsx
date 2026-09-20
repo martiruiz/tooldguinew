@@ -50,8 +50,8 @@ export function ClientsContent({ clients: initialClients, profiles, userRole }: 
     const matchSearch = c.name.toLowerCase().includes(search.toLowerCase())
     const matchType =
       filter === 'Tots' ? true :
-      filter === 'Clients' ? c.status === 'active' :
-      filter === 'No clients' ? (c.status === 'paused' || c.status === 'inactive') :
+      filter === 'Clients' ? (c.health === 'healthy' || c.health === 'attention') :
+      filter === 'No clients' ? c.health === 'risk' :
       true
     return matchSearch && matchType
   })
@@ -626,8 +626,8 @@ function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete, onUpdat
               <button
                 onClick={e => {
                   e.preventDefault(); e.stopPropagation()
-                  if (client.status === 'active') onUpdate(client.id, { status: 'inactive' })
-                  else if (client.status === 'inactive') onUpdate(client.id, { status: 'active' })
+                  if (client.status === 'active') onUpdate(client.id, { status: 'inactive', health: 'risk' })
+                  else if (client.status === 'inactive') onUpdate(client.id, { status: 'active', health: 'healthy' })
                   else onDelete()
                 }}
                 title={client.status === 'active' ? 'Marcar com No client' : client.status === 'inactive' ? 'Marcar com Client' : 'Esborrar client'}
@@ -683,7 +683,7 @@ function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete, onUpdat
       </Link>
       {client.status === 'inactive' && canManage && (
         <button
-          onClick={e => { e.stopPropagation(); onUpdate(client.id, { status: 'active' }) }}
+          onClick={e => { e.stopPropagation(); onUpdate(client.id, { status: 'active', health: 'healthy' }) }}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 5, margin: '4px 16px 10px', padding: '5px 12px', background: '#F0FDF4', border: '1.5px solid #86EFAC', borderRadius: 8, fontSize: 12, fontWeight: 700, color: '#16A34A', cursor: 'pointer', fontFamily: 'inherit', width: 'fit-content', transition: 'background 0.12s', position: 'relative', zIndex: 5 }}
         >
           <Plus size={13} /> Fer client
@@ -722,7 +722,7 @@ function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete, onUpdat
               <div style={{ height: 1, background: '#F0F0F0' }} />
               {client.status !== 'active' && (
                 <button
-                  onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onUpdate(client.id, { status: 'active' }) }}
+                  onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onUpdate(client.id, { status: 'active', health: 'healthy' }) }}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#16A34A', textAlign: 'left', fontFamily: 'inherit' }}
                   onMouseEnter={e => (e.currentTarget.style.background = '#F0FDF4')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'none')}
@@ -732,7 +732,7 @@ function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete, onUpdat
               )}
               {client.status === 'active' && (
                 <button
-                  onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onUpdate(client.id, { status: 'paused' }) }}
+                  onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onUpdate(client.id, { status: 'paused', health: 'attention' }) }}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#D97706', textAlign: 'left', fontFamily: 'inherit' }}
                   onMouseEnter={e => (e.currentTarget.style.background = '#FFFBEB')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'none')}
@@ -742,7 +742,7 @@ function ClientCard({ client, canManage, isSuperadmin, onEdit, onDelete, onUpdat
               )}
               {client.status !== 'inactive' && (
                 <button
-                  onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onUpdate(client.id, { status: 'inactive' }) }}
+                  onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onUpdate(client.id, { status: 'inactive', health: 'risk' }) }}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#6B7280', textAlign: 'left', fontFamily: 'inherit' }}
                   onMouseEnter={e => (e.currentTarget.style.background = '#F5F5F5')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'none')}
@@ -952,8 +952,8 @@ function ClientRow({ client, canManage, onEdit, onDelete, onUpdate }: CardProps)
             <button
               onClick={e => {
                 e.preventDefault(); e.stopPropagation()
-                if (client.status === 'active') onUpdate(client.id, { status: 'inactive' })
-                else if (client.status === 'inactive') onUpdate(client.id, { status: 'active' })
+                if (client.status === 'active') onUpdate(client.id, { status: 'inactive', health: 'risk' })
+                else if (client.status === 'inactive') onUpdate(client.id, { status: 'active', health: 'healthy' })
                 else onDelete()
               }}
               title={client.status === 'active' ? 'Marcar com No client' : client.status === 'inactive' ? 'Marcar com Client' : 'Esborrar client'}
@@ -1027,7 +1027,7 @@ function ClientRow({ client, canManage, onEdit, onDelete, onUpdate }: CardProps)
               </button>
               <div style={{ height: 1, background: '#F0F0F0' }} />
               {client.status !== 'active' && (
-                <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onUpdate(client.id, { status: 'active' }) }}
+                <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onUpdate(client.id, { status: 'active', health: 'healthy' }) }}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#16A34A', textAlign: 'left', fontFamily: 'inherit' }}
                   onMouseEnter={e => (e.currentTarget.style.background = '#F0FDF4')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
@@ -1035,7 +1035,7 @@ function ClientRow({ client, canManage, onEdit, onDelete, onUpdate }: CardProps)
                 </button>
               )}
               {client.status === 'active' && (
-                <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onUpdate(client.id, { status: 'paused' }) }}
+                <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onUpdate(client.id, { status: 'paused', health: 'attention' }) }}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#D97706', textAlign: 'left', fontFamily: 'inherit' }}
                   onMouseEnter={e => (e.currentTarget.style.background = '#FFFBEB')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
@@ -1043,7 +1043,7 @@ function ClientRow({ client, canManage, onEdit, onDelete, onUpdate }: CardProps)
                 </button>
               )}
               {client.status !== 'inactive' && (
-                <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onUpdate(client.id, { status: 'inactive' }) }}
+                <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); onUpdate(client.id, { status: 'inactive', health: 'risk' }) }}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#6B7280', textAlign: 'left', fontFamily: 'inherit' }}
                   onMouseEnter={e => (e.currentTarget.style.background = '#F5F5F5')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
@@ -1191,8 +1191,8 @@ function ClientTable({ clients, canManage, onEdit, onDelete, onUpdate }: {
                       <button
                         onClick={e => {
                           e.preventDefault(); e.stopPropagation()
-                          if (client.status === 'active') onUpdate(client.id, { status: 'inactive' })
-                          else if (client.status === 'inactive') onUpdate(client.id, { status: 'active' })
+                          if (client.status === 'active') onUpdate(client.id, { status: 'inactive', health: 'risk' })
+                          else if (client.status === 'inactive') onUpdate(client.id, { status: 'active', health: 'healthy' })
                           else onDelete(client)
                         }}
                         title={client.status === 'active' ? 'Marcar com No client' : client.status === 'inactive' ? 'Marcar com Client' : 'Esborrar client'}
@@ -1266,7 +1266,7 @@ function ClientTable({ clients, canManage, onEdit, onDelete, onUpdate }: {
                       </button>
                       <div style={{ height: 1, background: '#F0F0F0' }} />
                       {client.status !== 'active' && (
-                        <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpenId(null); onUpdate(client.id, { status: 'active' }) }}
+                        <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpenId(null); onUpdate(client.id, { status: 'active', health: 'healthy' }) }}
                           style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#16A34A', textAlign: 'left', fontFamily: 'inherit' }}
                           onMouseEnter={e => (e.currentTarget.style.background = '#F0FDF4')}
                           onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
@@ -1274,7 +1274,7 @@ function ClientTable({ clients, canManage, onEdit, onDelete, onUpdate }: {
                         </button>
                       )}
                       {client.status === 'active' && (
-                        <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpenId(null); onUpdate(client.id, { status: 'paused' }) }}
+                        <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpenId(null); onUpdate(client.id, { status: 'paused', health: 'attention' }) }}
                           style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#D97706', textAlign: 'left', fontFamily: 'inherit' }}
                           onMouseEnter={e => (e.currentTarget.style.background = '#FFFBEB')}
                           onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
@@ -1282,7 +1282,7 @@ function ClientTable({ clients, canManage, onEdit, onDelete, onUpdate }: {
                         </button>
                       )}
                       {client.status !== 'inactive' && (
-                        <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpenId(null); onUpdate(client.id, { status: 'inactive' }) }}
+                        <button onClick={e => { e.preventDefault(); e.stopPropagation(); setMenuOpenId(null); onUpdate(client.id, { status: 'inactive', health: 'risk' }) }}
                           style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#6B7280', textAlign: 'left', fontFamily: 'inherit' }}
                           onMouseEnter={e => (e.currentTarget.style.background = '#F5F5F5')}
                           onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
