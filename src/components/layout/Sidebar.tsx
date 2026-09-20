@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, FolderKanban, CheckSquare,
   Calendar, Shield, LogOut, ChevronLeft, ChevronRight, ClipboardList,
   TrendingUp, BarChart3, Truck, Building2, PieChart, Plus, X, Pencil, Check,
-  Target, FileText, LineChart, Scale, Inbox, Search, Layers,
+  Target, FileText, LineChart, Scale, Inbox, Search, Layers, Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -27,7 +27,7 @@ const financeNavDefs = [
 ]
 
 const navDefs = [
-  { href: '/dashboard', icon: LayoutDashboard, labelKey: 'dashboard' as keyof typeof TRANSLATIONS },
+  { href: '/dashboard',    icon: LayoutDashboard, labelKey: 'dashboard' as keyof typeof TRANSLATIONS },
   { href: '/clients',   icon: Users,           labelKey: 'clients'   as keyof typeof TRANSLATIONS },
   { href: '/tasks',     icon: CheckSquare,     labelKey: 'tasks'     as keyof typeof TRANSLATIONS },
   { href: '/contingut', icon: Layers,          labelKey: 'content'   as keyof typeof TRANSLATIONS },
@@ -302,6 +302,28 @@ export function Sidebar({ user }: Props) {
           </nav>
         )}
 
+
+        {/* AI Intelligence — superadmin + manager */}
+        {(user.role === 'superadmin' || user.role === 'manager') && (
+          <>
+            <div className="sb-divider" />
+            <nav className="sb-nav">
+              {(() => {
+                const active = pathname.startsWith('/intelligence')
+                return (
+                  <Link
+                    href="/intelligence"
+                    className={cn('sb-item', active && 'sb-item--active', c && 'sb-item--icon')}
+                    title={c ? 'Intel·ligència AI' : undefined}
+                  >
+                    <Zap size={c ? 20 : 17} strokeWidth={active ? 2.2 : 1.8} />
+                    {!c && <span>Intel·ligència AI</span>}
+                  </Link>
+                )
+              })()}
+            </nav>
+          </>
+        )}
 
         {/* Sales section: CRM + Plantilles */}
         {user.role === 'superadmin' && (
