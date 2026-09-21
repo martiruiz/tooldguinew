@@ -223,6 +223,21 @@ export const ORCHESTRATOR_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'save_metricool_metrics',
+    description: 'Desa mètriques de Metricool a la base de dades. Usar quan s\'han obtingut dades de Metricool i cal persistir-les per a l\'agent Analytics o Reporting.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        client_slug: { type: 'string', description: "Slug del client (ex: 'asobal', 'biwpa', 'elite-fut-academy')" },
+        platform: { type: 'string', enum: ['instagram', 'facebook', 'tiktok', 'youtube', 'twitter', 'linkedin'] },
+        period_start: { type: 'string', description: 'YYYY-MM-DD' },
+        period_end: { type: 'string', description: 'YYYY-MM-DD' },
+        metrics: { type: 'object', description: 'Objecte JSON amb les mètriques obtingudes de Metricool' },
+      },
+      required: ['client_slug', 'platform', 'period_start', 'period_end', 'metrics'],
+    },
+  },
+  {
     name: 'create_recommendation',
     description:
       'Crea una recomanació que requereix aprovació humana. Usar quan el resultat final és un contingut llest per programar o una acció que cal confirmar.',
@@ -491,6 +506,41 @@ async function create_campaign_brief({
   }
 }
 
+// ─── TOOL: save_metricool_metrics ────────────────────────────────────────────
+
+const METRICOOL_BRAND_MAP: Record<string, { brandId: number; handle: string }> = {
+  'asobal':            { brandId: 6824092, handle: 'asobal' },
+  'biwpa':             { brandId: 5525437, handle: 'biwpa' },
+  'elite-fut-academy': { brandId: 4286845, handle: 'elitefutacademy' },
+}
+
+async function save_metricool_metrics({
+  client_slug, platform, period_start, period_end, metrics,
+}: ToolInput) {
+  const admin = createAdminClient()
+  const brand = METRICOOL_BRAND_MAP[client_slug]
+
+  const { data: client } = await admin.from('clients').select('id').eq('slug', client_slug).single()
+  if (!client) return { error: `Client '${client_slug}' no trobat` }
+
+  const { data, error } = await admin
+    .from('metric_reports')
+    .insert({
+      client_id: client.id,
+      platform: platform ?? 'instagram',
+      account_handle: brand?.handle ?? null,
+      period_start,
+      period_end,
+      raw_data: { brand_id: brand?.brandId, metrics, source: 'metricool_mcp' },
+      ai_analysis: null,
+    })
+    .select('id')
+    .single()
+
+  if (error) return { error: error.message }
+  return { success: true, report_id: data.id, client_slug, platform, period: `${period_start} → ${period_end}` }
+}
+
 // ─── DISPATCHER ──────────────────────────────────────────────────────────────
 
 const EXECUTORS: Record<string, (input: ToolInput) => Promise<any>> = {
@@ -508,6 +558,7 @@ const EXECUTORS: Record<string, (input: ToolInput) => Promise<any>> = {
   get_metric_reports,
   create_strategy_note,
   create_campaign_brief,
+  save_metricool_metrics,
 }
 
 export async function executeTool(name: string, input: ToolInput): Promise<string> {

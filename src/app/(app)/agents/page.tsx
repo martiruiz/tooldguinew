@@ -225,20 +225,51 @@ function AgentPanel({ agent, dept, onClose }: { agent: DeptAgent; dept: Dept; on
   const [chat, setChat] = useState<{ role: 'user' | 'agent'; text: string }[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [historyLoaded, setHistoryLoaded] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chat])
+
+  // Carregar historial en obrir el panell
+  useEffect(() => {
+    if (!agent.chat) return
+    fetch(`/api/conversations?agentId=${agent.id}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.messages?.length) {
+          setChat(d.messages.map((m: { role: string; content: string }) => ({
+            role: m.role === 'user' ? 'user' : 'agent',
+            text: m.content,
+          })))
+        }
+        setHistoryLoaded(true)
+      })
+      .catch(() => setHistoryLoaded(true))
+  }, [agent.id, agent.chat])
 
   const send = async () => {
     if (!input.trim() || loading) return
     const msg = input.trim(); setInput('')
     setChat(h => [...h, { role: 'user', text: msg }])
     setLoading(true)
+    // Desar missatge de l'usuari
+    fetch('/api/conversations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agentId: agent.id, role: 'user', content: msg }) })
     try {
       const res = await fetch('/api/orchestrator', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg }) })
       const data = await res.json()
-      setChat(h => [...h, { role: 'agent', text: data.response ?? data.error }])
-    } catch { setChat(h => [...h, { role: 'agent', text: 'Error de connexió.' }]) }
+      const reply = data.response ?? data.error
+      setChat(h => [...h, { role: 'agent', text: reply }])
+      // Desar resposta de l'agent
+      fetch('/api/conversations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agentId: agent.id, role: 'assistant', content: reply }) })
+    } catch {
+      setChat(h => [...h, { role: 'agent', text: 'Error de connexió.' }])
+    }
     finally { setLoading(false) }
+  }
+
+  const clearHistory = () => {
+    if (!confirm('Esborrar tot l\'historial d\'aquesta conversa?')) return
+    fetch(`/api/conversations?agentId=${agent.id}`, { method: 'DELETE' })
+      .then(() => setChat([]))
   }
 
   const ac = agent.accent ?? dept.dot
@@ -259,7 +290,12 @@ function AgentPanel({ agent, dept, onClose }: { agent: DeptAgent; dept: Dept; on
             <div style={{ fontSize: 15, fontWeight: 700, color: '#E2E8F4', letterSpacing: '-0.01em', marginBottom: 2 }}>{agent.name}</div>
             <div style={{ fontSize: 10, color: '#4B5A72', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{dept.name} · FASE {dept.fase}</div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#4B5A72', width: 28, height: 28, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>✕</button>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {agent.chat && chat.length > 0 && (
+              <button onClick={clearHistory} title="Esborrar historial" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3A4A62', width: 28, height: 28, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>🗑</button>
+            )}
+            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#4B5A72', width: 28, height: 28, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>✕</button>
+          </div>
         </div>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 20, fontSize: 9, fontWeight: 800, letterSpacing: '0.08em', background: `${statusColor}18`, border: `1px solid ${statusColor}35`, color: statusColor }}>
           <span style={{ width: 5, height: 5, borderRadius: '50%', background: statusColor, animation: agent.status === 'actiu' ? 'blink 2s infinite' : 'none' }} />
@@ -290,7 +326,10 @@ function AgentPanel({ agent, dept, onClose }: { agent: DeptAgent; dept: Dept; on
       {agent.chat ? (
         <>
           <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8, scrollbarWidth: 'none' }}>
-            {chat.length === 0 && (
+            {!historyLoaded && (
+              <div style={{ textAlign: 'center', color: '#3A4A62', fontSize: 11, padding: '20px 16px' }}>Carregant historial...</div>
+            )}
+            {historyLoaded && chat.length === 0 && (
               <div style={{ textAlign: 'center', color: '#3A4A62', fontSize: 12, padding: '24px 16px', lineHeight: 1.7 }}>
                 Escriu una tasca en llengua natural.<br />
                 <span style={{ color: ac, fontSize: 11 }}>"Crea un post d'ASOBAL per la J3"</span>
