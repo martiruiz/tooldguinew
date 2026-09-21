@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, FolderKanban, CheckSquare,
   Calendar, Shield, LogOut, ChevronLeft, ChevronRight, ClipboardList,
   TrendingUp, BarChart3, Truck, Building2, PieChart, Plus, X, Pencil, Check,
-  Target, FileText, LineChart, Scale, Inbox, Search, Layers, Zap,
+  Target, FileText, LineChart, Scale, Inbox, Search, Layers, Zap, Bot,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -318,6 +318,19 @@ export function Sidebar({ user }: Props) {
                   >
                     <Zap size={c ? 20 : 17} strokeWidth={active ? 2.2 : 1.8} />
                     {!c && <span>Intel·ligència AI</span>}
+                  </Link>
+                )
+              })()}
+              {(() => {
+                const active = pathname.startsWith('/agents')
+                return (
+                  <Link
+                    href="/agents"
+                    className={cn('sb-item', active && 'sb-item--active', c && 'sb-item--icon')}
+                    title={c ? 'Agents' : undefined}
+                  >
+                    <Bot size={c ? 20 : 17} strokeWidth={active ? 2.2 : 1.8} />
+                    {!c && <span>Agents</span>}
                   </Link>
                 )
               })()}
