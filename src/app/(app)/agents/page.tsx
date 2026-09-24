@@ -1,6 +1,61 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useJarvisVoice } from '@/hooks/useJarvisVoice'
+import { JarvisNodeCanvas } from '@/components/agents/JarvisNodeCanvas'
+import {
+  Brain, Database, Zap, CheckCircle2, BarChart2,
+  PenLine, Calendar, Film, Paintbrush, Globe,
+  Activity, Scissors, Play, Award, Image, FileText,
+  ClipboardList, Target, Scale, Lightbulb, DollarSign,
+  TrendingUp, Search, SearchCheck, LineChart, Table2, Radio,
+  ShieldCheck, Compass, Megaphone, Palette, Star,
+  MousePointer2, MessageCircle, Share2, Trophy,
+  type LucideProps,
+} from 'lucide-react'
+
+const AGENT_ICONS: Record<string, React.ComponentType<LucideProps>> = {
+  '00_orchestrator': Brain,
+  '01_memory': Database,
+  '02_automation': Zap,
+  '03_qa': CheckCircle2,
+  '04_reporting': BarChart2,
+  '40_contingut': PenLine,
+  '41_calendari': Calendar,
+  '42_filmmaker': Film,
+  '43_disseny': Paintbrush,
+  '44_localization': Globe,
+  '50_jornada': Trophy,
+  '51_cut': Scissors,
+  '52_clip': Play,
+  '53_brand': Award,
+  '54_thumbnail': Image,
+  '55_draft': FileText,
+  '10_pm': ClipboardList,
+  '13_account': Target,
+  '14_legal': Scale,
+  '15_client_insights': Lightbulb,
+  '11_finances': DollarSign,
+  '12_comercial': TrendingUp,
+  '20_research': Search,
+  '21_analytics': LineChart,
+  '22_dades': Table2,
+  '23_social_listening': Radio,
+  '24_fact_check': ShieldCheck,
+  '30_estrategia': Compass,
+  '31_seo': SearchCheck,
+  '32_paid': Megaphone,
+  '33_creative_director': Palette,
+  '34_influencer': Star,
+  '35_web': MousePointer2,
+  '60_cm': MessageCircle,
+  '61_distribution': Share2,
+}
+
+function AgentIcon({ id, size = 14, color }: { id: string; size?: number; color?: string }) {
+  const Icon = AGENT_ICONS[id] ?? Activity
+  return <Icon size={size} strokeWidth={1.8} color={color} />
+}
 
 // ── SVG helpers ───────────────────────────────────────────────────────────────
 const NODE_POS: Record<string, [number, number]> = {
@@ -10,13 +65,6 @@ const NODE_POS: Record<string, [number, number]> = {
   finances:   [738, 195],
   vendes:     [245, 445],
   estrategia: [655, 445],
-}
-
-function hexPts(cx: number, cy: number, r: number, flat = false): string {
-  return Array.from({ length: 6 }, (_, i) => {
-    const a = (i * 60 + (flat ? 0 : 30)) * Math.PI / 180
-    return `${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`
-  }).join(' ')
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -34,7 +82,7 @@ type PanelTab = 'chat' | 'activitat' | 'edita'
 // ── Static data ───────────────────────────────────────────────────────────────
 const DEPTS: Dept[] = [
   {
-    id: 'central', name: 'Sistema', emoji: '⬡', dot: '#2563EB', glowColor: '#3B82F6', runsToday: 5, lastActivity: '1m ago',
+    id: 'central', name: 'Sistema', emoji: '⬡', dot: '#2563EB', glowColor: '#3B82F6',
     agents: [
       { id: '00_orchestrator', code: '00', name: 'Orchestrator', icon: '🧠', status: 'actiu', chat: true, desc: 'Cervell del sistema. Rep tasques en llengua natural, executa 6 passos obligatoris i retorna un resultat revisat i accionable.', trigger: 'Totes les peticions en llengua natural. Punt d\'entrada únic del sistema.' },
       { id: '01_memory', code: '01', name: 'Memory', icon: '🗄️', status: 'actiu', chat: true, desc: 'Gestiona la memòria persistent del OS: clients, historial, decisions i contextos.', trigger: 'Qualsevol agent necessita recuperar o actualitzar context persistent.' },
@@ -44,7 +92,7 @@ const DEPTS: Dept[] = [
     ],
   },
   {
-    id: 'produccio', name: 'Producció', emoji: '✦', dot: '#059669', glowColor: '#10B981', runsToday: 12, lastActivity: '30s ago',
+    id: 'produccio', name: 'Producció', emoji: '✦', dot: '#059669', glowColor: '#10B981',
     agents: [
       { id: '40_contingut', code: '40', name: 'Contingut', icon: '✍️', status: 'actiu', chat: true, desc: 'Genera copies, captions i adaptacions per client i plataforma. Sempre aplica TOV i guidelines del client.', trigger: 'Cal copy, captions o contingut escrit per a RRSS, email o web.' },
       { id: '41_calendari', code: '41', name: 'Calendari', icon: '📅', status: 'actiu', chat: true, desc: 'Planifica el calendari editorial mensual per client, alineant dates esportives, formats i freqüència.', trigger: 'Cal planificar el calendari editorial d\'un client o mes.' },
@@ -60,7 +108,7 @@ const DEPTS: Dept[] = [
     ],
   },
   {
-    id: 'clients', name: 'Operacions', emoji: '◈', dot: '#0284C7', glowColor: '#0EA5E9', runsToday: 4, lastActivity: '8m ago',
+    id: 'clients', name: 'Operacions', emoji: '◈', dot: '#0284C7', glowColor: '#0EA5E9',
     agents: [
       { id: '10_pm', code: '10', name: 'Project Mgr', icon: '📋', status: 'actiu', chat: true, desc: 'Converteix briefs en tasques estructurades, assigna responsables, controla deadlines i detecta bloquejos.', trigger: 'La tasca implica un projecte, deadline o assignació de responsable.' },
       { id: '13_account', code: '13', name: 'Account', icon: '🎯', status: 'actiu', chat: true, desc: 'Client Operating System. Memòria viva de cada compte: objectius, historial, TOV, contracte, feedback.', trigger: 'Cal context d\'un client, preparació de reunió o seguiment de compte.' },
@@ -69,20 +117,20 @@ const DEPTS: Dept[] = [
     ],
   },
   {
-    id: 'finances', name: 'Finances', emoji: '◆', dot: '#D97706', glowColor: '#F59E0B', runsToday: 1, lastActivity: '2h ago',
+    id: 'finances', name: 'Finances', emoji: '◆', dot: '#D97706', glowColor: '#F59E0B',
     agents: [
       { id: '11_finances', code: '11', name: 'Finances', icon: '💰', status: 'restringit', chat: true, desc: 'Controla ingressos, despeses, marge per client i projecte, facturació pendent i previsió. Accés restringit.', trigger: 'Consulta financera — exclusivament per a Martí Ruiz.' },
     ],
   },
   {
-    id: 'vendes', name: 'Comercial', emoji: '◇', dot: '#7C3AED', glowColor: '#8B5CF6', runsToday: 2, lastActivity: '45m ago',
+    id: 'vendes', name: 'Comercial', emoji: '◇', dot: '#7C3AED', glowColor: '#8B5CF6',
     agents: [
       { id: '12_comercial', code: '12', name: 'Comercial', icon: '🤝', status: 'actiu', chat: true, desc: 'Gestiona oportunitats comercials, proposa propostes i fa seguiment. Mai envia propostes sense aprovació.', trigger: 'Nova oportunitat comercial o seguiment de prospecte.' },
       { id: '20_research', code: '20', name: 'Research', icon: '🔍', status: 'actiu', chat: true, desc: 'Analitza competència i detecta tendències de mercat. Genera insights estratègics per a decisions.', trigger: 'Cal investigar el mercat, competència o tendències del sector.' },
     ],
   },
   {
-    id: 'estrategia', name: 'Estratègia', emoji: '◉', dot: '#0891B2', glowColor: '#06B6D4', runsToday: 6, lastActivity: '3m ago',
+    id: 'estrategia', name: 'Estratègia', emoji: '◉', dot: '#0891B2', glowColor: '#06B6D4',
     agents: [
       { id: '21_analytics', code: '21', name: 'Analytics', icon: '📈', status: 'actiu', chat: true, desc: 'Anàlisi profunda de dades, patrons i correlacions entre mètriques de RRSS, audiència i contingut.', trigger: 'Cal anàlisi de tendències, comparatives de rendiment o correlació de dades.' },
       { id: '22_dades', code: '22', name: 'Dades', icon: '🗃️', status: 'actiu', chat: true, desc: 'Estructurador de dades esportives. Converteix resultats i estadístiques en entitats verificables.', trigger: 'Cal estructurar dades esportives: gols, marcadors, estadístiques de jugadors.' },
@@ -96,104 +144,135 @@ const DEPTS: Dept[] = [
       { id: '35_web', code: '35', name: 'Web & CRO', icon: '💻', status: 'actiu', chat: true, desc: 'Dissenya i optimitza pàgines web, landings i fluxos de conversió. Genera copywriting per a web.', trigger: 'Cal una landing page, copy web, auditoria CRO o millora de conversió.' },
       { id: '60_cm', code: '60', name: 'Community Mgr', icon: '💬', status: 'actiu', chat: true, desc: 'Prepara respostes a comentaris i DMs seguint la veu de cada client. No publica mai directament.', trigger: 'Hi ha comentaris o DMs a gestionar. Genera esborranys per aprovació.' },
       { id: '61_distribution', code: '61', name: 'Distribution', icon: '📡', status: 'actiu', chat: true, desc: 'Executa la publicació multicanal via Metricool. Gestiona calendaris i fa pre-flight checks.', trigger: 'Cal programar o publicar contingut aprovat (QA:APPROVED obligatori).' },
+      { id: '70_linkedin', code: '70', name: 'LinkedIn', icon: '🔵', status: 'actiu', chat: true, desc: 'Super Agent Expert en Estratègia de LinkedIn i Copywriting Digital. Metodologia Luis Garau: TOFU/MOFU/BOFU, 15 claus de redacció, prospecció B2B i tancament per DM. Per a marca personal de Martí Ruiz i pàgines de clients.', trigger: 'Cal un post de LinkedIn, optimitzar un perfil, dissenyar estratègia de contingut o gestionar prospecció B2B.' },
     ],
   },
 ]
 
-const AGENT_ACTIVITY: Record<string, { status: string; log: string[] }> = {
-  '00_orchestrator': { status: 'PROCESSANT', log: ['Tasca rebuda: "post ASOBAL J4"', 'Activant Contingut + QA', 'Context ASOBAL carregat', 'Delegant a 40_contingut', 'Esperant resposta QA'] },
-  '01_memory': { status: 'IDLE', log: ['Context BIWPA actualitzat', 'Historial TPE recuperat (12 sessions)', 'Decisió desada: "no publicar diumenges"'] },
-  '02_automation': { status: 'ACTIU', log: ['Pipeline J4 ASOBAL executant-se', 'Webhook post-partit activat', 'Metricool programat automàticament', '3 clips processats'] },
-  '03_qa': { status: 'REVISANT', log: ['PASS — Post ASOBAL J3 ✓', 'REJECT — Caption massa llarg (>150 chars)', 'PASS_WITH_WARNINGS — Story Nautivela', 'HUMAN_REVIEW → Contingut amb menor'] },
-  '04_reporting': { status: 'IDLE', log: ['Report ASOBAL Octubre generat', 'Executive summary enviat a Martí', 'KPIs BIWPA Q3 analitzats'] },
-  '40_contingut': { status: 'GENERANT', log: ['Caption post J4 ASOBAL (3 variants)', 'Story announcement Kanbesport', 'Thread LinkedIn SWC generant...'] },
-  '50_jornada': { status: 'ACTIU', log: ['Pipeline J4 iniciat', '8 partits identificats', 'Clips pendents: 16', 'Jornada anterior tancada ✓'] },
-  '54_thumbnail': { status: 'GENERANT', log: ['Spec "J4 Resum Complet" → CTR opt.', 'Thumbnail BCN vs PSG exportat', 'A/B test: títol curt vs llarg'] },
-  '21_analytics': { status: 'ANALITZANT', log: ['ASOBAL IG: +12.3% engagement', 'Millor hora: dimarts 20h', 'Reels vs Carrusels: Reels x3.2'] },
-  '24_fact_check': { status: 'VERIFICANT', log: ['VERIFIED — PSG 32:29 GRA (J3)', 'CONFLICTING — Gols jugador 7 vs 8', 'VERIFIED — Classificació J3 confirmada'] },
-  '61_distribution': { status: 'PROGRAMANT', log: ['Post ASOBAL → Dijous 20:00 IG ✓', 'Story → Divendres 09:00 programada', 'Pre-flight check: 3/3 OK'] },
+// ── System-wide activity log ───────────────────────────────────────────────────
+type LogEntry = { time: string; agentName: string; color: string; msg: string; id: number }
+
+function getActivity(_agentId: string) {
+  return { status: 'EN ESPERA', log: ['Agent preparat. Envia una petició per activar-lo.'] }
 }
 
-function getActivity(agentId: string) {
-  return AGENT_ACTIVITY[agentId] ?? { status: 'IDLE', log: ['Cap activitat recent registrada.', 'L\'agent s\'activarà quan rebi una petició.'] }
-}
-
-// ── SVG: connection line with animated particles ───────────────────────────────
+// ── SVG: APEX-style curved spoke connection ────────────────────────────────────
 function NetConnection({ deptId, x1, y1, x2, y2, color, active, delay, dur }: {
   deptId: string; x1: number; y1: number; x2: number; y2: number
   color: string; active: boolean; delay: string; dur: string
 }) {
-  const cpx1 = x1 + (x2 - x1) * 0.45, cpy1 = y1 + (y2 - y1) * 0.45
-  const cpx2 = x2 + (x1 - x2) * 0.45, cpy2 = y2 + (y1 - y2) * 0.45
-  const d = `M${x1},${y1} C${cpx1},${cpy1} ${cpx2},${cpy2} ${x2},${y2}`
+  const dx = x2 - x1, dy = y2 - y1
+  const len = Math.hypot(dx, dy) || 1
+  const bend = len * 0.14
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2
+  const qx = mx + (-dy / len) * bend, qy = my + (dx / len) * bend
+  const d = `M${x1},${y1} Q${qx},${qy} ${x2},${y2}`
   const pid = `nc_${deptId}`
   return (
-    <g opacity={active ? 1 : 0.15}>
+    <g opacity={active ? 1 : 0.12}>
       <defs><path id={pid} d={d} /></defs>
-      <path d={d} fill="none" stroke={color} strokeWidth="8" opacity="0.05" />
-      <path d={d} fill="none" stroke={color} strokeWidth="1.2" strokeDasharray="6,6" opacity={active ? 0.35 : 0.15} />
+      {/* glow layer */}
+      <path d={d} fill="none" stroke={color} strokeWidth="6" opacity="0.07"
+        style={{ filter: `blur(3px)` }} />
+      {/* crisp spoke */}
+      <path d={d} fill="none" stroke={color} strokeWidth="0.9"
+        strokeDasharray="5 4" opacity={active ? 0.5 : 0.2} />
       {active && <>
-        <circle r="4.5" fill={color} opacity="0">
+        <circle r="3.5" fill={color} opacity="0"
+          style={{ filter: `drop-shadow(0 0 4px ${color})` }}>
           <animateMotion dur={dur} begin={delay} repeatCount="indefinite"><mpath href={`#${pid}`} /></animateMotion>
-          <animate attributeName="opacity" values="0;0.7;0.7;0" keyTimes="0;0.08;0.92;1" dur={dur} begin={delay} repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0;0.85;0.85;0" keyTimes="0;0.07;0.93;1" dur={dur} begin={delay} repeatCount="indefinite" />
         </circle>
-        <circle r="2" fill="white" opacity="0">
+        <circle r="1.5" fill="white" opacity="0">
           <animateMotion dur={dur} begin={delay} repeatCount="indefinite"><mpath href={`#${pid}`} /></animateMotion>
-          <animate attributeName="opacity" values="0;0.95;0.95;0" keyTimes="0;0.08;0.92;1" dur={dur} begin={delay} repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.07;0.93;1" dur={dur} begin={delay} repeatCount="indefinite" />
         </circle>
       </>}
     </g>
   )
 }
 
-// ── SVG: hex dept node ─────────────────────────────────────────────────────────
+// CentralNode removed — replaced by JarvisNodeCanvas golden ring overlay
+
+function TimeDisplay() {
+  const [time, setTime] = useState('')
+  useEffect(() => {
+    const update = () => setTime(new Date().toLocaleTimeString('ca-ES', { hour: '2-digit', minute: '2-digit' }))
+    update()
+    const id = setInterval(update, 60_000)
+    return () => clearInterval(id)
+  }, [])
+  return <span style={{ fontSize: 9, color: '#2A3A52', fontFamily: 'monospace' }}>{time}</span>
+}
+
+// ── SVG: APEX-style circular dept node ────────────────────────────────────────
 function DeptNode({ dept, selected, onClick }: { dept: Dept; selected: boolean; onClick: () => void }) {
   const [cx, cy] = NODE_POS[dept.id]
-  const isCenter = dept.id === 'central'
-  const r = isCenter ? 62 : 50
-  const ri = r * 0.68
+  const r = 44
   const { dot, glowColor } = dept
   return (
     <g onClick={onClick} style={{ cursor: 'pointer' }}>
-      {[1, 2].map(i => (
-        <polygon key={i} points={hexPts(cx, cy, r + 4)} fill="none" stroke={glowColor} strokeWidth="1">
-          <animate attributeName="opacity" dur={`${2.8 + i * 0.6}s`} begin={`${(i - 1) * 1.1}s`} repeatCount="indefinite" values="0.45;0" />
-        </polygon>
+      {/* outer pulse rings */}
+      {[0, 1].map(i => (
+        <circle key={i} cx={cx} cy={cy} r={r + 8 + i * 10} fill="none" stroke={glowColor} strokeWidth="0.8">
+          <animate attributeName="opacity" dur={`${3 + i * 0.7}s`} begin={`${i * 1.2}s`} repeatCount="indefinite" values="0.4;0" />
+          <animate attributeName="r" dur={`${3 + i * 0.7}s`} begin={`${i * 1.2}s`} repeatCount="indefinite" values={`${r};${r + 20 + i * 10}`} />
+        </circle>
       ))}
-      {selected && <polygon points={hexPts(cx, cy, r + 2)} fill="none" stroke={dot} strokeWidth="2.5" opacity="0.8" />}
-      <polygon points={hexPts(cx, cy, r)} fill={selected ? `${dot}28` : `${dot}18`} />
-      <polygon points={hexPts(cx, cy, r)} fill="none" stroke={dot} strokeWidth={selected ? 2 : 1.5} opacity={selected ? 1 : 0.6} />
-      <polygon points={hexPts(cx, cy, ri)} fill={`${dot}14`} />
-      <polygon points={hexPts(cx, cy, ri)} fill="none" stroke={dot} strokeWidth="0.7" opacity="0.35" />
-      <circle cx={cx} cy={cy} r={r * 0.35} fill={dot} opacity="0.07" />
-      <text x={cx} y={cy + (isCenter ? 5 : 4)} textAnchor="middle" fontSize={isCenter ? 24 : 20} fill={glowColor}
-        style={{ userSelect: 'none', filter: `drop-shadow(0 0 6px ${glowColor}90)` }}>{dept.emoji}</text>
-      <text x={cx} y={cy + r + 17} textAnchor="middle" fontSize={isCenter ? 11 : 10} fontWeight="700"
-        fill="#E2E8F4" letterSpacing="0.06em" style={{ userSelect: 'none', textTransform: 'uppercase' }}>{dept.name.toUpperCase()}</text>
+
+      {/* selection ring */}
+      {selected && (
+        <circle cx={cx} cy={cy} r={r + 5} fill="none" stroke={dot} strokeWidth="1.8" opacity="0.9" />
+      )}
+
+      {/* soft halo */}
+      <circle cx={cx} cy={cy} r={r + 16} fill={dot} opacity="0.06"
+        style={{ filter: 'blur(8px)' }} />
+
+      {/* main ring */}
+      <circle cx={cx} cy={cy} r={r}
+        fill={selected ? `${dot}22` : `${dot}12`}
+        stroke={dot} strokeWidth={selected ? 1.8 : 1.2}
+        opacity={selected ? 1 : 0.65} />
+
+      {/* inner ring */}
+      <circle cx={cx} cy={cy} r={r * 0.62}
+        fill="none" stroke={dot} strokeWidth="0.6" opacity="0.3"
+        strokeDasharray="4 3" />
+
+      {/* emoji icon */}
+      <text x={cx} y={cy + 6} textAnchor="middle" fontSize={22} fill={glowColor}
+        style={{ userSelect: 'none', filter: `drop-shadow(0 0 6px ${glowColor}80)` }}>
+        {dept.emoji}
+      </text>
+
+      {/* dept name */}
+      <text x={cx} y={cy + r + 16} textAnchor="middle" fontSize={9.5} fontWeight="700"
+        fill="#D0DCF0" letterSpacing="0.08em"
+        style={{ userSelect: 'none', textTransform: 'uppercase' }}>
+        {dept.name.toUpperCase()}
+      </text>
+
+      {/* agent status dots */}
       <g>
-        {dept.agents.map((a, i) => {
+        {dept.agents.slice(0, 9).map((a, i) => {
           const n = Math.min(dept.agents.length, 9)
-          const xoff = (Math.min(i, 8) - (n - 1) / 2) * 8
+          const xoff = (i - (n - 1) / 2) * 7.5
           const isOn = a.status === 'actiu'
+          const dotColor = isOn ? '#00C97A' : a.status === 'restringit' ? '#F59E0B' : a.status === 'aturat' ? '#EF4444' : '#2A3650'
           return (
             <g key={a.id}>
-              <circle cx={cx + xoff} cy={cy + r + 28} r={2.8}
-                fill={isOn ? '#00C97A' : a.status === 'restringit' ? '#F59E0B' : a.status === 'aturat' ? '#EF4444' : '#2A3650'} />
+              <circle cx={cx + xoff} cy={cy + r + 26} r={2.5} fill={dotColor} />
               {isOn && (
-                <circle cx={cx + xoff} cy={cy + r + 28} r={2.8} fill="none" stroke="#00C97A">
-                  <animate attributeName="r" values="2.8;6;2.8" dur={`${1.8 + i * 0.25}s`} repeatCount="indefinite" begin={`${i * 0.15}s`} />
-                  <animate attributeName="opacity" values="0.5;0;0.5" dur={`${1.8 + i * 0.25}s`} repeatCount="indefinite" begin={`${i * 0.15}s`} />
+                <circle cx={cx + xoff} cy={cy + r + 26} r={2.5} fill="none" stroke="#00C97A">
+                  <animate attributeName="r" values="2.5;5.5;2.5" dur={`${1.9 + i * 0.2}s`} repeatCount="indefinite" begin={`${i * 0.14}s`} />
+                  <animate attributeName="opacity" values="0.5;0;0.5" dur={`${1.9 + i * 0.2}s`} repeatCount="indefinite" begin={`${i * 0.14}s`} />
                 </circle>
               )}
             </g>
           )
         })}
       </g>
-      {(dept.runsToday ?? 0) > 0 && (
-        <circle cx={cx + r - 5} cy={cy - r + 5} r={5} fill="#00C97A">
-          <animate attributeName="opacity" values="1;0.4;1" dur="2s" repeatCount="indefinite" />
-        </circle>
-      )}
     </g>
   )
 }
@@ -208,13 +287,12 @@ function Sidebar({
   onSelectDept: (id: string) => void; onSelectAgent: (id: string) => void
 }) {
   const totalActive = DEPTS.reduce((s, d) => s + d.agents.filter(a => (agentStatuses[a.id] ?? a.status) === 'actiu').length, 0)
-  const totalRuns = DEPTS.reduce((s, d) => s + (d.runsToday ?? 0), 0)
+  const totalRuns = 0
 
   return (
     <div style={{ width: 230, background: '#080F20', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 10, flexShrink: 0 }}>
       {/* Header */}
-      <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', color: '#E2E8F4', fontFamily: 'monospace', marginBottom: 8 }}>GUINEW AI OS</div>
+      <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div style={{ display: 'flex', gap: 10 }}>
           <div style={{ flex: 1, background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.2)', borderRadius: 7, padding: '6px 8px' }}>
             <div style={{ fontSize: 16, fontWeight: 800, color: '#E2E8F4', lineHeight: 1, fontFamily: 'monospace' }}>{totalActive}</div>
@@ -268,7 +346,7 @@ function Sidebar({
                         }}
                       >
                         <span style={{ width: 5, height: 5, borderRadius: '50%', background: sc, flexShrink: 0 }} />
-                        <span style={{ fontSize: 12 }}>{a.icon}</span>
+                        <AgentIcon id={a.id} size={12} color="#6A7A95" />
                         <span style={{ flex: 1, fontSize: 11, fontWeight: isSel ? 700 : 500, color: isSel ? '#E2E8F4' : '#6A7A95', textAlign: 'left' }}>{a.name}</span>
                         <span style={{ fontSize: 8, color: '#2A3A52', fontFamily: 'monospace' }}>{a.code}</span>
                       </button>
@@ -293,12 +371,13 @@ function Sidebar({
 
 // ── Right panel: Agent detail ─────────────────────────────────────────────────
 function AgentPanel({
-  agent, dept, agentStatuses, onClose, onStatusChange,
+  agent, dept, agentStatuses, onClose, onStatusChange, onLogEntry,
 }: {
   agent: AgentDef; dept: Dept
   agentStatuses: Record<string, AgentStatus>
   onClose: () => void
   onStatusChange: (agentId: string, status: AgentStatus) => void
+  onLogEntry: (agentName: string, color: string, msg: string) => void
 }) {
   const [tab, setTab] = useState<PanelTab>('chat')
   const [chat, setChat] = useState<{ role: 'user' | 'agent'; text: string }[]>([])
@@ -310,6 +389,20 @@ function AgentPanel({
   const [editTrigger, setEditTrigger] = useState(agent.trigger)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [stopConfirm, setStopConfirm] = useState(false)
+  const [savingMsgIdx, setSavingMsgIdx] = useState<number | null>(null)
+  const [savedMsgIdxs, setSavedMsgIdxs] = useState<Set<number>>(new Set())
+
+  const saveMessage = async (idx: number, text: string) => {
+    setSavingMsgIdx(idx)
+    const title = text.slice(0, 60).replace(/\n/g, ' ').trim() + (text.length > 60 ? '…' : '')
+    await fetch('/api/agent-documents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, content: text, agent_id: agent.id, agent_name: agent.name, doc_type: 'contingut' }),
+    })
+    setSavedMsgIdxs(prev => new Set([...prev, idx]))
+    setSavingMsgIdx(null)
+  }
   const endRef = useRef<HTMLDivElement>(null)
 
   const ac = dept.dot
@@ -348,6 +441,8 @@ function AgentPanel({
       const reply = data.response ?? data.error ?? 'Error de resposta'
       setChat(h => [...h, { role: 'agent', text: reply }])
       fetch('/api/conversations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agentId: agent.id, role: 'assistant', content: reply }) })
+      const preview = reply.slice(0, 72).replace(/\n/g, ' ') + (reply.length > 72 ? '…' : '')
+      onLogEntry(agent.name, dept.dot, preview)
     } catch {
       setChat(h => [...h, { role: 'agent', text: 'Error de connexió.' }])
     } finally { setLoading(false) }
@@ -403,7 +498,7 @@ function AgentPanel({
       {/* Header */}
       <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', background: '#0A1020', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: `${ac}20`, border: `1.5px solid ${ac}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0 }}>{agent.icon}</div>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: `${ac}20`, border: `1.5px solid ${ac}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><AgentIcon id={agent.id} size={18} color={ac} /></div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#E2E8F4', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agent.name}</div>
             <div style={{ fontSize: 9, color: '#3A4A62', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase' }}>{dept.name} · {agent.code}</div>
@@ -458,14 +553,25 @@ function AgentPanel({
             {!historyLoaded && <div style={{ textAlign: 'center', color: '#3A4A62', fontSize: 11, padding: '16px' }}>Carregant historial...</div>}
             {historyLoaded && chat.length === 0 && (
               <div style={{ textAlign: 'center', padding: '24px 14px' }}>
-                <div style={{ fontSize: 24, marginBottom: 8 }}>{agent.icon}</div>
+                <div style={{ marginBottom: 8, opacity: 0.4 }}><AgentIcon id={agent.id} size={28} color={ac} /></div>
                 <div style={{ fontSize: 12, color: '#3A4A62', lineHeight: 1.7 }}>
                   {isStopped ? <><span style={{ color: '#EF4444' }}>Agent aturat.</span><br />Reprèn l'agent per poder xatejar.</> : <>Escriu en llengua natural.<br /><span style={{ color: ac, fontSize: 11 }}>"{agent.desc.split('.')[0]}"</span></>}
                 </div>
               </div>
             )}
             {chat.map((m, i) => (
-              <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '88%', padding: '8px 12px', borderRadius: 11, fontSize: 12.5, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: m.role === 'user' ? ac : '#131E30', color: m.role === 'user' ? 'white' : '#C8D5E8', border: m.role === 'agent' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>{m.text}</div>
+              <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '88%', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ padding: '8px 12px', borderRadius: 11, fontSize: 12.5, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: m.role === 'user' ? ac : '#131E30', color: m.role === 'user' ? 'white' : '#C8D5E8', border: m.role === 'agent' ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>{m.text}</div>
+                {m.role === 'agent' && (
+                  <button
+                    onClick={() => !savedMsgIdxs.has(i) && saveMessage(i, m.text)}
+                    disabled={savingMsgIdx === i || savedMsgIdxs.has(i)}
+                    style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 4, fontSize: 9.5, fontWeight: 700, letterSpacing: '0.05em', padding: '2px 8px', borderRadius: 5, border: savedMsgIdxs.has(i) ? '1px solid rgba(16,185,129,0.3)' : '1px solid rgba(255,255,255,0.08)', background: savedMsgIdxs.has(i) ? 'rgba(16,185,129,0.1)' : 'none', color: savedMsgIdxs.has(i) ? '#10B981' : '#3A4A62', cursor: savedMsgIdxs.has(i) ? 'default' : 'pointer', transition: 'all .15s' }}
+                  >
+                    {savedMsgIdxs.has(i) ? '✓ DESAT' : savingMsgIdx === i ? '···' : '↓ DESAR'}
+                  </button>
+                )}
+              </div>
             ))}
             {loading && (
               <div style={{ alignSelf: 'flex-start', padding: '8px 12px', borderRadius: 11, fontSize: 13, background: '#131E30', border: '1px solid rgba(255,255,255,0.07)', color: ac, display: 'flex', gap: 5 }}>
@@ -495,7 +601,7 @@ function AgentPanel({
               {activity.status !== 'IDLE' && <span style={{ width: 5, height: 5, borderRadius: '50%', background: ac, animation: 'blink 1.5s infinite' }} />}
               {activity.status}
             </div>
-            <span style={{ fontSize: 9, color: '#2A3A52', fontFamily: 'monospace' }}>{new Date().toLocaleTimeString('ca-ES', { hour: '2-digit', minute: '2-digit' })}</span>
+            <TimeDisplay />
           </div>
 
           <div>
@@ -512,7 +618,7 @@ function AgentPanel({
 
           <div style={{ background: 'rgba(255,255,255,0.025)', borderRadius: 9, padding: '11px 13px', border: '1px solid rgba(255,255,255,0.06)' }}>
             <div style={{ fontSize: 8, fontWeight: 700, color: '#2A3A52', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 9 }}>Estadístiques</div>
-            {[['Runs avui', String(dept.runsToday ?? 0)], ['Última activitat', dept.lastActivity ?? '—'], ['Departament', dept.name], ['Estat', currentStatus]].map(([l, v]) => (
+            {[['Departament', dept.name], ['Estat', currentStatus]].map(([l, v]) => (
               <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 11 }}>
                 <span style={{ color: '#3A4A62' }}>{l}</span>
                 <span style={{ color: '#8A9BB8', fontFamily: 'monospace', fontWeight: 700 }}>{v}</span>
@@ -569,11 +675,170 @@ function AgentPanel({
   )
 }
 
+// ── System header bar ─────────────────────────────────────────────────────────
+function SystemHeader({ agentStatuses }: { agentStatuses: Record<string, AgentStatus> }) {
+  const total = DEPTS.reduce((s, d) => s + d.agents.length, 0)
+  const actius = DEPTS.reduce((s, d) => s + d.agents.filter(a => (agentStatuses[a.id] ?? a.status) === 'actiu').length, 0)
+  const restringit = DEPTS.reduce((s, d) => s + d.agents.filter(a => (agentStatuses[a.id] ?? a.status) === 'restringit').length, 0)
+  const aturats = DEPTS.reduce((s, d) => s + d.agents.filter(a => (agentStatuses[a.id] ?? a.status) === 'aturat').length, 0)
+
+  const chip = (label: string, val: number, color: string) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 20, background: `${color}12`, border: `1px solid ${color}28` }}>
+      <span style={{ width: 5, height: 5, borderRadius: '50%', background: color, flexShrink: 0 }} />
+      <span style={{ fontSize: 10, fontWeight: 800, color, fontFamily: 'monospace', letterSpacing: '0.04em' }}>{val}</span>
+      <span style={{ fontSize: 9, color: color + 'AA', fontWeight: 600, letterSpacing: '0.06em' }}>{label}</span>
+    </div>
+  )
+
+  return (
+    <div style={{ height: 44, borderBottom: '1px solid rgba(255,255,255,0.07)', background: '#06091299', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', padding: '0 18px', gap: 14, flexShrink: 0, zIndex: 20 }}>
+      <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.16em', color: '#E2E8F4', fontFamily: 'monospace', marginRight: 4 }}>GUINEW AI OS</span>
+      <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.1)' }} />
+      {chip('AGENTS', total, '#3B82F6')}
+      {chip('ACTIUS', actius, '#10B981')}
+      {aturats > 0 && chip('ATURATS', aturats, '#EF4444')}
+      {restringit > 0 && chip('RESTRINGIT', restringit, '#F59E0B')}
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: '3px 12px', borderRadius: 20, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)' }}>
+        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#10B981', boxShadow: '0 0 6px #10B981', animation: 'online 2s infinite' }} />
+        <span style={{ fontSize: 9, fontWeight: 800, color: '#10B981', letterSpacing: '0.1em', fontFamily: 'monospace' }}>SISTEMA ONLINE</span>
+      </div>
+    </div>
+  )
+}
+
+// ── Activity log bar ───────────────────────────────────────────────────────────
+function ActivityLogBar({ entries }: { entries: LogEntry[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const dragRef = useRef<{ startY: number; startH: number } | null>(null)
+  const [height, setHeight] = useState(160)
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (el) el.scrollTop = 0
+  }, [entries.length])
+
+  const onDragStart = (e: React.MouseEvent) => {
+    e.preventDefault()
+    dragRef.current = { startY: e.clientY, startH: height }
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return
+      const delta = dragRef.current.startY - ev.clientY
+      setHeight(Math.max(80, Math.min(520, dragRef.current.startH + delta)))
+    }
+    const onUp = () => {
+      dragRef.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+
+  const scrollBy = (dir: 1 | -1) => {
+    scrollRef.current?.scrollBy({ top: dir * 80, behavior: 'smooth' })
+  }
+
+  return (
+    <div style={{ height, borderTop: '1px solid rgba(255,255,255,0.06)', background: '#060912EE', backdropFilter: 'blur(8px)', flexShrink: 0, display: 'flex', flexDirection: 'column', userSelect: 'none' }}>
+      {/* Drag handle */}
+      <div
+        onMouseDown={onDragStart}
+        style={{ height: 8, cursor: 'ns-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+      >
+        <div style={{ width: 36, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.1)' }} />
+      </div>
+      {/* Header */}
+      <div style={{ padding: '3px 14px 5px', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#10B981', animation: 'online 1.8s infinite', flexShrink: 0 }} />
+        <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: '0.14em', color: '#3A4A62', fontFamily: 'monospace' }}>ACTIVITAT DEL SISTEMA</span>
+        <span style={{ fontSize: 8, color: '#2A3A52', fontFamily: 'monospace' }}>{entries.length} entrades</span>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 3 }}>
+          <button onClick={() => scrollBy(-1)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, width: 20, height: 20, cursor: 'pointer', color: '#4A5A72', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>↑</button>
+          <button onClick={() => scrollBy(1)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, width: 20, height: 20, cursor: 'pointer', color: '#4A5A72', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>↓</button>
+          <span style={{ fontSize: 8, color: '#1A2A3A', fontFamily: 'monospace', marginLeft: 4, lineHeight: '20px' }}>LIVE</span>
+        </div>
+      </div>
+      {/* Log rows */}
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '0 14px 8px', scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.07) transparent' }}>
+        {entries.length === 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
+            <span style={{ fontSize: 9, color: '#1A2A3A', fontFamily: 'monospace', flexShrink: 0, width: 44 }}>—</span>
+            <span style={{ fontSize: 11, color: '#2A3A52', fontStyle: 'italic' }}>Sistema en espera — cap agent activat encara</span>
+          </div>
+        ) : entries.map((e, i) => (
+          <div key={e.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 0', borderBottom: i < entries.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none', animation: i === 0 ? 'actFadeIn .3s ease' : 'none' }}>
+            <span style={{ fontSize: 9, color: '#2A3A52', fontFamily: 'monospace', flexShrink: 0, width: 44 }}>{e.time}</span>
+            <span style={{ fontSize: 10, fontWeight: 800, color: e.color, fontFamily: 'monospace', flexShrink: 0, minWidth: 96 }}>{e.agentName}</span>
+            <span style={{ fontSize: 11, color: i === 0 ? '#9AABC8' : '#5A6A85', flex: 1, lineHeight: 1.4 }}>{e.msg}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Capa overview panel (shown when no agent selected) ────────────────────────
+function CapaOverviewPanel({ agentStatuses, onSelectAgent }: {
+  agentStatuses: Record<string, AgentStatus>
+  onSelectAgent: (id: string) => void
+}) {
+  return (
+    <div style={{ width: 360, borderLeft: '1px solid rgba(255,255,255,0.07)', background: '#0A1020', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+      <div style={{ padding: '13px 16px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', color: '#3A4A62', fontFamily: 'monospace' }}>DEPARTAMENTS · AGENTS</div>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {DEPTS.map(dept => (
+          <div key={dept.id}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, padding: '0 4px' }}>
+              <span style={{ fontSize: 11 }}>{dept.emoji}</span>
+              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.08em', color: dept.dot, textTransform: 'uppercase' }}>{dept.name}</span>
+              <span style={{ fontSize: 8, color: '#2A3A52', fontFamily: 'monospace', marginLeft: 'auto' }}>{dept.agents.length} AGT</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+              {dept.agents.map(a => {
+                const st = agentStatuses[a.id] ?? a.status
+                const sc = st === 'actiu' ? '#10B981' : st === 'restringit' ? '#F59E0B' : st === 'aturat' ? '#EF4444' : '#3D4E6A'
+                return (
+                  <button
+                    key={a.id}
+                    onClick={() => onSelectAgent(a.id)}
+                    style={{ background: `${dept.dot}0C`, border: `1px solid ${dept.dot}20`, borderRadius: 8, padding: '7px 9px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', textAlign: 'left', transition: 'all .12s' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = `${dept.dot}1A`; (e.currentTarget as HTMLElement).style.borderColor = `${dept.dot}40` }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = `${dept.dot}0C`; (e.currentTarget as HTMLElement).style.borderColor = `${dept.dot}20` }}
+                  >
+                    <AgentIcon id={a.id} size={13} color={dept.dot} />
+                    <span style={{ flex: 1, fontSize: 10, fontWeight: 600, color: '#9AABC8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: sc, flexShrink: 0 }} />
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AgentsPage() {
   const [selectedDept, setSelectedDept] = useState<string | null>(null)
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
   const [agentStatuses, setAgentStatuses] = useState<Record<string, AgentStatus>>({})
+  const [logEntries, setLogEntries] = useState<LogEntry[]>([])
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const logIdRef = useRef(0)
+  const jarvis = useJarvisVoice()
+
+  // JARVIS activates on first click on the golden ring (Chrome user gesture requirement)
+
+  const addLogEntry = useCallback((agentName: string, color: string, msg: string) => {
+    const now = new Date()
+    const time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`
+    const entry: LogEntry = { time, agentName, color, msg, id: logIdRef.current++ }
+    setLogEntries(prev => [entry, ...prev.slice(0, 49)])
+  }, [])
 
   useEffect(() => {
     const link = document.createElement('link')
@@ -586,72 +851,159 @@ export default function AgentsPage() {
   const activeDept = DEPTS.find(d => d.id === selectedDept) ?? null
   const activeAgent = activeDept?.agents.find(a => a.id === selectedAgent) ?? null
 
-  function selectDept(id: string) {
+  const selectDept = useCallback((id: string) => {
     if (selectedDept === id) {
       setSelectedDept(null); setSelectedAgent(null)
     } else {
       setSelectedDept(id)
       setSelectedAgent(DEPTS.find(d => d.id === id)?.agents[0]?.id ?? null)
     }
-  }
+    setSidebarOpen(false) // close sidebar on mobile after selection
+  }, [selectedDept])
 
-  function selectAgent(id: string) {
+  const selectAgent = useCallback((id: string) => {
     const dept = DEPTS.find(d => d.agents.some(a => a.id === id))
     if (dept) setSelectedDept(dept.id)
     setSelectedAgent(id)
-  }
+  }, [])
 
   function handleStatusChange(agentId: string, status: AgentStatus) {
     setAgentStatuses(prev => ({ ...prev, [agentId]: status }))
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: "'Manrope',system-ui,sans-serif", background: '#060C18', position: 'relative' }}>
-      <style>{`@keyframes online{0%,100%{opacity:1}50%{opacity:0.3}}`}</style>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', fontFamily: "'Manrope',system-ui,sans-serif", background: '#060C18' }}>
+      <style>{`
+        @keyframes online{0%,100%{opacity:1}50%{opacity:0.3}}
+        @keyframes actFadeIn{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:translateY(0)}}
+        .agents-sidebar{
+          width:230px;background:#080F20;border-right:1px solid rgba(255,255,255,0.06);
+          display:flex;flex-direction:column;overflow:hidden;z-index:20;flex-shrink:0;
+          transition:transform .25s cubic-bezier(.4,0,.2,1);
+        }
+        @media(max-width:768px){
+          .agents-sidebar{
+            position:absolute;top:0;left:0;bottom:0;
+            transform:translateX(-100%);
+          }
+          .agents-sidebar.open{transform:translateX(0);}
+          .agents-sidebar-overlay{display:block!important;}
+        }
+        .agents-sidebar-overlay{display:none;position:absolute;inset:0;background:rgba(0,0,0,0.5);z-index:15;}
+        .agents-right-panel{display:flex;flex-direction:column;overflow:hidden;}
+        @media(max-width:768px){
+          .agents-right-panel{position:absolute;inset:0;z-index:10;background:#080F20;}
+          .agents-right-panel.hidden{display:none;}
+        }
+      `}</style>
 
-      {/* Left sidebar */}
-      <Sidebar
-        selectedDept={selectedDept}
-        selectedAgent={selectedAgent}
-        agentStatuses={agentStatuses}
-        onSelectDept={selectDept}
-        onSelectAgent={selectAgent}
-      />
+      {/* Top header bar */}
+      <SystemHeader agentStatuses={agentStatuses} />
 
-      {/* Center: graph */}
-      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 70% 60% at 50% 50%,#0C1E3A 0%,#060C18 100%)' }} />
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle,rgba(37,99,235,0.08) 1px,transparent 1px)', backgroundSize: '32px 32px' }} />
+      {/* Main area */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
 
-        <svg width="100%" height="100%" viewBox="0 0 900 560" preserveAspectRatio="xMidYMid meet" style={{ display: 'block', position: 'relative', zIndex: 1 }}>
-          <defs>
-            <radialGradient id="centerGlow" cx="50%" cy="47%" r="35%">
-              <stop offset="0%" stopColor="#2563EB" stopOpacity="0.12" />
-              <stop offset="100%" stopColor="#2563EB" stopOpacity="0" />
-            </radialGradient>
-          </defs>
-          <ellipse cx="450" cy="265" rx="260" ry="200" fill="url(#centerGlow)" />
-          {DEPTS.filter(d => d.id !== 'central').map((d, i) => {
-            const [cx, cy] = NODE_POS[d.id]
-            const [ox, oy] = NODE_POS.central
-            return <NetConnection key={d.id} deptId={d.id} x1={ox} y1={oy} x2={cx} y2={cy} color={d.dot} active={true} delay={`${i * 0.65}s`} dur={`${3.4 + i * 0.35}s`} />
-          })}
-          {DEPTS.map(dept => (
-            <DeptNode key={dept.id} dept={dept} selected={selectedDept === dept.id} onClick={() => selectDept(dept.id)} />
-          ))}
-        </svg>
-      </div>
-
-      {/* Right panel */}
-      {activeAgent && activeDept && (
-        <AgentPanel
-          agent={activeAgent}
-          dept={activeDept}
-          agentStatuses={agentStatuses}
-          onClose={() => { setSelectedAgent(null); setSelectedDept(null) }}
-          onStatusChange={handleStatusChange}
+        {/* Mobile sidebar overlay */}
+        <div
+          className="agents-sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
         />
-      )}
+
+        {/* Left sidebar */}
+        <div className={`agents-sidebar${sidebarOpen ? ' open' : ''}`}>
+          <Sidebar
+            selectedDept={selectedDept}
+            selectedAgent={selectedAgent}
+            agentStatuses={agentStatuses}
+            onSelectDept={selectDept}
+            onSelectAgent={selectAgent}
+          />
+        </div>
+
+        {/* Center: graph + activity log */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+
+          {/* Mobile top bar with sidebar toggle */}
+          <div style={{
+            display: 'none', padding: '8px 12px', background: '#080F20',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            alignItems: 'center', gap: 10,
+          }} className="agents-mobile-topbar">
+            <button
+              onClick={() => setSidebarOpen(s => !s)}
+              style={{
+                background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.25)',
+                borderRadius: 7, padding: '6px 10px', cursor: 'pointer', color: '#f5a623',
+                fontSize: 13, fontWeight: 700, letterSpacing: '0.04em',
+              }}>
+              ☰ Agents
+            </button>
+            <span style={{ color: '#4A5A78', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em' }}>
+              GUINEW OS
+            </span>
+          </div>
+          <style>{`@media(max-width:768px){.agents-mobile-topbar{display:flex!important;}}`}</style>
+
+          {/* Graph */}
+          <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 65% 55% at 50% 50%,#0d1a2e 0%,#050a14 100%)' }} />
+            <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle,rgba(245,166,35,0.05) 1px,transparent 1px)', backgroundSize: '36px 36px' }} />
+            <svg width="100%" height="100%" viewBox="0 0 900 560" preserveAspectRatio="xMidYMid meet" style={{ display: 'block', position: 'relative', zIndex: 1 }}>
+              <defs>
+                <radialGradient id="centerGlow" cx="50%" cy="47%" r="38%">
+                  <stop offset="0%" stopColor="#f5a623" stopOpacity="0.08" />
+                  <stop offset="60%" stopColor="#f5a623" stopOpacity="0.03" />
+                  <stop offset="100%" stopColor="#f5a623" stopOpacity="0" />
+                </radialGradient>
+              </defs>
+              <ellipse cx="450" cy="265" rx="200" ry="160" fill="url(#centerGlow)" opacity="0.7" />
+              {[320, 370, 420].map((rx, i) => (
+                <ellipse key={i} cx="450" cy="270" rx={rx} ry={rx * 0.6}
+                  fill="none" stroke="#f5a62308" strokeWidth="0.6"
+                  strokeDasharray={i % 2 ? '3 8' : '6 12'} />
+              ))}
+              {DEPTS.filter(d => d.id !== 'central').map((d, i) => {
+                const [cx, cy] = NODE_POS[d.id]
+                const [ox, oy] = NODE_POS.central
+                return <NetConnection key={d.id} deptId={d.id} x1={ox} y1={oy} x2={cx} y2={cy} color={d.dot} active={true} delay={`${i * 0.65}s`} dur={`${3.4 + i * 0.35}s`} />
+              })}
+              {DEPTS.filter(d => d.id !== 'central').map(dept => (
+                <DeptNode key={dept.id} dept={dept} selected={selectedDept === dept.id} onClick={() => selectDept(dept.id)} />
+              ))}
+            </svg>
+            <JarvisNodeCanvas
+              open={jarvis.open}
+              state={jarvis.state}
+              transcript={jarvis.transcript}
+              history={jarvis.history}
+              error={jarvis.error}
+              getAmplitude={jarvis.getAmplitude}
+              onClose={jarvis.closeJarvis}
+              onSend={jarvis.send}
+            />
+          </div>
+
+          {/* Activity log */}
+          <ActivityLogBar entries={logEntries} />
+        </div>
+
+        {/* Right: agent panel or overview — hidden on mobile when no agent selected */}
+        <div className={`agents-right-panel${!activeAgent ? ' hidden' : ''}`}
+          style={{ width: activeAgent ? undefined : 280 }}>
+          {activeAgent && activeDept ? (
+            <AgentPanel
+              agent={activeAgent}
+              dept={activeDept}
+              agentStatuses={agentStatuses}
+              onClose={() => { setSelectedAgent(null); setSelectedDept(null) }}
+              onStatusChange={handleStatusChange}
+              onLogEntry={addLogEntry}
+            />
+          ) : (
+            <CapaOverviewPanel agentStatuses={agentStatuses} onSelectAgent={selectAgent} />
+          )}
+        </div>
+      </div>
     </div>
   )
 }
