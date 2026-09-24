@@ -363,7 +363,7 @@ function AgentWeb({ state }: { state: JarvisVoiceState }) {
 
 // ── Public component ──────────────────────────────────────────────────────────
 export function JarvisNodeCanvas({
-  open, state, error, onClose,
+  open, state, transcript, error, onClose,
 }: {
   open: boolean
   state: JarvisVoiceState
@@ -384,6 +384,9 @@ export function JarvisNodeCanvas({
     }
   }
 
+  // Truncate transcript for display
+  const displayText = transcript.length > 60 ? '…' + transcript.slice(-57) : transcript
+
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 5 }}>
       <svg
@@ -392,12 +395,12 @@ export function JarvisNodeCanvas({
         preserveAspectRatio="xMidYMid meet"
         style={{ display: 'block' }}
       >
-        {/* Agent web — no pointer events */}
+        {/* Agent web */}
         <g style={{ pointerEvents: 'none' }}>
           <AgentWeb state={state} />
         </g>
 
-        {/* Sphere — no pointer events */}
+        {/* Sphere */}
         <g style={{ pointerEvents: 'none' }}>
           <JarvisOrb state={state} />
         </g>
@@ -420,15 +423,30 @@ export function JarvisNodeCanvas({
           </text>
         )}
 
-        {/* error badge */}
-        {error && (
-          <foreignObject x={CX - 120} y={CY + SR + 30} width={240} height={48}
+        {/* Live transcript while listening */}
+        {state === 'listening' && displayText && (
+          <foreignObject x={CX - 140} y={CY - SR - 58} width={280} height={44}
             style={{ pointerEvents: 'none' }}>
             <div style={{
-              fontSize: 9, color: '#f87171', textAlign: 'center',
-              padding: '4px 8px', background: 'rgba(239,68,68,0.12)',
-              borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)',
-              fontFamily: 'Inter,monospace',
+              fontSize: 11, color: CYAN_BRIGHT, textAlign: 'center',
+              padding: '6px 10px',
+              background: 'rgba(0,212,255,0.07)',
+              borderRadius: 8, border: `1px solid ${CYAN}40`,
+              fontFamily: 'Inter,monospace', fontStyle: 'italic',
+              lineHeight: 1.3,
+            }}>{displayText}</div>
+          </foreignObject>
+        )}
+
+        {/* Error badge */}
+        {error && (
+          <foreignObject x={CX - 150} y={CY + SR + 28} width={300} height={52}
+            style={{ pointerEvents: 'none' }}>
+            <div style={{
+              fontSize: 10, color: '#fca5a5', textAlign: 'center',
+              padding: '6px 10px', background: 'rgba(239,68,68,0.15)',
+              borderRadius: 8, border: '1px solid rgba(239,68,68,0.4)',
+              fontFamily: 'Inter,monospace', lineHeight: 1.3,
             }}>{error}</div>
           </foreignObject>
         )}
