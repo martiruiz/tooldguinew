@@ -130,10 +130,7 @@ export function Sidebar({ user }: Props) {
   const { t } = useLanguage()
   const [collapsed, setCollapsed] = useState(false)
   const [greeting, setGreeting] = useState('')
-  const [hiddenSections, setHiddenSections] = useState<Set<string>>(() => {
-    if (typeof window === 'undefined') return new Set()
-    try { return new Set(JSON.parse(localStorage.getItem('guinew-sidebar-hidden') || '[]')) } catch { return new Set() }
-  })
+  const [hiddenSections, setHiddenSections] = useState<Set<string>>(new Set())
   const toggleSection = (key: string) => {
     setHiddenSections(prev => {
       const next = new Set(prev)
@@ -173,6 +170,10 @@ export function Sidebar({ user }: Props) {
     else setGreeting(t('greetEvening'))
     const saved = localStorage.getItem('sidebar-collapsed')
     if (saved === 'true') setCollapsed(true)
+    try {
+      const hidden = JSON.parse(localStorage.getItem('guinew-sidebar-hidden') || '[]')
+      if (Array.isArray(hidden) && hidden.length > 0) setHiddenSections(new Set(hidden))
+    } catch {}
     const d = localStorage.getItem(`guinew-service-drive-${user.id}`)
     const db = localStorage.getItem(`guinew-service-dropbox-${user.id}`)
     if (d) setDriveUrl(d)
