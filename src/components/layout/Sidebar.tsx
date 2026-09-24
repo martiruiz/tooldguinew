@@ -129,6 +129,7 @@ export function Sidebar({ user }: Props) {
   const router = useRouter()
   const { t } = useLanguage()
   const [collapsed, setCollapsed] = useState(false)
+  const [greeting, setGreeting] = useState('')
   const [hiddenSections, setHiddenSections] = useState<Set<string>>(() => {
     if (typeof window === 'undefined') return new Set()
     try { return new Set(JSON.parse(localStorage.getItem('guinew-sidebar-hidden') || '[]')) } catch { return new Set() }
@@ -161,25 +162,22 @@ export function Sidebar({ user }: Props) {
   const activeFinanceSection = searchParams.get('s') || 'resum'
   const c = collapsed
 
-  const greeting = (() => {
-    const h = new Date().getHours()
-    if (h < 12) return t('greetMorning')
-    if (h < 20) return t('greetAfternoon')
-    return t('greetEvening')
-  })()
-
   const avatarColor = user.full_name ? getAvatarColor(user.full_name) : '#254067'
   const initials = user.full_name ? getInitials(user.full_name) : '?'
   const firstName = user.full_name?.split(' ')[0] ?? 'Guinew'
 
   useEffect(() => {
+    const h = new Date().getHours()
+    if (h < 12) setGreeting(t('greetMorning'))
+    else if (h < 20) setGreeting(t('greetAfternoon'))
+    else setGreeting(t('greetEvening'))
     const saved = localStorage.getItem('sidebar-collapsed')
     if (saved === 'true') setCollapsed(true)
     const d = localStorage.getItem(`guinew-service-drive-${user.id}`)
     const db = localStorage.getItem(`guinew-service-dropbox-${user.id}`)
     if (d) setDriveUrl(d)
     if (db) setDropboxUrl(db)
-  }, [user.id])
+  }, [user.id, t])
 
   const openGmailPicker = async () => {
     if (gmailProfiles.length === 0) {
