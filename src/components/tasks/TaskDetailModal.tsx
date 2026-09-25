@@ -188,6 +188,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
   const checkRef = useRef<HTMLInputElement>(null)
   const subtaskRef = useRef<HTMLInputElement>(null)
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isLocalSave = useRef(false)
   const [mounted, setMounted] = useState(false)
   const [reactions, setReactions] = useState<Record<string, Record<string, string[]>>>({})
   const [showAllActivity, setShowAllActivity] = useState(false)
@@ -277,6 +278,28 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
           .eq('id', payload.new.id).single()
         if (data) setActivities(prev => [...prev, data as Activity])
       })
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'tasks',
+        filter: `id=eq.${task.id}`,
+      }, (payload) => {
+        if (isLocalSave.current) return
+        const updated = payload.new as any
+        if (updated.checklist !== undefined) {
+          setChecklist(prev =>
+            JSON.stringify(prev) !== JSON.stringify(updated.checklist) ? updated.checklist : prev
+          )
+        }
+        if (updated.subtasks !== undefined) {
+          setSubtasks(prev =>
+            JSON.stringify(prev) !== JSON.stringify(updated.subtasks) ? updated.subtasks : prev
+          )
+        }
+        if (updated.drive_links !== undefined) {
+          setDriveLinks(prev =>
+            JSON.stringify(prev) !== JSON.stringify(updated.drive_links) ? updated.drive_links : prev
+          )
+        }
+      })
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
@@ -284,10 +307,12 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
 
   const patchTask = async (patch: object): Promise<Task | null> => {
     const supabase = createClient()
+    isLocalSave.current = true
     const { error } = await supabase
       .from('tasks')
       .update({ ...patch, updated_at: new Date().toISOString() })
       .eq('id', task.id)
+    setTimeout(() => { isLocalSave.current = false }, 500)
     if (error) { console.error('[patchTask] error:', error.message); return null }
     return { ...task, ...(patch as Partial<Task>), updated_at: new Date().toISOString() }
   }
@@ -605,6 +630,21 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         profile: me ? { full_name: me.full_name, avatar_url: (me as any).avatar_url } : undefined,
       } as Comment])
       setNewComment('')
+
+      // Notify mentioned users (fire-and-forget, non-blocking)
+      if (mentions.length > 0) {
+        fetch('/api/tasks/notify-mention', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mentionedIds: mentions,
+            taskId: task.id,
+            taskTitle: task.title,
+            senderName: me?.full_name ?? 'Un company',
+            commentContent: newComment.trim(),
+          }),
+        }).catch(() => {})
+      }
     }
   }
 
@@ -742,10 +782,15 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
 
   const tryClose = async () => {
     if (isNew && isTitleDefault()) {
-      onDiscard?.()
+      setTitleError(true)
+      titleRef.current?.focus()
+      titleRef.current?.select()
       return
     }
-    if (isDirty) await saveAll()
+    if (isDirty) {
+      const ok = await saveAll()
+      if (ok === false) return
+    }
     onClose()
   }
   const mentionSuggestions = mentionQuery !== null
@@ -786,7 +831,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
               onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
               onFocus={e => { if (isNew && isTitleDefault()) e.currentTarget.select() }}
             />
-            {titleError && !isNew && <span className="title-error-msg">Escriu un títol per desar la tasca</span>}
+            {titleError && <span className="title-error-msg">Escriu un títol per desar la tasca</span>}
           </div>
 
           <div className="modal-body">
