@@ -8,6 +8,7 @@ const getAdmin = () => createAdmin(
 
 export type NotifType =
   | 'task_assigned'
+  | 'task_watching'
   | 'meeting_created'
   | 'session_assigned'
   | 'deadline_today'

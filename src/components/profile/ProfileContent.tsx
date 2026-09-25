@@ -179,13 +179,23 @@ const NOTIF_GROUPS = [
     desc: 'Quan algú t\'assigna una tasca',
   },
   {
+    key: 'task_watching',
+    label: 'Seguiment de tasca',
+    desc: 'Quan t\'assignen el seguiment d\'una tasca',
+  },
+  {
+    key: 'mention',
+    label: 'Menció',
+    desc: 'Quan algú t\'etiqueta amb @ (tasca o xat)',
+  },
+  {
     key: 'meeting_created',
     label: 'Nova reunió',
     desc: 'Quan ets convidat a una reunió',
   },
   {
     key: 'session_assigned',
-    label: 'Sessió creada',
+    label: 'Sessió de contingut',
     desc: 'Quan es crea una sessió de contingut',
   },
   {
@@ -197,11 +207,6 @@ const NOTIF_GROUPS = [
     key: 'deadline_tomorrow',
     label: 'Termini demà',
     desc: 'Tasques amb data límit demà',
-  },
-  {
-    key: 'mention',
-    label: 'Menció al chat',
-    desc: 'Quan algú t\'etiqueta amb @',
   },
 ]
 
@@ -290,7 +295,7 @@ function NotificationPrefsCard() {
 
       <div className="notif-prefs-footer">
         <p className="notif-prefs-note">
-          Per rebre emails cal configurar <code>BREVO_API_KEY</code> al servidor.
+          Els emails s'envien via Gmail. Cal tenir <code>GMAIL_USER</code> i <code>GMAIL_APP_PASSWORD</code> configurats a Vercel.
         </p>
         <button className="notif-save-btn" onClick={save} disabled={saving}>
           {saved ? <><Check size={14} /> Desat</> : saving ? 'Desant...' : <><Save size={14} /> Desar preferències</>}

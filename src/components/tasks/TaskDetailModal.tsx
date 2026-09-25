@@ -583,6 +583,20 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
     setWatcherIds(ids); persist({ watcher_ids: ids })
     const name = profiles.find(p => p.id === id)?.full_name || ''
     logActivity(adding ? 'watcher_added' : 'watcher_removed', { name })
+
+    if (adding && id !== currentUserId) {
+      const me = profiles.find(p => p.id === currentUserId)
+      fetch('/api/tasks/notify-watcher', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          watcherUserId: id,
+          taskId: task.id,
+          taskTitle: task.title,
+          assignerName: me?.full_name ?? 'Un company',
+        }),
+      }).catch(() => {})
+    }
   }
 
   // Labels

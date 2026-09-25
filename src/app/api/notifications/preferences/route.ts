@@ -3,19 +3,23 @@ import { NextResponse } from 'next/server'
 
 const DEFAULTS = {
   inapp_task_assigned: true,
+  inapp_task_watching: true,
   inapp_meeting_created: true,
   inapp_session_assigned: true,
   inapp_deadline_today: true,
   inapp_deadline_tomorrow: true,
   inapp_new_client: false,
   inapp_crm_opportunity: false,
+  inapp_mention: true,
   email_task_assigned: true,
+  email_task_watching: true,
   email_meeting_created: true,
   email_session_assigned: true,
   email_deadline_today: false,
   email_deadline_tomorrow: false,
   email_new_client: false,
   email_crm_opportunity: false,
+  email_mention: true,
 }
 
 export async function GET() {
