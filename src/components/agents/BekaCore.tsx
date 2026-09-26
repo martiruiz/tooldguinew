@@ -5,9 +5,6 @@ import type { JarvisVoiceState } from '@/hooks/useJarvisVoice'
 
 export type BekaState = JarvisVoiceState | 'executing'
 
-const LEFT_IDS  = ['memory', 'automation', 'email', 'analytics']
-const RIGHT_IDS = ['tasks', 'crm', 'strategy', 'finances', 'content']
-
 const STATE_LABEL: Record<BekaState, string> = {
   idle: 'BEKA · STANDBY', listening: 'BEKA · LISTENING',
   thinking: 'BEKA · PROCESSING', speaking: 'BEKA · SPEAKING', executing: 'BEKA · EXECUTING',
@@ -27,7 +24,6 @@ interface BekaCoreProps {
   amplitudeRef: React.MutableRefObject<number>
   audioElRef?: React.MutableRefObject<HTMLAudioElement | null>
   reducedMotion?: boolean
-  // Ref written by AgentRadial3D every frame with the desired display size in px
   sizeRef?: React.MutableRefObject<number>
 }
 
@@ -84,14 +80,12 @@ export function BekaCore({
     return () => { cancelAnimationFrame(rafId); speakCtx?.close(); speakAmpRef.current = 0 }
   }, [state]) // eslint-disable-line
 
-  // Main canvas animation loop
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
     const dpr = Math.min(window.devicePixelRatio || 1, 3)
 
-    // Dynamic canvas sizing — resizes without restarting the loop
     let curSize = sizeRef?.current ?? 300
 
     const applySize = (s: number) => {
@@ -104,13 +98,12 @@ export function BekaCore({
     }
     applySize(curSize)
 
-    // Particles stored as unit-space offsets (relative to base 300px canvas)
     type Pt = { x: number; y: number; vx: number; vy: number; r: number; op: number }
-    const N = reducedMotion ? 0 : 38
+    const N = reducedMotion ? 0 : 36
     const particles: Pt[] = Array.from({ length: N }, () => {
       const a = Math.random() * Math.PI * 2
-      const d = 70 + Math.random() * 100
-      return { x: Math.cos(a)*d, y: Math.sin(a)*d, vx: (Math.random()-0.5)*0.14, vy: (Math.random()-0.5)*0.14, r: 0.7+Math.random()*1.2, op: 0.15+Math.random()*0.35 }
+      const d = 65 + Math.random() * 95
+      return { x: Math.cos(a)*d, y: Math.sin(a)*d, vx: (Math.random()-0.5)*0.13, vy: (Math.random()-0.5)*0.13, r: 0.6+Math.random()*1.1, op: 0.12+Math.random()*0.28 }
     })
 
     let coreScale = 1, coreGlow = 0.2, orbSpeed = 0.0006, ptSpeed = 0.4, waveAmp = 0
@@ -133,14 +126,9 @@ export function BekaCore({
     const draw = (ts: number) => {
       frameRef.current = requestAnimationFrame(draw)
 
-      // ── Dynamic resize: update canvas if desired size changed ──────────────
       const desired = Math.round(Math.min(540, Math.max(80, sizeRef?.current ?? 300)))
-      if (Math.abs(desired - curSize) > 1) {
-        curSize = desired
-        applySize(curSize)
-      }
+      if (Math.abs(desired - curSize) > 1) { curSize = desired; applySize(curSize) }
 
-      // All drawing in "logical" units scaled by U (U=1 at base 300px size)
       const U  = curSize / 300
       const CX = curSize / 2
       const CY = curSize / 2
@@ -165,106 +153,83 @@ export function BekaCore({
 
       ctx.clearRect(0, 0, curSize, curSize)
 
-      // Energy field
-      const eg = ctx.createRadialGradient(CX, CY, coreR*0.5, CX, CY, coreR*3.5)
-      eg.addColorStop(0,   `rgba(0,200,255,${coreGlow*0.22})`)
-      eg.addColorStop(0.5, `rgba(0,200,255,${coreGlow*0.06})`)
+      // ── Outer atmospheric energy field ────────────────────────────────────────
+      const atmoR = coreR * 3.2
+      const eg = ctx.createRadialGradient(CX, CY, coreR * 0.5, CX, CY, atmoR)
+      eg.addColorStop(0,   `rgba(0,180,255,${coreGlow * 0.28})`)
+      eg.addColorStop(0.4, `rgba(0,100,220,${coreGlow * 0.10})`)
+      eg.addColorStop(0.75,`rgba(0,40,140,${coreGlow * 0.04})`)
       eg.addColorStop(1,    'rgba(0,0,0,0)')
       ctx.fillStyle = eg
       ctx.fillRect(0, 0, curSize, curSize)
 
-      // Particles + neural connections
+      // ── Neural particles ──────────────────────────────────────────────────────
       if (!reducedMotion) {
         const thinkPull = stateRef.current === 'thinking' ? 0.004 : 0
-
         for (const p of particles) {
-          p.x += p.vx * ptSpeed
-          p.y += p.vy * ptSpeed
+          p.x += p.vx * ptSpeed; p.y += p.vy * ptSpeed
           if (thinkPull > 0) {
             const d = Math.sqrt(p.x*p.x + p.y*p.y)
-            if (d > 48) { p.x -= (p.x/d)*thinkPull*d*0.002; p.y -= (p.y/d)*thinkPull*d*0.002 }
+            if (d > 45) { p.x -= (p.x/d)*thinkPull*d*0.002; p.y -= (p.y/d)*thinkPull*d*0.002 }
           }
           const dist = Math.sqrt(p.x*p.x + p.y*p.y)
-          if (dist < 62)  { p.vx += p.x/dist*0.025; p.vy += p.y/dist*0.025 }
-          if (dist > 180) { p.vx -= p.x/dist*0.025; p.vy -= p.y/dist*0.025 }
-          ctx.beginPath()
-          ctx.arc(CX + p.x*U, CY + p.y*U, p.r*U, 0, Math.PI*2)
-          ctx.fillStyle = `rgba(0,200,255,${p.op})`
-          ctx.fill()
+          if (dist < 60)  { p.vx += p.x/dist*0.025; p.vy += p.y/dist*0.025 }
+          if (dist > 165) { p.vx -= p.x/dist*0.025; p.vy -= p.y/dist*0.025 }
+          ctx.beginPath(); ctx.arc(CX + p.x*U, CY + p.y*U, p.r*U, 0, Math.PI*2)
+          ctx.fillStyle = `rgba(0,200,255,${p.op})`; ctx.fill()
         }
-
         for (let i = 0; i < N; i++) {
           for (let j = i+1; j < N; j++) {
             const dx = particles[i].x - particles[j].x
             const dy = particles[i].y - particles[j].y
             const d  = Math.sqrt(dx*dx + dy*dy)
-            if (d < 52) {
+            if (d < 48) {
               ctx.beginPath()
               ctx.moveTo(CX + particles[i].x*U, CY + particles[i].y*U)
               ctx.lineTo(CX + particles[j].x*U, CY + particles[j].y*U)
-              ctx.strokeStyle = `rgba(0,200,255,${(1-d/52)*0.1})`
-              ctx.lineWidth = 0.4 * U
-              ctx.stroke()
+              ctx.strokeStyle = `rgba(0,200,255,${(1-d/48)*0.09})`
+              ctx.lineWidth = 0.4 * U; ctx.stroke()
             }
           }
         }
       }
 
-      // Agent connections (executing / thinking)
-      if (stateRef.current === 'executing' || stateRef.current === 'thinking') {
-        const nonBeka = activeRef.current.filter(id => id !== 'orchestrator')
-        for (const agentId of nonBeka) {
-          const leftIdx  = LEFT_IDS.indexOf(agentId)
-          const rightIdx = RIGHT_IDS.indexOf(agentId)
-          let angle: number
-          if      (leftIdx  >= 0) angle = Math.PI + (leftIdx  - (LEFT_IDS.length-1)/2)  * 0.28
-          else if (rightIdx >= 0) angle =            (rightIdx - (RIGHT_IDS.length-1)/2) * 0.28
-          else                    angle = (nonBeka.indexOf(agentId) / nonBeka.length) * Math.PI * 2
-
-          const edgeR = 148 * U
-          const tx = CX + Math.cos(angle) * edgeR
-          const ty = CY + Math.sin(angle) * edgeR
-
-          ctx.save()
-          ctx.setLineDash([3*U, 6*U])
-          ctx.beginPath(); ctx.moveTo(CX, CY); ctx.lineTo(tx, ty)
-          ctx.strokeStyle = 'rgba(0,200,255,0.1)'; ctx.lineWidth = U; ctx.stroke()
-          ctx.restore()
-
-          const progress = ((ts * 0.0007 + nonBeka.indexOf(agentId) * 0.4) % 1)
-          ctx.beginPath()
-          ctx.arc(CX + (tx-CX)*progress, CY + (ty-CY)*progress, 2*U, 0, Math.PI*2)
-          ctx.fillStyle = 'rgba(0,200,255,0.75)'; ctx.fill()
-
-          ctx.beginPath()
-          ctx.arc(tx, ty, 3.5*U, 0, Math.PI*2)
-          ctx.fillStyle = `rgba(0,200,255,${0.3 + Math.sin(execPulse + nonBeka.indexOf(agentId)) * 0.2})`
-          ctx.fill()
-        }
-      }
-
-      // Orbital rings
-      const rings = [
-        { r: 74*U,  a: ring1Ang, op: 0.2,  nodes: 4, dashed: false },
-        { r: 98*U,  a: ring2Ang, op: 0.14, nodes: 6, dashed: false },
-        { r: 120*U, a: ring3Ang, op: 0.08, nodes: 0, dashed: true  },
+      // ── 3D Orbital rings (tilted ellipses for depth illusion) ─────────────────
+      const orbitRings = [
+        { r: 72*U,  tiltY: 0.30, spinBase: ring1Ang, spinScale: 0.22, nodeAng: ring1Ang, op: 0.22, nodes: 4, dashed: false },
+        { r: 96*U,  tiltY: 0.58, spinBase: ring2Ang, spinScale: 0.16, nodeAng: ring2Ang, op: 0.15, nodes: 5, dashed: false },
+        { r: 118*U, tiltY: 0.40, spinBase: ring3Ang, spinScale: 0.24, nodeAng: ring3Ang, op: 0.09, nodes: 0, dashed: true  },
       ]
-      for (const rg of rings) {
-        const eff = rg.op * (1 + coreGlow * 0.6)
+
+      for (const orb of orbitRings) {
+        const eff = orb.op * (1 + coreGlow * 0.65)
+
+        // Draw the tilted ring as a rotated ellipse
         ctx.save()
-        if (rg.dashed) ctx.setLineDash([2*U, 8*U])
-        ctx.beginPath(); ctx.arc(CX, CY, rg.r, 0, Math.PI*2)
-        ctx.strokeStyle = `rgba(0,200,255,${eff})`; ctx.lineWidth = 0.8*U; ctx.stroke()
-        ctx.restore()
-        for (let n = 0; n < rg.nodes; n++) {
-          const na = rg.a + (n/rg.nodes)*Math.PI*2
-          ctx.beginPath()
-          ctx.arc(CX + Math.cos(na)*rg.r, CY + Math.sin(na)*rg.r, 1.8*U, 0, Math.PI*2)
-          ctx.fillStyle = `rgba(0,200,255,${eff*2.5})`; ctx.fill()
+        ctx.translate(CX, CY)
+        ctx.rotate(orb.spinBase * orb.spinScale)
+        if (orb.dashed) ctx.setLineDash([3*U, 9*U])
+        ctx.beginPath()
+        ctx.ellipse(0, 0, orb.r, orb.r * orb.tiltY, 0, 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(0,200,255,${eff})`
+        ctx.lineWidth = 0.9 * U
+        ctx.stroke()
+
+        // Orbiting nodes on the ring with depth-based opacity/size
+        for (let n = 0; n < orb.nodes; n++) {
+          const a = orb.nodeAng + (n / orb.nodes) * Math.PI * 2
+          const lx = orb.r * Math.cos(a)
+          const ly = orb.r * orb.tiltY * Math.sin(a)
+          const depth = Math.sin(a)           // +1 = front, -1 = back
+          const nodeAlpha = Math.max(0.06, eff * (0.8 + depth * 0.55))
+          const nodeR = Math.max(0.5, (1.6 + depth * 0.6) * U)
+          ctx.beginPath(); ctx.arc(lx, ly, nodeR, 0, Math.PI * 2)
+          ctx.fillStyle = `rgba(0,200,255,${nodeAlpha * 2.8})`; ctx.fill()
         }
+        ctx.restore()
       }
 
-      // Circular waveform
+      // ── Circular waveform (state-reactive) ───────────────────────────────────
       if (waveAmp > 0.02 && !reducedMotion) {
         const wR  = coreR + 13*U
         const pts = 72
@@ -273,61 +238,92 @@ export function BekaCore({
           const a = (i/pts) * Math.PI*2
           const n = Math.sin(a*9 + ts*0.006)*0.55 + Math.sin(a*16 + ts*0.004)*0.45
           const r = wR + n * waveAmp * 14 * U
-          i === 0
-            ? ctx.moveTo(CX + Math.cos(a)*r, CY + Math.sin(a)*r)
-            : ctx.lineTo(CX + Math.cos(a)*r, CY + Math.sin(a)*r)
+          i === 0 ? ctx.moveTo(CX + Math.cos(a)*r, CY + Math.sin(a)*r)
+                  : ctx.lineTo(CX + Math.cos(a)*r, CY + Math.sin(a)*r)
         }
         ctx.closePath()
-        ctx.strokeStyle = `rgba(0,200,255,${waveAmp*0.55})`; ctx.lineWidth = U; ctx.stroke()
+        ctx.strokeStyle = `rgba(0,200,255,${waveAmp*0.5})`; ctx.lineWidth = U; ctx.stroke()
       }
 
-      // Core glow layers
-      for (let i = 4; i >= 0; i--) {
-        ctx.beginPath(); ctx.arc(CX, CY, coreR + i*10*U, 0, Math.PI*2)
-        ctx.strokeStyle = `rgba(0,200,255,${coreGlow*(0.1-i*0.018)})`
-        ctx.lineWidth = 1.5*U; ctx.stroke()
+      // ── 3D Sphere: multi-layer glow border ───────────────────────────────────
+      for (let i = 5; i >= 0; i--) {
+        const a = coreGlow * (0.14 - i * 0.022)
+        if (a <= 0) continue
+        ctx.beginPath(); ctx.arc(CX, CY, coreR + i * 8 * U, 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(0,200,255,${a})`
+        ctx.lineWidth = 1.4 * U; ctx.stroke()
       }
 
-      // Core fill
-      const cg = ctx.createRadialGradient(CX - coreR*0.28, CY - coreR*0.32, coreR*0.05, CX, CY, coreR)
-      cg.addColorStop(0,   'rgba(0,55,110,0.97)')
-      cg.addColorStop(0.6, 'rgba(0,18,55,0.94)')
-      cg.addColorStop(1,   'rgba(0,4,18,0.9)')
-      ctx.beginPath(); ctx.arc(CX, CY, coreR, 0, Math.PI*2)
+      // ── 3D Sphere: main body (offset gradient = light from top-left) ─────────
+      const cg = ctx.createRadialGradient(
+        CX - coreR * 0.38, CY - coreR * 0.42, coreR * 0.04,
+        CX + coreR * 0.08, CY + coreR * 0.10, coreR
+      )
+      cg.addColorStop(0,    'rgba(0,105,215,0.97)')
+      cg.addColorStop(0.20, 'rgba(0,52,130,0.97)')
+      cg.addColorStop(0.60, 'rgba(0,11,46,0.98)')
+      cg.addColorStop(1,    'rgba(0,2,12,0.99)')
+      ctx.beginPath(); ctx.arc(CX, CY, coreR, 0, Math.PI * 2)
       ctx.fillStyle = cg; ctx.fill()
 
-      ctx.beginPath(); ctx.arc(CX, CY, coreR, 0, Math.PI*2)
-      ctx.strokeStyle = `rgba(0,200,255,${0.3 + coreGlow*0.6})`; ctx.lineWidth = 1.3*U; ctx.stroke()
+      // Clip sphere for inner overlays
+      ctx.save()
+      ctx.beginPath(); ctx.arc(CX, CY, coreR - 0.4 * U, 0, Math.PI * 2); ctx.clip()
 
-      const hg = ctx.createRadialGradient(CX - coreR*0.3, CY - coreR*0.35, 0, CX - coreR*0.3, CY - coreR*0.35, coreR*0.85)
-      hg.addColorStop(0, `rgba(0,200,255,${coreGlow*0.25})`); hg.addColorStop(1, 'rgba(0,0,0,0)')
-      ctx.beginPath(); ctx.arc(CX, CY, coreR, 0, Math.PI*2)
-      ctx.fillStyle = hg; ctx.fill()
+      // Rim light (bottom-right backscatter)
+      const rimG = ctx.createRadialGradient(
+        CX + coreR * 0.70, CY + coreR * 0.62, 0,
+        CX + coreR * 0.28, CY + coreR * 0.26, coreR * 0.78
+      )
+      rimG.addColorStop(0, `rgba(0,175,255,${0.30 + coreGlow * 0.38})`)
+      rimG.addColorStop(1, 'rgba(0,0,0,0)')
+      ctx.fillStyle = rimG; ctx.fillRect(CX - coreR, CY - coreR, coreR * 2, coreR * 2)
 
-      // BEKA geometric icon
+      // Specular highlight (sharp bright spot top-left)
+      const specG = ctx.createRadialGradient(
+        CX - coreR * 0.32, CY - coreR * 0.37, 0,
+        CX - coreR * 0.25, CY - coreR * 0.29, coreR * 0.44
+      )
+      specG.addColorStop(0,    `rgba(210,248,255,${0.68 + coreGlow * 0.28})`)
+      specG.addColorStop(0.32, `rgba(90,210,255,${0.18 + coreGlow * 0.22})`)
+      specG.addColorStop(1,     'rgba(0,0,0,0)')
+      ctx.fillStyle = specG; ctx.fillRect(CX - coreR, CY - coreR, coreR * 2, coreR * 2)
+
+      ctx.restore()
+
+      // Sphere border ring
+      ctx.beginPath(); ctx.arc(CX, CY, coreR, 0, Math.PI * 2)
+      ctx.strokeStyle = `rgba(0,200,255,${0.30 + coreGlow * 0.58})`; ctx.lineWidth = 1.2 * U; ctx.stroke()
+
+      // ── Geometric BEKA icon (engraved on sphere) ──────────────────────────────
       const iR  = 15 * U * coreScale
-      const iOp = 0.3 + coreGlow*0.6
+      const iOp = 0.32 + coreGlow * 0.58
 
+      // Hexagon
       ctx.beginPath()
       for (let i = 0; i < 6; i++) {
         const a = (i/6)*Math.PI*2 - Math.PI/6
-        i === 0 ? ctx.moveTo(CX + Math.cos(a)*iR, CY + Math.sin(a)*iR) : ctx.lineTo(CX + Math.cos(a)*iR, CY + Math.sin(a)*iR)
+        i === 0 ? ctx.moveTo(CX + Math.cos(a)*iR, CY + Math.sin(a)*iR)
+                : ctx.lineTo(CX + Math.cos(a)*iR, CY + Math.sin(a)*iR)
       }
       ctx.closePath(); ctx.strokeStyle = `rgba(0,200,255,${iOp})`; ctx.lineWidth = 1.1*U; ctx.stroke()
 
+      // Inner diamond
       ctx.beginPath()
-      ctx.moveTo(CX, CY - iR*0.5); ctx.lineTo(CX + iR*0.5, CY)
-      ctx.lineTo(CX, CY + iR*0.5); ctx.lineTo(CX - iR*0.5, CY)
-      ctx.closePath(); ctx.strokeStyle = `rgba(0,200,255,${iOp*0.55})`; ctx.lineWidth = 0.8*U; ctx.stroke()
+      ctx.moveTo(CX, CY - iR*0.52); ctx.lineTo(CX + iR*0.52, CY)
+      ctx.lineTo(CX, CY + iR*0.52); ctx.lineTo(CX - iR*0.52, CY)
+      ctx.closePath(); ctx.strokeStyle = `rgba(0,200,255,${iOp*0.52})`; ctx.lineWidth = 0.8*U; ctx.stroke()
 
+      // Center dot
       ctx.beginPath(); ctx.arc(CX, CY, 2.8*U, 0, Math.PI*2)
-      ctx.fillStyle = `rgba(0,200,255,${iOp*1.5})`; ctx.fill()
+      ctx.fillStyle = `rgba(0,200,255,${iOp * 1.6})`; ctx.fill()
 
+      // Thinking pulse ring
       if (stateRef.current === 'thinking') {
-        const pulseProg = Math.sin(pulsePhase)
-        if (pulseProg > 0) {
-          ctx.beginPath(); ctx.arc(CX, CY, coreR*0.6 + pulseProg*coreR*0.4, 0, Math.PI*2)
-          ctx.strokeStyle = `rgba(0,200,255,${pulseProg*0.22})`; ctx.lineWidth = 1.5*U; ctx.stroke()
+        const pp = Math.sin(pulsePhase)
+        if (pp > 0) {
+          ctx.beginPath(); ctx.arc(CX, CY, coreR * 0.6 + pp * coreR * 0.4, 0, Math.PI * 2)
+          ctx.strokeStyle = `rgba(0,200,255,${pp*0.22})`; ctx.lineWidth = 1.5*U; ctx.stroke()
         }
       }
     }

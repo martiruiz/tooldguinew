@@ -455,6 +455,75 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
       y: (1-t)*(1-t)*y0 + 2*(1-t)*t*my2 + t*t*y1,
     })
 
+    // ── Agent icon drawing (compact geometric approximations) ─────────────────
+    const drawAgentIcon = (id: string, cx: number, cy: number, s: number, rgb: string, alpha: number) => {
+      if (s < 4) return  // too small to draw
+      ctx.save()
+      ctx.strokeStyle = `rgba(${rgb},${alpha})`
+      ctx.fillStyle   = `rgba(${rgb},${alpha * 0.9})`
+      ctx.lineWidth   = Math.max(0.8, s * 0.12)
+      ctx.lineCap  = 'round'; ctx.lineJoin = 'round'
+      switch (id) {
+        case 'memory': {
+          ctx.beginPath(); ctx.ellipse(cx, cy - s*0.38, s*0.68, s*0.22, 0, 0, Math.PI*2); ctx.stroke()
+          ctx.beginPath(); ctx.moveTo(cx - s*0.68, cy - s*0.38); ctx.lineTo(cx - s*0.68, cy + s*0.38)
+          ctx.moveTo(cx + s*0.68, cy - s*0.38); ctx.lineTo(cx + s*0.68, cy + s*0.38); ctx.stroke()
+          ctx.beginPath(); ctx.ellipse(cx, cy + s*0.38, s*0.68, s*0.22, 0, 0, Math.PI*2); ctx.stroke()
+          break
+        }
+        case 'automation': {
+          ctx.beginPath()
+          ctx.moveTo(cx + s*0.2,  cy - s)
+          ctx.lineTo(cx - s*0.3,  cy - s*0.04)
+          ctx.lineTo(cx + s*0.06, cy - s*0.04)
+          ctx.lineTo(cx - s*0.2,  cy + s)
+          ctx.stroke(); break
+        }
+        case 'email': {
+          ctx.beginPath(); ctx.rect(cx - s*0.78, cy - s*0.5, s*1.56, s); ctx.stroke()
+          ctx.beginPath()
+          ctx.moveTo(cx - s*0.78, cy - s*0.5)
+          ctx.lineTo(cx, cy + s*0.1)
+          ctx.lineTo(cx + s*0.78, cy - s*0.5); ctx.stroke(); break
+        }
+        case 'analytics': {
+          ctx.fillRect(cx - s*0.65, cy - s*0.15, s*0.36, s*0.65)
+          ctx.fillRect(cx - s*0.17, cy - s*0.72, s*0.36, s*1.22)
+          ctx.fillRect(cx + s*0.31, cy - s*0.44, s*0.36, s*0.94)
+          break
+        }
+        case 'tasks': {
+          ctx.beginPath()
+          ctx.moveTo(cx - s*0.62, cy - s*0.1)
+          ctx.lineTo(cx - s*0.18, cy + s*0.5)
+          ctx.lineTo(cx + s*0.65, cy - s*0.65); ctx.stroke(); break
+        }
+        case 'crm': {
+          ctx.beginPath(); ctx.arc(cx, cy - s*0.28, s*0.42, 0, Math.PI*2); ctx.stroke()
+          ctx.beginPath(); ctx.arc(cx, cy + s*0.58, s*0.62, Math.PI, 0, false); ctx.stroke(); break
+        }
+        case 'strategy': {
+          ctx.beginPath(); ctx.arc(cx, cy, s*0.88, 0, Math.PI*2); ctx.stroke()
+          ctx.beginPath(); ctx.arc(cx, cy, s*0.44, 0, Math.PI*2); ctx.stroke()
+          ctx.beginPath(); ctx.arc(cx, cy, s*0.12, 0, Math.PI*2); ctx.fill(); break
+        }
+        case 'finances': {
+          ctx.font = `700 ${Math.round(s * 1.75)}px Inter,system-ui,sans-serif`
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+          ctx.fillText('$', cx, cy + s*0.06); break
+        }
+        case 'content': {
+          const a = -Math.PI / 4
+          const len = s * 1.1
+          const x1 = cx - Math.cos(a)*len*0.5, y1 = cy - Math.sin(a)*len*0.5
+          const x2 = cx + Math.cos(a)*len*0.5, y2 = cy + Math.sin(a)*len*0.5
+          ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke()
+          ctx.beginPath(); ctx.arc(x2, y2, s*0.18, 0, Math.PI*2); ctx.fill(); break
+        }
+      }
+      ctx.restore()
+    }
+
     const draw = () => {
       camZRef.current += (targetCamRef.current - camZRef.current) * 0.07
       const camZ  = camZRef.current
@@ -543,13 +612,12 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
         }
       }
 
-      // ── Flowing particles ─────────────────────────────────────────────────────
+      // ── Flowing particles (ALL connections always animate) ───────────────────
       for (const agent of nonBeka) {
-        if (!active.has(agent.id) && sel !== agent.id) continue
         const norm = AGENT_NORM[agent.id]; if (!norm) continue
         const proj = project(norm); if (!proj) continue
+        const isAct = active.has(agent.id) || sel === agent.id
         const isRun = rnz[agent.id]?.status === 'running'
-        const speed = isRun ? 2.2 : 1.3
         const fo    = Math.min(1, FOCAL / proj.depth)
 
         const dx = proj.x - CX; const dy = proj.y - CY
@@ -561,15 +629,19 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
         const cx2  = (sx0 + sx1) / 2 + uy * dist * perp * (norm.z > 0 ? 1 : -1)
         const cy2  = (sy0 + sy1) / 2 - ux * dist * perp * (norm.z > 0 ? 1 : -1)
 
-        const nParticles = isRun ? 4 : 2
+        const speed      = isRun ? 2.2 : isAct ? 1.3 : 0.42
+        const nParticles = isRun ? 4   : isAct ? 2   : 1
+        const baseAlpha  = isRun ? 0.95 : isAct ? 0.72 : 0.22
+        const baseR      = isRun ? 3.2  : isAct ? 2.1  : 1.3
+
         for (let pi = 0; pi < nParticles; pi++) {
           const ph = ((t * speed + pi / nParticles + agents.indexOf(agent) * 0.29) % 1 + 1) % 1
           const bp = bezPt(ph, sx0, sy0, cx2, cy2, sx1, sy1)
-          const pr = (isRun ? 3.2 : 2.0) * Math.min(1.5, fo)
+          const pr = baseR * Math.min(1.5, fo)
           const fadeEdge = Math.min(ph * 5, 1) * Math.min((1 - ph) * 5, 1)
           ctx.beginPath(); ctx.arc(bp.x, bp.y, pr, 0, Math.PI * 2)
-          ctx.fillStyle = agent.color
-          ctx.globalAlpha = (isRun ? 0.95 : 0.7) * fo * fadeEdge
+          ctx.fillStyle = isAct ? agent.color : 'rgba(255,255,255,0.8)'
+          ctx.globalAlpha = baseAlpha * fo * fadeEdge
           ctx.fill()
         }
         ctx.globalAlpha = 1
@@ -618,6 +690,11 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
         ctx.beginPath(); ctx.arc(proj.x, proj.y, r, 0, Math.PI * 2)
         ctx.strokeStyle = isAct ? agent.color + 'CC' : `rgba(255,255,255,${0.11 * fo})`
         ctx.lineWidth = isAct ? 1.4 : 0.8; ctx.stroke()
+
+        // icon inside node
+        const iconRgb   = isAct ? hexToRgb(agent.color) : '255,255,255'
+        const iconAlpha = isAct ? 0.72 * fo : 0.28 * fo
+        drawAgentIcon(agent.id, proj.x, proj.y, r * 0.44, iconRgb, iconAlpha)
 
         const fs = Math.max(8, Math.min(13, r * 0.52))
         ctx.font = `${isAct ? 700 : 500} ${fs}px Inter,system-ui,sans-serif`
