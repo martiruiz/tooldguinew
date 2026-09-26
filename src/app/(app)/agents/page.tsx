@@ -188,7 +188,7 @@ function AgentNode({ agent, run, isActive, labelSide, onClick }: {
 
 // ── Floating Chat ──────────────────────────────────────────────────────────────
 
-function FloatingChat({ msgs, input, onInput, onSend, onMic, voiceState, selectedAgent, agents }: {
+function FloatingChat({ msgs, input, onInput, onSend, onMic, voiceState, selectedAgent, agents, bekaEnabled, onToggleBeka }: {
   msgs: ChatMsg[]
   input: string
   onInput: (v: string) => void
@@ -197,6 +197,8 @@ function FloatingChat({ msgs, input, onInput, onSend, onMic, voiceState, selecte
   voiceState: JarvisVoiceState
   selectedAgent: string | null
   agents: AgentDef[]
+  bekaEnabled: boolean
+  onToggleBeka: () => void
 }) {
   const endRef = useRef<HTMLDivElement>(null)
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs])
@@ -237,6 +239,17 @@ function FloatingChat({ msgs, input, onInput, onSend, onMic, voiceState, selecte
 
       {/* Input row */}
       <div style={{ padding: msgs.length > 0 ? '6px 10px 10px' : '10px', display: 'flex', gap: 6, alignItems: 'center' }}>
+        {/* BEKA wake-word toggle */}
+        <button onClick={onToggleBeka} title={bekaEnabled ? 'Desactivar BEKA per veu' : 'Activar BEKA per veu — digues "BEKA"'} style={{
+          width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+          border: `1.5px solid ${bekaEnabled ? 'rgba(0,212,255,0.6)' : 'rgba(255,255,255,0.08)'}`,
+          background: bekaEnabled ? 'rgba(0,212,255,0.10)' : 'rgba(255,255,255,0.03)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+          boxShadow: bekaEnabled ? '0 0 10px rgba(0,212,255,0.35)' : 'none',
+          transition: 'all .2s',
+        }}>
+          <Zap size={11} color={bekaEnabled ? '#00D4FF' : 'rgba(255,255,255,0.2)'} strokeWidth={1.8} />
+        </button>
         <button onClick={onMic} style={{
           width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
           border: `1.5px solid ${voiceState !== 'idle' ? col : 'rgba(255,255,255,0.1)'}`,
@@ -782,7 +795,7 @@ function AgentPanel({ agent, run, prompt, onClose, onStop, onRun, onSavePrompt, 
           <div style={{ fontSize: 12.5, fontWeight: 700, color: agent.color }}>{agent.name}</div>
           <div style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.28)' }}>{agent.desc}</div>
         </div>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', padding: 4, display: 'flex' }}><X size={14} /></button>
+        {/* X moved to floating button group alongside PAUSAR */}
       </div>
 
       {/* Status bar */}
@@ -904,6 +917,51 @@ export default function AgentsPage() {
   const radialMapRef     = useRef<HTMLDivElement>(null)
   const cam3DTargetRef   = useRef(900)
   const [bekaPaused, setBekaPaused] = useState(false)
+  const [bekaVoiceEnabled, setBekaVoiceEnabled] = useState(false)
+  const bekaRecogRef        = useRef<any>(null)
+  const bekaVoiceEnabledRef = useRef(false)
+
+  const toggleBekaVoice = useCallback(() => {
+    setBekaVoiceEnabled(prev => {
+      const next = !prev
+      bekaVoiceEnabledRef.current = next
+      if (!next) { try { bekaRecogRef.current?.abort() } catch {} ; bekaRecogRef.current = null }
+      return next
+    })
+  }, [])
+
+  // Wake-word listener: continuously listens for "BEKA" when bekaVoiceEnabled
+  useEffect(() => {
+    if (!bekaVoiceEnabled) return
+    const startWakeWord = () => {
+      if (!bekaVoiceEnabledRef.current) return
+      const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      if (!SR) return
+      try { bekaRecogRef.current?.abort() } catch {}
+      const recog = new SR()
+      recog.lang = navigator.language || 'ca-ES'
+      recog.continuous = true
+      recog.interimResults = true
+      recog.onresult = (e: any) => {
+        const text = Array.from(e.results).map((r: any) => r[0].transcript).join('').toLowerCase()
+        if (text.includes('beka')) {
+          try { recog.abort() } catch {}
+          bekaRecogRef.current = null
+          v.openJarvis()
+        }
+      }
+      recog.onerror = (e: any) => {
+        if (e.error !== 'aborted' && bekaVoiceEnabledRef.current) setTimeout(startWakeWord, 1000)
+      }
+      recog.onend = () => {
+        if (bekaVoiceEnabledRef.current) setTimeout(startWakeWord, 300)
+      }
+      recog.start()
+      bekaRecogRef.current = recog
+    }
+    startWakeWord()
+    return () => { try { bekaRecogRef.current?.abort() } catch {} ; bekaRecogRef.current = null }
+  }, [bekaVoiceEnabled])
 
   // Wheel listener on the radial container — catches events from all child elements
   useEffect(() => {
@@ -1204,22 +1262,37 @@ export default function AgentsPage() {
           {/* Wave background */}
           <BekaBackground paused={bekaPaused} />
 
-          {/* Pause/Resume button */}
-          <button onClick={togglePause} title={bekaPaused ? 'Reprendre BEKA' : 'Pausar BEKA'} style={{
-            position: 'absolute', top: 12, right: 14, zIndex: 20,
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '5px 10px', borderRadius: 20,
-            background: bekaPaused ? 'rgba(0,200,255,0.10)' : 'rgba(255,255,255,0.04)',
-            border: `1px solid ${bekaPaused ? 'rgba(0,200,255,0.35)' : 'rgba(255,255,255,0.1)'}`,
-            color: bekaPaused ? '#00D4FF' : 'rgba(255,255,255,0.35)',
-            fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', cursor: 'pointer',
-            transition: 'all 0.25s',
+          {/* Floating button group: X (when panel open) + PAUSAR — always side by side */}
+          <div style={{
+            position: 'absolute', top: 10, right: 10, zIndex: 25,
+            display: 'flex', alignItems: 'center', gap: 6,
           }}>
-            {bekaPaused
-              ? <><Play size={9} fill="currentColor" /> REPRENDRE</>
-              : <><Pause size={9} /> PAUSAR</>
-            }
-          </button>
+            {selectedAgent && (
+              <button onClick={() => setSelectedAgent(null)} title="Tancar panell" style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 28, height: 28, borderRadius: 20, cursor: 'pointer',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: 'rgba(255,255,255,0.35)',
+              }}>
+                <X size={11} />
+              </button>
+            )}
+            <button onClick={togglePause} title={bekaPaused ? 'Reprendre BEKA' : 'Pausar BEKA'} style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '5px 10px', borderRadius: 20,
+              background: bekaPaused ? 'rgba(0,200,255,0.10)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${bekaPaused ? 'rgba(0,200,255,0.35)' : 'rgba(255,255,255,0.1)'}`,
+              color: bekaPaused ? '#00D4FF' : 'rgba(255,255,255,0.35)',
+              fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', cursor: 'pointer',
+              transition: 'all 0.25s',
+            }}>
+              {bekaPaused
+                ? <><Play size={9} fill="currentColor" /> REPRENDRE</>
+                : <><Pause size={9} /> PAUSAR</>
+              }
+            </button>
+          </div>
 
           {/* Paused overlay label */}
           {bekaPaused && (
@@ -1277,6 +1350,8 @@ export default function AgentsPage() {
             voiceState={v.state}
             selectedAgent={selectedAgent}
             agents={AGENTS}
+            bekaEnabled={bekaVoiceEnabled}
+            onToggleBeka={toggleBekaVoice}
           />
 
           {/* Detail Panel overlay */}
