@@ -106,6 +106,21 @@ export function BekaCore({
       return { x: Math.cos(a)*d, y: Math.sin(a)*d, vx: (Math.random()-0.5)*0.13, vy: (Math.random()-0.5)*0.13, r: 0.6+Math.random()*1.1, op: 0.12+Math.random()*0.28 }
     })
 
+    // Neural mesh nodes inside the sphere
+    const MESH_N = reducedMotion ? 0 : 28
+    type MeshPt = { nx: number; ny: number; nz: number; phase: number }
+    const meshNodes: MeshPt[] = Array.from({ length: MESH_N }, () => {
+      const theta = Math.random() * Math.PI * 2
+      const phi   = Math.acos(2 * Math.random() - 1)
+      const r     = 0.30 + Math.random() * 0.58
+      return {
+        nx: r * Math.sin(phi) * Math.cos(theta),
+        ny: r * Math.sin(phi) * Math.sin(theta),
+        nz: r * Math.cos(phi),
+        phase: Math.random() * Math.PI * 2,
+      }
+    })
+
     let coreScale = 1, coreGlow = 0.2, orbSpeed = 0.0006, ptSpeed = 0.4, waveAmp = 0
     let ring1Ang = 0, ring2Ang = Math.PI / 3, ring3Ang = Math.PI * 0.9
     let breathPhase = 0, pulsePhase = 0, execPulse = 0
@@ -269,6 +284,40 @@ export function BekaCore({
       // Clip sphere for inner overlays
       ctx.save()
       ctx.beginPath(); ctx.arc(CX, CY, coreR - 0.4 * U, 0, Math.PI * 2); ctx.clip()
+
+      // ── Neural mesh inside sphere ────────────────────────────────────────────
+      if (!reducedMotion && MESH_N > 0) {
+        const meshAlpha = 0.08 + coreGlow * 0.14
+        // Project mesh nodes with slow rotation
+        const mRot = ring1Ang * 0.18
+        const cosR = Math.cos(mRot); const sinR = Math.sin(mRot)
+        const projected = meshNodes.map(p => {
+          const px = p.nx * cosR - p.ny * sinR
+          const py = p.nx * sinR + p.ny * cosR
+          const pz = p.nz
+          const depthOp = 0.45 + pz * 0.55
+          const pulse = 0.6 + 0.4 * Math.sin(ts * 0.0018 + p.phase)
+          return { sx: CX + px * coreR, sy: CY + py * coreR * 0.82, depthOp, pulse }
+        })
+        // Edges between close nodes
+        for (let i = 0; i < MESH_N; i++) {
+          for (let j = i + 1; j < MESH_N; j++) {
+            const a = projected[i]; const b = projected[j]
+            const ddx = a.sx - b.sx; const ddy = a.sy - b.sy
+            const d = Math.sqrt(ddx*ddx + ddy*ddy)
+            if (d < coreR * 0.62) {
+              ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy)
+              ctx.strokeStyle = `rgba(0,200,255,${meshAlpha * (1 - d / (coreR * 0.62)) * a.depthOp * b.depthOp})`
+              ctx.lineWidth = 0.45 * U; ctx.stroke()
+            }
+          }
+        }
+        // Node dots
+        for (const p of projected) {
+          ctx.beginPath(); ctx.arc(p.sx, p.sy, 1.4 * U * p.pulse, 0, Math.PI * 2)
+          ctx.fillStyle = `rgba(0,210,255,${meshAlpha * 2.2 * p.depthOp})`; ctx.fill()
+        }
+      }
 
       // Rim light (bottom-right backscatter)
       const rimG = ctx.createRadialGradient(

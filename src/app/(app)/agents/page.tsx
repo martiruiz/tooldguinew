@@ -388,6 +388,12 @@ function BekaBackground({ paused }: { paused: boolean }) {
 // x: left(-)/right(+), y: up(-)/down(+).
 // At default zoom agents project to ~90% of canvas width and ~84% of height.
 
+const AGENT_CAT: Record<string, string> = {
+  memory: 'CONEIXEMENT', automation: 'PROCESSOS', email: 'COMUNICACIÓ',
+  analytics: 'DADES', tasks: 'PRODUCTIVITAT', crm: 'CLIENTS',
+  strategy: 'CREIXEMENT', finances: 'CONTROL', content: 'CREATIVITAT',
+}
+
 const AGENT_NORM: Record<string, { x: number; y: number; z: number }> = {
   memory:     { x: -0.78, y: -0.68, z:  110 },
   automation: { x: -1.00, y:  0.03, z:  -22 },
@@ -604,11 +610,11 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
           ctx.fillStyle = endGlow
           ctx.beginPath(); ctx.arc(sx1, sy1, 10, 0, Math.PI * 2); ctx.fill()
         } else {
-          ctx.save()
-          ctx.setLineDash([4, 9])
+          // Idle: solid luminous blue line (same style, lower opacity)
           ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.quadraticCurveTo(cx2, cy2, sx1, sy1)
-          ctx.strokeStyle = `rgba(255,255,255,${0.055 * fo})`; ctx.lineWidth = 0.8; ctx.stroke()
-          ctx.restore()
+          ctx.strokeStyle = `rgba(0,174,239,${0.07 * fo})`; ctx.lineWidth = 5; ctx.stroke()
+          ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.quadraticCurveTo(cx2, cy2, sx1, sy1)
+          ctx.strokeStyle = `rgba(0,174,239,${0.20 * fo})`; ctx.lineWidth = 1.0; ctx.stroke()
         }
       }
 
@@ -683,6 +689,20 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
         ctx.fillStyle = fill
         ctx.beginPath(); ctx.arc(proj.x, proj.y, r, 0, Math.PI * 2); ctx.fill()
 
+        // Glass dome specular highlight (3D sphere illusion)
+        ctx.save()
+        ctx.beginPath(); ctx.arc(proj.x, proj.y, r - 0.5, 0, Math.PI * 2); ctx.clip()
+        const glassSpec = ctx.createRadialGradient(
+          proj.x - r * 0.30, proj.y - r * 0.38, 0,
+          proj.x - r * 0.06, proj.y - r * 0.06, r * 0.84
+        )
+        glassSpec.addColorStop(0,    `rgba(255,255,255,${(isAct ? 0.32 : 0.15) * fo})`)
+        glassSpec.addColorStop(0.38, `rgba(255,255,255,${(isAct ? 0.07 : 0.03) * fo})`)
+        glassSpec.addColorStop(1,    'rgba(0,0,0,0)')
+        ctx.fillStyle = glassSpec
+        ctx.fillRect(proj.x - r, proj.y - r, r * 2, r * 2)
+        ctx.restore()
+
         if (isAct) {
           ctx.beginPath(); ctx.arc(proj.x, proj.y, r + 2.5, 0, Math.PI * 2)
           ctx.strokeStyle = `rgba(${rgb},${0.18 * fo})`; ctx.lineWidth = 1.5; ctx.stroke()
@@ -701,6 +721,12 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
         ctx.textAlign = 'center'; ctx.textBaseline = 'top'
         ctx.fillStyle = isAct ? agent.color : `rgba(255,255,255,${0.32 * fo})`
         ctx.fillText(agent.name, proj.x, proj.y + r + 5)
+
+        // Category label (small uppercase below name)
+        const catFs = Math.max(5.5, Math.min(8.5, r * 0.34))
+        ctx.font = `600 ${catFs}px Inter,system-ui,sans-serif`
+        ctx.fillStyle = `rgba(255,255,255,${(isAct ? 0.28 : 0.14) * fo})`
+        ctx.fillText(AGENT_CAT[agent.id] ?? '', proj.x, proj.y + r + 5 + fs + 4)
 
         const cfg  = STATUS_CFG[rnz[agent.id]?.status ?? 'idle']
         const dotR = Math.max(3.5, r * 0.19)
