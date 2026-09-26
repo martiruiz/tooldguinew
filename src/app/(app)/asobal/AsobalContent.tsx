@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 const TEAMS: Record<string, string> = {
   LOG: 'Logroño', BAR: 'Barça', GRA: 'Granollers', CAN: 'Morrazo',
@@ -406,16 +407,10 @@ interface Action {
 type MatchKey = string
 type StoreData = Record<MatchKey, Action[]>
 
-const STORE_KEY = 'asobal-j2627'
-
-function loadStore(): StoreData {
-  try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}') } catch { return {} }
-}
-function saveStore(d: StoreData) {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(d)) } catch {}
-}
 
 export function AsobalContent() {
+  const supabase = useRef(createClient()).current
+
   const [selectedJ, setSelectedJ] = useState(() => {
     const today = new Date()
     let best = 0, bestDiff = Infinity
@@ -433,7 +428,24 @@ export function AsobalContent() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState({ type: 'gol' as 'aturada' | 'gol', equip: '', jugador: '', minut: '', top5: false })
 
-  useEffect(() => { setStore(loadStore()) }, [])
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase.from('asobal_actions').select('*')
+      if (data) {
+        const s: StoreData = {}
+        data.forEach((row: { id: string; match_key: string; type: string; equip: string; jugador: string; top5: boolean; minut: string }) => {
+          if (!s[row.match_key]) s[row.match_key] = []
+          s[row.match_key].push({ id: row.id, type: row.type as 'aturada' | 'gol', equip: row.equip, jugador: row.jugador, top5: row.top5, minut: row.minut })
+        })
+        setStore(s)
+      }
+    }
+    load()
+    const channel = supabase.channel('asobal_rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'asobal_actions' }, load)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [supabase])
 
   const toggleMatch = (key: string) => {
     setOpenMatches(prev => {
@@ -443,35 +455,27 @@ export function AsobalContent() {
     })
   }
 
-  const addAction = useCallback((key: string) => {
+  const addAction = useCallback(async (key: string) => {
     if (!form.jugador.trim()) return
     if (editingId) {
-      const next = { ...store, [key]: (store[key] ?? []).map(a => a.id === editingId ? { ...a, type: form.type, equip: form.equip, jugador: form.jugador.trim(), minut: form.minut, top5: form.top5 } : a) }
-      setStore(next)
-      saveStore(next)
+      await supabase.from('asobal_actions').update({
+        type: form.type, equip: form.equip,
+        jugador: form.jugador.trim(), minut: form.minut, top5: form.top5,
+      }).eq('id', editingId)
     } else {
-      const action: Action = {
-        id: Date.now().toString(),
-        type: form.type,
-        equip: form.equip,
-        jugador: form.jugador.trim(),
-        minut: form.minut,
-        top5: form.top5,
-      }
-      const next = { ...store, [key]: [...(store[key] ?? []), action] }
-      setStore(next)
-      saveStore(next)
+      await supabase.from('asobal_actions').insert({
+        match_key: key, type: form.type, equip: form.equip,
+        jugador: form.jugador.trim(), minut: form.minut, top5: form.top5,
+      })
     }
     setForm({ type: 'gol', equip: '', jugador: '', minut: '', top5: false })
     setEditingId(null)
     setAddingFor(null)
-  }, [form, store, editingId])
+  }, [form, editingId, supabase])
 
-  const deleteAction = useCallback((key: string, id: string) => {
-    const next = { ...store, [key]: (store[key] ?? []).filter(a => a.id !== id) }
-    setStore(next)
-    saveStore(next)
-  }, [store])
+  const deleteAction = useCallback(async (_key: string, id: string) => {
+    await supabase.from('asobal_actions').delete().eq('id', id)
+  }, [supabase])
 
   const jornada = CALENDAR[selectedJ]
 
