@@ -8,6 +8,7 @@ import { PresenceNotifier } from '@/components/layout/PresenceNotifier'
 import { GlobalActivityPanel } from '@/components/layout/GlobalActivityPanel'
 import { TeamChat } from '@/components/layout/TeamChat'
 import { ChatFab } from '@/components/layout/ChatFab'
+import { JarvisOrb } from '@/components/layout/JarvisOrb'
 import { LanguageProvider } from '@/contexts/LanguageContext'
 import { NavigationProvider } from '@/contexts/NavigationContext'
 import { PageTransition } from '@/components/layout/PageTransition'
@@ -57,6 +58,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <GlobalActivityPanel currentUserId={user.id} profiles={allProfiles || []} />
         <TeamChat currentUserId={user.id} currentUserName={profile.full_name} profiles={allProfiles || []} />
         <ChatFab currentUserId={user.id} profiles={allProfiles || []} />
+        <JarvisOrb />
       </div>
     </NavigationProvider>
     </LanguageProvider>

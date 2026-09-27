@@ -26,7 +26,8 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
-  const isPublicRoute = pathname === '/login' || pathname === '/forgot-password'
+  const isPublicRoute = pathname === '/login' || pathname === '/forgot-password' ||
+    pathname === '/setup.sh' || pathname.startsWith('/_next/') || pathname.startsWith('/fonts/')
   const isCronRoute = pathname.startsWith('/api/intelligence/') &&
     request.headers.get('x-cron-secret') === process.env.CRON_SECRET &&
     !!process.env.CRON_SECRET

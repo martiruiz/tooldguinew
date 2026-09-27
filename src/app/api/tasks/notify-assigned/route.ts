@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
         type: 'task_assigned',
         title: `${assignerProfile.name} t'ha assignat una tasca`,
         body: taskTitle || 'Nova tasca assignada',
-        link: `/tasks`,
+        link: `/tasks?task=${taskId}`,
         emailSubject: `Nova tasca assignada: ${taskTitle}`,
         emailHtml: undefined,
       })

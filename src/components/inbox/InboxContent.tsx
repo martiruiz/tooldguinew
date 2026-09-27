@@ -8,6 +8,18 @@ interface ChatMsg {
   id: string; user_id: string; content: string; created_at: string
   profiles?: { id: string; full_name: string; avatar_url?: string }
 }
+
+const URL_RE = /(https?:\/\/[^\s<>"]+)/g
+function renderWithLinks(text: string) {
+  const parts = text.split(URL_RE)
+  return parts.map((part, i) =>
+    URL_RE.test(part)
+      ? <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+          className="chat-link"
+          onClick={e => e.stopPropagation()}>{part}</a>
+      : part
+  )
+}
 interface Profile { id: string; full_name: string; avatar_url?: string }
 interface Conversation {
   id: string; type: 'direct' | 'group'; name?: string; avatar_color?: string
@@ -109,7 +121,7 @@ function ConvChat({ conv, currentUserId, profileMap, onBack }: {
     bottomRef={bottomRef} input={input} setInput={setInput} send={send} sending={sending}
     emptyIcon={conv.type === 'group' ? <GrAv name={conv.name || 'G'} color={conv.avatar_color} size={56} /> : otherMembers[0] ? <Av p={otherMembers[0]} size={56} /> : null}
     emptyName={headerName} isMe={(msg: any) => msg.user_id === currentUserId}
-    getSender={(msg: any) => profileMap[msg.user_id]} getContent={(msg: any) => msg.content}
+    getSender={(msg: any) => profileMap[msg.user_id]} getContent={(msg: any) => renderWithLinks(msg.content ?? '')}
     isSameUser={(a: any, b: any) => a.user_id === b.user_id}
   />
 }
@@ -252,7 +264,7 @@ function DmChat({ peer, currentUserId, profileMap, onBack }: {
   const getContent = (msg: any) => {
     const c = msg.content as string
     if (c?.startsWith('__gif__:')) return <img src={c.slice(8)} alt="GIF" style={{ maxWidth: 200, borderRadius: 10, display: 'block', marginTop: 2 }} loading="lazy" />
-    return c
+    return renderWithLinks(c ?? '')
   }
 
   return <ChatLayout
@@ -782,6 +794,8 @@ export function InboxContent({ currentUserId, chatMessages, profiles }: Props) {
         .bubble { background: #F1F3F7; color: #111827; padding: 9px 13px; border-radius: 16px 16px 16px 4px; font-size: 13.5px; line-height: 1.48; word-break: break-word; position: relative; }
         .bubble-me { background: linear-gradient(135deg,#1B2B4B,#3167C8); color: white; border-radius: 16px 16px 4px 16px; }
         .bubble-ts { font-size: 9.5px; opacity: 0.45; margin-left: 8px; white-space: nowrap; vertical-align: bottom; }
+        .bubble .chat-link { color: #3167C8; text-decoration: underline; word-break: break-all; }
+        .bubble-me .chat-link { color: #93C5FD; text-decoration: underline; word-break: break-all; }
         .ch-input-wrap { display: flex; gap: 8px; padding: 12px 16px 16px; border-top: 1px solid #F0F2F5; align-items: flex-end; flex-shrink: 0; background: white; }
         .ch-input { flex: 1; resize: none; border: 1.5px solid #E5E7EB; border-radius: 12px; padding: 10px 14px; font-size: 13.5px; font-family: inherit; outline: none; line-height: 1.45; max-height: 120px; overflow-y: auto; background: #FAFBFC; transition: border-color 0.15s, box-shadow 0.15s; color: #111827; }
         .ch-input:focus { border-color: #254067; box-shadow: 0 0 0 3px rgba(37,64,103,0.08); background: white; }

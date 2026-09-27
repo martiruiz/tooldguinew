@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, FolderKanban, CheckSquare,
   Calendar, Shield, LogOut, ChevronLeft, ChevronRight, ClipboardList,
   TrendingUp, BarChart3, Truck, Building2, PieChart, Plus, X, Pencil, Check,
-  Target, FileText, LineChart, Scale, Inbox, Search, Layers, Zap, Bot,
+  Target, FileText, LineChart, Scale, Inbox, Search, Layers, Zap, Bot, Trophy,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -34,6 +34,7 @@ const navDefs = [
   { href: '/projects',  icon: FolderKanban,    labelKey: 'campaigns' as keyof typeof TRANSLATIONS },
   { href: '/check',     icon: ClipboardList,   labelKey: 'sessions'  as keyof typeof TRANSLATIONS },
   { href: '/inbox',     icon: Inbox,           labelKey: 'inbox'     as keyof typeof TRANSLATIONS },
+  { href: '/asobal',   icon: Trophy,          labelKey: 'asobal'   as keyof typeof TRANSLATIONS },
 ]
 
 const serviceLinks = [
@@ -129,6 +130,23 @@ export function Sidebar({ user }: Props) {
   const router = useRouter()
   const { t } = useLanguage()
   const [collapsed, setCollapsed] = useState(false)
+  const savedCollapsedRef = useRef(false)
+  const wasOnAgentsRef = useRef(false)
+
+  // Auto-collapse when entering /agents, restore when leaving
+  useEffect(() => {
+    const isAgents = pathname === '/agents'
+    if (isAgents && !wasOnAgentsRef.current) {
+      savedCollapsedRef.current = collapsed
+      setCollapsed(true)
+      wasOnAgentsRef.current = true
+    } else if (!isAgents && wasOnAgentsRef.current) {
+      setCollapsed(savedCollapsedRef.current)
+      wasOnAgentsRef.current = false
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
+
   const [greeting, setGreeting] = useState('')
   const [hiddenSections, setHiddenSections] = useState<Set<string>>(new Set())
   const toggleSection = (key: string) => {
@@ -286,14 +304,18 @@ export function Sidebar({ user }: Props) {
             {navDefs.map(item => {
               const label = t(item.labelKey)
               const active = pathname === item.href || pathname.startsWith(item.href + '/')
+              const isAsobal = item.href === '/asobal'
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={cn('sb-item', active && 'sb-item--active', c && 'sb-item--icon')}
+                  className={cn('sb-item', isAsobal ? 'sb-item--asobal' : active && 'sb-item--active', c && 'sb-item--icon')}
                   title={c ? label : undefined}
                 >
-                  <item.icon size={c ? 20 : 17} strokeWidth={active ? 2.2 : 1.8} />
+                  {isAsobal
+                    ? <img src="/logo-asobal-blanco.png" alt="ASOBAL" style={{ height: c ? 20 : 17, width: 'auto', objectFit: 'contain', display: 'block' }} />
+                    : <item.icon size={c ? 20 : 17} strokeWidth={active ? 2.2 : 1.8} />
+                  }
                   {!c && <span>{label}</span>}
                 </Link>
               )
@@ -302,33 +324,20 @@ export function Sidebar({ user }: Props) {
         )}
 
 
-        {/* AI Intelligence — superadmin + manager */}
+        {/* Agents — superadmin + manager */}
         {(user.role === 'superadmin' || user.role === 'manager') && (
           <>
             <div className="sb-divider" />
             <nav className="sb-nav">
               {(() => {
-                const active = pathname.startsWith('/intelligence')
-                return (
-                  <Link
-                    href="/intelligence"
-                    className={cn('sb-item', active && 'sb-item--active', c && 'sb-item--icon')}
-                    title={c ? 'Intel·ligència AI' : undefined}
-                  >
-                    <Zap size={c ? 20 : 17} strokeWidth={active ? 2.2 : 1.8} />
-                    {!c && <span>Intel·ligència AI</span>}
-                  </Link>
-                )
-              })()}
-              {(() => {
                 const active = pathname.startsWith('/agents')
                 return (
                   <Link
                     href="/agents"
-                    className={cn('sb-item', active && 'sb-item--active', c && 'sb-item--icon')}
+                    className={cn('sb-item sb-item--agents', c && 'sb-item--icon')}
                     title={c ? 'Agents' : undefined}
                   >
-                    <Bot size={c ? 20 : 17} strokeWidth={active ? 2.2 : 1.8} />
+                    <Bot size={c ? 20 : 17} strokeWidth={2.2} />
                     {!c && <span>Agents</span>}
                   </Link>
                 )
@@ -715,6 +724,72 @@ export function Sidebar({ user }: Props) {
           letter-spacing: 0.01em;
         }
         :global(.sb-item--scp-active svg) { filter: drop-shadow(0 0 4px rgba(201,168,76,0.5)); }
+
+        :global(.sb-item--asobal) {
+          background: linear-gradient(135deg, #1b3bda 0%, #131ea6 100%) !important;
+          color: #FFFFFF !important;
+          font-weight: 700;
+          box-shadow: 0 2px 12px rgba(27,59,218,0.40), inset 0 1px 0 rgba(255,255,255,0.18) !important;
+          border: none !important;
+          letter-spacing: 0.01em;
+          position: relative;
+          overflow: hidden;
+        }
+        :global(.sb-item--asobal::before) {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%);
+          pointer-events: none;
+        }
+        :global(.sb-item--asobal:hover) {
+          background: linear-gradient(135deg, #2547f0 0%, #1a29c4 100%) !important;
+          box-shadow: 0 4px 18px rgba(27,59,218,0.55), inset 0 1px 0 rgba(255,255,255,0.22) !important;
+          transform: translateY(-1px);
+          color: #FFFFFF !important;
+        }
+        :global(.sb-item--asobal svg) {
+          filter: drop-shadow(0 0 5px rgba(180,200,255,0.6));
+        }
+
+        :global(.sb-item--agents) {
+          background: linear-gradient(135deg, #020B18 0%, #001B38 50%, #002E5A 100%) !important;
+          color: #FFFFFF !important;
+          font-weight: 700;
+          border: 1px solid rgba(0,200,255,0.22) !important;
+          box-shadow: 0 2px 14px rgba(0,120,200,0.18), inset 0 0 18px rgba(0,200,255,0.04) !important;
+          letter-spacing: 0.02em;
+          position: relative;
+          overflow: hidden;
+        }
+        :global(.sb-item--agents::before) {
+          content: '';
+          position: absolute;
+          top: -40%;
+          left: -50%;
+          width: 25%;
+          height: 180%;
+          background: linear-gradient(90deg, transparent, rgba(0,200,255,0.18), transparent);
+          animation: agentScan 3.5s ease-in-out infinite;
+          pointer-events: none;
+        }
+        @keyframes agentScan {
+          0%   { transform: translateX(0) skewX(-15deg); opacity: 0; }
+          15%  { opacity: 1; }
+          85%  { opacity: 1; }
+          100% { transform: translateX(700%) skewX(-15deg); opacity: 0; }
+        }
+        :global(.sb-item--agents:hover) {
+          background: linear-gradient(135deg, #020E20 0%, #002244 50%, #003D78 100%) !important;
+          box-shadow: 0 4px 20px rgba(0,180,255,0.28), inset 0 0 22px rgba(0,200,255,0.07) !important;
+          border-color: rgba(0,200,255,0.38) !important;
+          transform: translateY(-1px);
+          color: #FFFFFF !important;
+        }
+        :global(.sb-item--agents svg) {
+          filter: drop-shadow(0 0 5px rgba(0,200,255,0.55));
+        }
+
         :global(.sb-item--sub) { font-size: 13px; padding: 7px 10px; }
         :global(.sb-item--sub.sb-item--icon) { padding: 9px 10px; }
         :global(.sb-item--scp:hover):not(:global(.sb-item--active-scp)) { background: #F5F3FF; color: #6D28D9; }

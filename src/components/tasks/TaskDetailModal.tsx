@@ -486,6 +486,36 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
     logActivity('subtask_assigned', { title: s?.title || '', name: assigneeName })
   }
 
+  // Drive preview helpers
+  function getDrivePreviewUrl(url: string): string | null {
+    try {
+      const u = new URL(url)
+      const isImage = /\.(png|jpe?g|gif|webp|svg|bmp|tiff?)(\?|$)/i.test(url)
+
+      // Dropbox: convert share URL to direct raw URL
+      if (u.hostname.includes('dropbox.com') || u.hostname.includes('dropboxusercontent.com')) {
+        if (isImage) {
+          const raw = url.replace('www.dropbox.com', 'dl.dropboxusercontent.com')
+            .replace(/[?&]dl=\d/, '')
+          return raw
+        }
+      }
+
+      // Google Drive: extract file ID and use thumbnail API
+      const driveMatch = url.match(/\/file\/d\/([^/]+)/) || url.match(/id=([^&]+)/)
+      if (driveMatch) {
+        return `https://drive.google.com/thumbnail?id=${driveMatch[1]}&sz=w400`
+      }
+
+      // Direct image URL
+      if (isImage) return url
+
+      return null
+    } catch {
+      return null
+    }
+  }
+
   // Drive
   const addDrive = () => {
     const url = newDrive.trim()
@@ -1162,14 +1192,26 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
                   </button>
                 </div>
               </div>
-              {driveLinks.map(d => (
-                <div key={d.id} className="drive-row">
-                  <Link2 size={13} color="#1B2B4B" />
-                  <a href={d.url} target="_blank" rel="noopener noreferrer" className="drive-name">{d.name}</a>
-                  <ExternalLink size={11} color="#9A9A9A" />
-                  <button className="row-del" onClick={() => delDrive(d.id)} style={{ marginLeft: 'auto' }}><Trash2 size={11} /></button>
-                </div>
-              ))}
+              {driveLinks.map(d => {
+                const previewUrl = getDrivePreviewUrl(d.url)
+                return (
+                  <div key={d.id} className="drive-row">
+                    {previewUrl ? (
+                      <a href={d.url} target="_blank" rel="noopener noreferrer" className="drive-preview-wrap">
+                        <img src={previewUrl} alt={d.name} className="drive-preview-img" />
+                        <span className="drive-preview-name">{d.name}</span>
+                      </a>
+                    ) : (
+                      <>
+                        <Link2 size={13} color="#1B2B4B" />
+                        <a href={d.url} target="_blank" rel="noopener noreferrer" className="drive-name">{d.name}</a>
+                        <ExternalLink size={11} color="#9A9A9A" />
+                      </>
+                    )}
+                    <button className="row-del" onClick={() => delDrive(d.id)} style={{ marginLeft: 'auto' }}><Trash2 size={11} /></button>
+                  </div>
+                )
+              })}
               {showDriveInput && (
                 <div className="add-row">
                   <input value={newDrive} onChange={e => setNewDrive(e.target.value)}
@@ -1745,6 +1787,19 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         }
         .drive-name { font-size: 13px; color: #1B2B4B; text-decoration: none; flex: 1; }
         .drive-name:hover { text-decoration: underline; }
+        .drive-preview-wrap {
+          display: flex; flex-direction: column; gap: 6px; flex: 1;
+          text-decoration: none;
+        }
+        .drive-preview-img {
+          width: 100%; max-height: 180px; object-fit: cover;
+          border-radius: 6px; border: 1px solid #E0E0E0;
+          display: block;
+        }
+        .drive-preview-name {
+          font-size: 12px; color: #1B2B4B; line-height: 1.3;
+        }
+        .drive-preview-wrap:hover .drive-preview-name { text-decoration: underline; }
 
         /* Activity */
         .activity-section { gap: 12px; }

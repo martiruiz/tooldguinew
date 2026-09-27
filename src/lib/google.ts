@@ -1,8 +1,9 @@
 import { google } from 'googleapis'
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 
-const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/google/callback`
-const CALENDAR_REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/google-calendar/callback`
+const APP_URL = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'
+const REDIRECT_URI = `${APP_URL}/api/auth/google/callback`
+const CALENDAR_REDIRECT_URI = `${APP_URL}/api/auth/google-calendar/callback`
 
 export function getOAuthClient(redirectUri = REDIRECT_URI) {
   return new google.auth.OAuth2(

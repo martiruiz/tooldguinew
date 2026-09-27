@@ -1,6 +1,7 @@
 'use client'
 // tasks content component
 import { useState, useMemo, useRef, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Plus, List, Columns, Search, SlidersHorizontal, X, RefreshCw, AtSign, HelpCircle, AlertTriangle, Home, Laptop, Camera, Music, Monitor, ChevronRight, Zap, Star, Flag, Clock, Bell, Bookmark, BarChart2, Settings, Users, Mail, Phone, Globe, Package, Truck, Target, Layers, CheckSquare, FileText, Inbox, ArrowRight, Pencil, Heart, Smile, Coffee, Sun, Moon, Cloud, Flame, Leaf, Eye, Lock, Unlock, Key, Shield, Award, Gift, Lightbulb, MessageCircle, MessageSquare, Send, Rss, Wifi, Battery, Cpu, Database, Server, Code, Terminal, GitBranch, GitMerge, Scissors, Crop, PenTool, Palette, Image, Video, Headphones, Radio, Tv, Printer, Scan, Download, Upload, Link, ExternalLink, Anchor, Compass, Map, Navigation, Plane, Car, Bike, Bus, Train, Ship, Umbrella, Wind, Snowflake, Thermometer, Activity, Stethoscope, Pill, Apple, ShoppingCart, ShoppingBag, CreditCard, DollarSign, TrendingUp, TrendingDown, PieChart, Calendar, Grid, Layout, Maximize, Minimize, Move, Copy, Archive, Trash2, FolderOpen, Folder, HardDrive, Paperclip, Clipboard, Toolbox, Wrench, Hammer, Sliders, ToggleLeft, ToggleRight, ChevronUp, ChevronDown, ChevronsRight, ArrowUp, ArrowDown, RotateCcw, Repeat, Shuffle, Play, Pause, Square, Circle, Triangle, Hexagon, Octagon, AlignLeft, AlignCenter, Type, Hash, Percent, PlusCircle, MinusCircle, XCircle, AlertCircle, Info, ThumbsUp, ThumbsDown, Mic, Volume2, UserCheck, UserPlus, UserMinus, Briefcase, BookOpen, Book, GraduationCap, Feather, Edit3, ClipboardList, ClipboardCheck, MoreHorizontal, Sidebar, Tag } from 'lucide-react'
 import { cn, taskStatusLabels, taskPriorityLabels, getInitials } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -44,12 +45,23 @@ const CHIP_COLORS = [
 ]
 
 export function TasksContent({ tasks, clients, projects, profiles, currentUserId, allLabels = [] }: Props) {
+  const searchParams = useSearchParams()
   const [view, setView] = useState<View>('kanban')
   const [localTasks, setLocalTasks] = useState(tasks)
   const [showNew, setShowNew] = useState(false)
   const pendingTaskIdRef = useRef<string | null>(null)
   const [newTaskStatus, setNewTaskStatus] = useState<Task['status']>('todo')
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+
+  // Auto-open task from URL param (?task=TASK_ID)
+  useEffect(() => {
+    const taskId = searchParams.get('task')
+    if (taskId && localTasks.length > 0) {
+      const found = localTasks.find(t => t.id === taskId)
+      if (found) setSelectedTask(found)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, localTasks.length])
   const [search, setSearch] = useState('')
   const [showFilter, setShowFilter] = useState(false)
   // Filter state
@@ -1477,11 +1489,12 @@ function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onDra
           display: block;
         }
         .kcard-avatar {
-          width: 24px; height: 24px; border-radius: 50%;
+          width: 42px; height: 42px; border-radius: 50%;
           background: linear-gradient(135deg, #3B6FD4, #1B2B4B); color: white;
-          font-size: 8.5px; font-weight: 700;
+          font-size: 12px; font-weight: 700;
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0; overflow: hidden;
+          border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.15);
         }
         .kcard-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
 

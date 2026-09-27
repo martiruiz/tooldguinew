@@ -89,19 +89,11 @@ const STATUS_META: Record<string, { icon: React.ReactNode; label: string; color:
   done:        { icon: <CheckCircle2 size={13} />,  label: 'Fet',        color: '#16A34A' },
 }
 
-interface ProjectInsight {
-  id: string
-  severity: 'info' | 'warning' | 'critical'
-  title: string
-  created_at: string
-}
-
 interface Props {
   project: Project & { client?: { id: string; name: string; type: string } }
   tasks: Task[]
   profiles: { id: string; full_name: string; avatar_url?: string }[]
   currentUser: Profile
-  projectInsights?: ProjectInsight[]
 }
 
 function computeRiskScore(tasks: Task[], project: Project): { score: number; label: string; color: string; reasons: string[] } {
@@ -141,7 +133,7 @@ function computeRiskScore(tasks: Task[], project: Project): { score: number; lab
   return { score, label, color, reasons }
 }
 
-export function ProjectDetail({ project, tasks: initialTasks, profiles, currentUser, projectInsights = [] }: Props) {
+export function ProjectDetail({ project, tasks: initialTasks, profiles, currentUser }: Props) {
   const router = useRouter()
   const sb = createClient()
 
@@ -150,8 +142,7 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
   const isPrivileged = currentUser.role === 'superadmin' || currentUser.role === 'manager'
   const baseTemplates = TASK_TEMPLATES[project.type] || TASK_TEMPLATES.custom
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
-  const [localInsights, setLocalInsights] = useState<ProjectInsight[]>(projectInsights)
-  const [localTemplates, setLocalTemplates] = useState<TemplateItem[]>(baseTemplates)
+const [localTemplates, setLocalTemplates] = useState<TemplateItem[]>(baseTemplates)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [creating, setCreating] = useState(false)
   const [assignee, setAssignee] = useState(currentUser.id)
@@ -456,31 +447,6 @@ export function ProjectDetail({ project, tasks: initialTasks, profiles, currentU
             </button>
           </div>
 
-          {/* AI alerts for this project */}
-          {isPrivileged && localInsights.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
-              {localInsights.map(ins => (
-                <div key={ins.id} style={{
-                  display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px',
-                  background: ins.severity === 'critical' ? '#FEF2F2' : '#FFFBEB',
-                  border: `1px solid ${ins.severity === 'critical' ? '#FECACA' : '#FDE68A'}`,
-                  borderRadius: '6px', fontSize: '12px',
-                }}>
-                  <AlertCircle size={12} color={ins.severity === 'critical' ? '#DC2626' : '#D97706'} />
-                  <span style={{ flex: 1, color: '#1B2B4B' }}>{ins.title}</span>
-                  <button
-                    onClick={async () => {
-                      await fetch('/api/intelligence/insights', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: ins.id, resolved: true }) })
-                      setLocalInsights(prev => prev.filter(i => i.id !== ins.id))
-                    }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: '0 2px' }}
-                  >
-                    <X size={11} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
 
           {tasks.length === 0 ? (
             <div className="empty-tasks">

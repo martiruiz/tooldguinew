@@ -1,8 +1,3 @@
 {
-  "crons": [
-    {
-      "path": "/api/intelligence/run",
-      "schedule": "0 7 * * *"
-    }
-  ]
+  "alias": ["tools.agenciaguinew.com"]
 }

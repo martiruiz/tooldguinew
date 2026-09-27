@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useState, useRef } from 'react'
 import { Bell, Check, CheckCheck, X, ClipboardList, Edit3, CheckSquare, MessageSquare, AtSign, Clock, User, FolderOpen, Settings2, Briefcase, FileSignature, Banknote } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
@@ -10,6 +11,7 @@ import type { Profile, Notification } from '@/types'
 interface Props {
   user: Profile
   title?: string
+  titleIcon?: string
 }
 
 function timeAgo(dateStr: string) {
@@ -23,7 +25,8 @@ function timeAgo(dateStr: string) {
   return `fa ${days}d`
 }
 
-export function Topbar({ user, title }: Props) {
+export function Topbar({ user, title, titleIcon }: Props) {
+  const router = useRouter()
   const [notifs, setNotifs] = useState<Notification[]>([])
   const [open, setOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -109,6 +112,14 @@ export function Topbar({ user, title }: Props) {
     setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
   }
 
+  const handleNotifClick = async (n: Notification) => {
+    await markOneRead(n.id)
+    if (n.link) {
+      setOpen(false)
+      router.push(n.link)
+    }
+  }
+
   const typeIconMap: Record<string, { Icon: React.ElementType; bg: string; color: string }> = {
     task_assigned: { Icon: ClipboardList, bg: '#EFF6FF', color: '#3B82F6' },
     task_updated:  { Icon: Edit3,         bg: '#F5F3FF', color: '#7C3AED' },
@@ -136,7 +147,12 @@ export function Topbar({ user, title }: Props) {
         >
           <img src="/logo-gw.png" alt="Guinew" width={34} height={34} style={{ borderRadius: 8, objectFit: 'contain', display: 'block' }} />
         </button>
-        {title && <h1 className="topbar-title">{title}</h1>}
+        {title && (
+          <h1 className="topbar-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {titleIcon && <img src={titleIcon} alt="" style={{ height: 22, width: 'auto', objectFit: 'contain' }} />}
+            {title}
+          </h1>
+        )}
       </div>
 
       <div className="topbar-right">
@@ -178,8 +194,8 @@ export function Topbar({ user, title }: Props) {
                   notifs.map(n => (
                     <div
                       key={n.id}
-                      className={`notif-item${n.read ? '' : ' notif-item--unread'}`}
-                      onClick={() => markOneRead(n.id)}
+                      className={`notif-item${n.read ? '' : ' notif-item--unread'}${n.link ? ' notif-item--clickable' : ''}`}
+                      onClick={() => handleNotifClick(n)}
                     >
                       <div className="notif-icon">
                         {(() => {
@@ -397,6 +413,8 @@ export function Topbar({ user, title }: Props) {
         .notif-item:hover { background: #FAFAFA; }
         .notif-item--unread { background: #F8FAFF; }
         .notif-item--unread:hover { background: #F0F5FF; }
+        .notif-item--clickable { cursor: pointer; }
+        .notif-item--clickable:hover .notif-title { color: #1B2B4B; }
 
         .notif-icon { flex-shrink: 0; margin-top: 1px; }
 

@@ -1,4 +1,5 @@
 import { createClient as createAdmin } from '@supabase/supabase-js'
+import { Resend } from 'resend'
 import nodemailer from 'nodemailer'
 
 const getAdmin = () => createAdmin(
@@ -57,7 +58,7 @@ export async function createNotification(opts: CreateNotifOptions) {
   })
 }
 
-// Send an email via Gmail SMTP
+// Send an email — uses Resend if RESEND_API_KEY is set, otherwise Gmail SMTP
 export async function sendEmailNotification(opts: {
   toEmail: string
   toName: string
@@ -66,27 +67,49 @@ export async function sendEmailNotification(opts: {
   userId: string
   type: NotifType
 }) {
+  const resendKey = process.env.RESEND_API_KEY
   const gmailUser = process.env.GMAIL_USER
   const gmailPass = process.env.GMAIL_APP_PASSWORD
-  if (!gmailUser || !gmailPass) return // not configured
+
+  if (!resendKey && (!gmailUser || !gmailPass)) {
+    console.warn('[notifications] No email provider configured (RESEND_API_KEY or GMAIL_USER+GMAIL_APP_PASSWORD)')
+    return
+  }
 
   const enabled = await isEnabled(opts.userId, opts.type, 'email')
   if (!enabled) return
 
-  try {
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: gmailUser, pass: gmailPass },
-    })
-
-    await transporter.sendMail({
-      from: `"Guinew OS" <${gmailUser}>`,
-      to: `"${opts.toName}" <${opts.toEmail}>`,
-      subject: opts.subject,
-      html: opts.htmlContent,
-    })
-  } catch (err) {
-    console.warn('[notifications] Gmail send failed:', err)
+  if (resendKey) {
+    // Resend (preferred)
+    try {
+      const resend = new Resend(resendKey)
+      const fromAddress = process.env.RESEND_FROM || 'Guinew OS <onboarding@resend.dev>'
+      const { error } = await resend.emails.send({
+        from: fromAddress,
+        to: `${opts.toName} <${opts.toEmail}>`,
+        subject: opts.subject,
+        html: opts.htmlContent,
+      })
+      if (error) console.error('[notifications] Resend error:', error)
+    } catch (err) {
+      console.error('[notifications] Resend send failed:', err)
+    }
+  } else {
+    // Gmail SMTP fallback
+    try {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: gmailUser, pass: gmailPass },
+      })
+      await transporter.sendMail({
+        from: `"Guinew OS" <${gmailUser}>`,
+        to: `"${opts.toName}" <${opts.toEmail}>`,
+        subject: opts.subject,
+        html: opts.htmlContent,
+      })
+    } catch (err) {
+      console.error('[notifications] Gmail SMTP send failed:', err)
+    }
   }
 }
 

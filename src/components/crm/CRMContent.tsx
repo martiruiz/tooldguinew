@@ -254,6 +254,117 @@ const STAGE_COLORS = [
   { color: '#6366F1', bg: '#EEF2FF' },
 ]
 
+const SERVICE_PRESETS = [
+  'Social Media', 'Contingut', 'Disseny', 'Vídeo', 'Reels', 'Paid Media',
+  'SEO', 'Email Mkt', 'Web & CRO', 'Estratègia', 'Branding', 'CM',
+  'Fotografia', 'Influencer', 'Informes', 'Localization',
+]
+
+function ServicesSelector({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [custom, setCustom] = useState('')
+  const [showInput, setShowInput] = useState(false)
+  const selected = value ? value.split(',').map(s => s.trim()).filter(Boolean) : []
+
+  const toggle = (svc: string) => {
+    const next = selected.includes(svc)
+      ? selected.filter(s => s !== svc)
+      : [...selected, svc]
+    onChange(next.join(', '))
+  }
+
+  const addCustom = () => {
+    const t = custom.trim()
+    if (!t) return
+    if (!selected.includes(t)) onChange([...selected, t].join(', '))
+    setCustom('')
+    setShowInput(false)
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Preset chips */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {SERVICE_PRESETS.map(svc => {
+          const on = selected.includes(svc)
+          return (
+            <button
+              key={svc} type="button"
+              onClick={() => toggle(svc)}
+              style={{
+                padding: '5px 11px', borderRadius: 20, cursor: 'pointer',
+                border: on ? '1.5px solid #254067' : '1px solid #E2E8F0',
+                background: on ? '#EEF3FA' : 'white',
+                color: on ? '#1B2B4B' : '#64748B',
+                fontSize: 12, fontWeight: on ? 700 : 400,
+                fontFamily: 'inherit',
+                transition: 'all 0.12s',
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}
+            >
+              {on && <span style={{ fontSize: 10, color: '#3a6fa8' }}>✓</span>}
+              {svc}
+            </button>
+          )
+        })}
+        {/* Custom tags */}
+        {selected.filter(s => !SERVICE_PRESETS.includes(s)).map(s => (
+          <span key={s} style={{
+            padding: '5px 11px', borderRadius: 20,
+            border: '1.5px solid #254067', background: '#EEF3FA',
+            color: '#1B2B4B', fontSize: 12, fontWeight: 700,
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+          }}>
+            {s}
+            <button type="button" onClick={() => toggle(s)} style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: '#9AA5B4', fontSize: 14, lineHeight: 1, padding: 0,
+              display: 'flex', alignItems: 'center',
+            }}>×</button>
+          </span>
+        ))}
+        {/* Add custom */}
+        {showInput ? (
+          <div style={{ display: 'flex', gap: 4 }}>
+            <input
+              autoFocus
+              value={custom}
+              onChange={e => setCustom(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustom() } if (e.key === 'Escape') setShowInput(false) }}
+              placeholder="Nou servei..."
+              style={{
+                width: 130, height: 31, padding: '0 10px',
+                border: '1.5px solid #254067', borderRadius: 20,
+                fontSize: 12, fontFamily: 'inherit', outline: 'none',
+                color: '#1B2B4B',
+              }}
+            />
+            <button type="button" onClick={addCustom} style={{
+              width: 31, height: 31, borderRadius: '50%',
+              background: '#254067', border: 'none', color: 'white',
+              fontSize: 16, cursor: 'pointer', display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+            }}>+</button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setShowInput(true)} style={{
+            width: 31, height: 31, borderRadius: '50%',
+            border: '1px dashed #CBD5E1', background: 'transparent',
+            color: '#94A3B8', fontSize: 18, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.12s',
+          }}>+</button>
+        )}
+      </div>
+      {/* Summary text */}
+      {selected.length > 0 && (
+        <div style={{ fontSize: 11, color: '#94A3B8' }}>
+          {selected.length} servei{selected.length !== 1 ? 's' : ''} seleccionat{selected.length !== 1 ? 's' : ''}: {value}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function CRMContent({ clients, opportunities: initialOps, profiles, currentUserId, crmSource = 'guinew', stages: stagesOverride }: Props) {
   const BASE_STAGES = stagesOverride ?? STAGES
   // tab state removed — all sections now visible on one page
@@ -1300,7 +1411,7 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
               {/* Services */}
               <div className="form-field">
                 <label>Serveis</label>
-                <input className="form-input" value={form.services} onChange={f('services')} placeholder="Ex: Social Media + Content Production" />
+                <ServicesSelector value={form.services || ''} onChange={v => f('services')({ target: { value: v } } as any)} />
               </div>
 
               {/* Close date + Responsible */}

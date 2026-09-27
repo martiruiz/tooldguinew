@@ -268,13 +268,16 @@ export function ChatFab({ currentUserId, profiles = [] }: Props) {
         setTarget(null) // open list
       }
     }
+    const onMobileOpen = () => { setOpen(true); setTarget(null) }
     window.addEventListener('toggle-team-chat', onToggle)
     window.addEventListener('chat-unread-update', onUnread)
     window.addEventListener('open-fab-chat', onOpenFab)
+    window.addEventListener('mobile-open-chat', onMobileOpen)
     return () => {
       window.removeEventListener('toggle-team-chat', onToggle)
       window.removeEventListener('chat-unread-update', onUnread)
       window.removeEventListener('open-fab-chat', onOpenFab)
+      window.removeEventListener('mobile-open-chat', onMobileOpen)
     }
   }, [])
 
@@ -515,10 +518,10 @@ export function ChatFab({ currentUserId, profiles = [] }: Props) {
         </div>
       )}
 
-      {/* FAB button — amagat en mòbil quan el panell és obert */}
-      {!(open && isMobile) && (
+      {/* FAB button — amagat sempre en mòbil (el botó és al MobileNav) */}
+      {!isMobile && (
         <button onClick={toggleFab} title="Missatgeria" style={{
-          position: 'fixed', bottom: isMobile ? 76 : 24, right: isMobile ? 16 : 24, width: 52, height: 52, borderRadius: '50%', border: 'none',
+          position: 'fixed', bottom: 24, right: 24, width: 52, height: 52, borderRadius: '50%', border: 'none',
           background: open ? 'linear-gradient(135deg,#1B3A6B,#1E4080)' : 'linear-gradient(135deg,#1B4B82,#2563EB)',
           color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           zIndex: 200, boxShadow: open ? '0 4px 20px rgba(27,75,130,0.5)' : '0 4px 20px rgba(37,99,235,0.45)',

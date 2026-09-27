@@ -71,6 +71,7 @@ export const TRANSLATIONS: TranslationMap = {
 
   // Status
   inbox:      { ca: 'Inbox',      es: 'Bandeja',    en: 'Inbox' },
+  asobal:     { ca: 'ASOBAL',     es: 'ASOBAL',     en: 'ASOBAL' },
   todo:       { ca: 'Per fer',    es: 'Por hacer',  en: 'To do' },
   inProgress: { ca: 'En curs',    es: 'En curso',   en: 'In progress' },
   review:     { ca: 'Revisió',    es: 'Revisión',   en: 'Review' },

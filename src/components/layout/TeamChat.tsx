@@ -66,21 +66,37 @@ function parseMentions(content: string, profiles: { id: string; full_name: strin
   return mentioned
 }
 
+const URL_RE = /(https?:\/\/[^\s]+)/g
+
 function renderContent(content: string, currentUserId: string) {
+  // Split by mentions first, then by URLs within plain-text segments
   const parts = content.split(/(@\[[^\]]+\]\([^)]+\))/g)
-  return parts.map((part, i) => {
+  return parts.flatMap((part, i) => {
     const m = part.match(/^@\[([^\]]+)\]\(([^)]+)\)$/)
     if (m) {
       const isMe = m[2] === currentUserId
-      return (
-        <span key={i} style={{
+      return [(
+        <span key={`m${i}`} style={{
           background: isMe ? 'rgba(52,211,153,0.25)' : 'rgba(255,255,255,0.15)',
           color: isMe ? '#34D399' : '#93C5FD',
           borderRadius: 4, padding: '1px 4px', fontWeight: 700,
         }}>@{m[1]}</span>
-      )
+      )]
     }
-    return <span key={i}>{part}</span>
+    // Parse URLs within plain text
+    const urlParts = part.split(URL_RE)
+    return urlParts.map((seg, j) => {
+      if (URL_RE.test(seg)) {
+        URL_RE.lastIndex = 0
+        const short = seg.replace(/^https?:\/\//, '').replace(/\/$/, '').slice(0, 50)
+        return (
+          <a key={`u${i}-${j}`} href={seg} target="_blank" rel="noopener noreferrer"
+            style={{ color: '#60A5FA', textDecoration: 'underline', wordBreak: 'break-all' }}
+          >{short}{seg.replace(/^https?:\/\//, '').replace(/\/$/, '').length > 50 ? '…' : ''}</a>
+        )
+      }
+      return <span key={`t${i}-${j}`}>{seg}</span>
+    })
   })
 }
 

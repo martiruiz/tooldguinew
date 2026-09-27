@@ -11,14 +11,12 @@ import { cn, formatTime, formatRelative, taskPriorityLabels, getInitials } from 
 import { createClient } from '@/lib/supabase/client'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
-import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
+import { NewTaskModal } from '@/components/tasks/NewTaskModal'
 import { NewClientModal } from '@/components/clients/NewClientModal'
 import { NewProjectModal } from '@/components/projects/NewProjectModal'
 import { CommandPalette } from '@/components/layout/CommandPalette'
 import { PMControlCenter } from '@/components/dashboard/PMControlCenter'
 import { DailyChecklist } from '@/components/dashboard/DailyChecklist'
-import { AiAlertsWidget } from '@/components/dashboard/AiAlertsWidget'
-import type { AiInsightSummary } from '@/components/dashboard/AiAlertsWidget'
 import type { Profile, Task, Project, Meeting, ActivityLog, Notification } from '@/types'
 
 interface Stats {
@@ -50,7 +48,6 @@ interface Props {
   opportunities?: CRMOpportunity[]
   allProjectTasks?: Task[]
   pmProjects?: Project[]
-  aiInsights?: AiInsightSummary[]
 }
 
 function getGreetingKey(): 'greetMorning' | 'greetAfternoon' | 'greetEvening' {
@@ -67,7 +64,7 @@ const priorityColor: Record<string, string> = {
   low: '#9A9A9A',
 }
 
-export function DashboardContent({ user, tasks, projects, activity, meetings, stats, profiles, clients, allProjects, currentUserId, blockedTasks, inboxNotifs, opportunities = [], allProjectTasks = [], pmProjects = [], aiInsights = [] }: Props) {
+export function DashboardContent({ user, tasks, projects, activity, meetings, stats, profiles, clients, allProjects, currentUserId, blockedTasks, inboxNotifs, opportunities = [], allProjectTasks = [], pmProjects = [] }: Props) {
   const { t: tr } = useLanguage()
   const isSuperAdmin = user.role === 'superadmin'
   const isManager = user.role === 'manager'
@@ -222,7 +219,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
       attentionItems.push({
         id: `overdue-${t.id}`,
         level: 'red',
-        title: `${t.client?.name ?? tr('noClient')} — ${t.title}`,
+        title: `${t.client?.name ? `${t.client.name} — ` : ''}${t.title}`,
         subtitle: `${tr('overdueBy')} ${daysAgo} ${tr('overdueDays')}${t.responsible ? ` · ${tr('responsible')}: ${t.responsible.full_name}` : ''}`,
         taskId: t.id,
       })
@@ -234,7 +231,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
       attentionItems.push({
         id: `urgent-${t.id}`,
         level: 'orange',
-        title: `${t.client?.name ?? 'Sense client'} — ${t.title}`,
+        title: `${t.client?.name ? `${t.client.name} — ` : ''}${t.title}`,
         subtitle: `Prioritat urgent${t.deadline ? ` · Entrega ${new Date(t.deadline).toLocaleDateString('ca-ES', { day: '2-digit', month: 'short' })}` : ''}`,
         taskId: t.id,
       })
@@ -247,7 +244,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
       attentionItems.push({
         id: key,
         level: 'orange',
-        title: `${t.client?.name ?? 'Sense client'} — ${t.title}`,
+        title: `${t.client?.name ? `${t.client.name} — ` : ''}${t.title}`,
         subtitle: `Entrega avui${t.responsible ? ` · Responsable: ${t.responsible.full_name}` : ''}`,
         taskId: t.id,
       })
@@ -394,10 +391,48 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
         )}
       </div>
 
-      {/* AI Alerts — only for superadmin + manager */}
-      {(isSuperAdmin || isManager) && aiInsights.length > 0 && (
-        <AiAlertsWidget insights={aiInsights} />
-      )}
+      {/* ASOBAL Quick Access */}
+      <div style={{
+        background: 'linear-gradient(135deg, #1b3bda 0%, #131ea6 100%)',
+        borderRadius: '12px',
+        padding: '14px 18px',
+        marginBottom: '16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '16px',
+        boxShadow: '0 2px 12px rgba(27,59,218,0.30)',
+        flexWrap: 'wrap',
+      }}>
+        <Link href="/asobal" style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          color: '#fff', textDecoration: 'none', fontWeight: 700,
+          fontSize: '14px', letterSpacing: '0.02em', whiteSpace: 'nowrap',
+          flexShrink: 0,
+        }}>
+          <img src="/logo-asobal-blanco.png" alt="ASOBAL" style={{ height: 22, width: 'auto', objectFit: 'contain' }} />
+          ASOBAL
+        </Link>
+        <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.25)', flexShrink: 0 }} />
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
+          {[
+            { label: 'Partits Sencers', href: 'https://www.dropbox.com/scl/fo/2rgdhflbnccmfyadputfw/APyN2YgRXtiCAiWPPCmbV90?rlkey=aovfeo3ijhf66hien2bdp6ers&st=w82kqnfu&e=2&dl=0' },
+            { label: 'Resums ASOBAL', href: 'https://www.dropbox.com/scl/fo/u52uunwkuzfa1ss70f0co/AOYLjMB9CyogQ0hLVn4mal8?rlkey=fc4qc2shvvebzzh7m41x3zll4&st=1vz1t0gw&e=2&dl=0' },
+            { label: 'Top Parades', href: 'https://www.dropbox.com/home/Ag%C3%A8ncia%20Guinew/TOPS%20PARADAS' },
+            { label: 'Top Gols', href: 'https://www.dropbox.com/home/Ag%C3%A8ncia%20Guinew/TOPS%20GOLES' },
+            { label: 'Fotos 26/27', href: 'https://www.dropbox.com/scl/fo/vum2fm4qetsk7e1apqc61/ADxnzPy_Qsz4efSe2ZAdGEI?rlkey=j3d9dyd8jyre0abrlm9q4rgnj&st=ymylocas&e=2&dl=0' },
+            { label: 'Sessió Oficial', href: 'https://www.dropbox.com/scl/fo/ut5zxngf6u93friwdck3n/AAn43VXDTG8tJGa4ThtWXX0?rlkey=clq5fperiduilo8fja206d3xq&e=1&dl=0' },
+          ].map(link => (
+            <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer" style={{
+              fontSize: '12px', color: 'rgba(255,255,255,0.85)', background: 'rgba(255,255,255,0.12)',
+              border: '1px solid rgba(255,255,255,0.20)', borderRadius: '6px',
+              padding: '4px 10px', textDecoration: 'none', whiteSpace: 'nowrap',
+              transition: 'background 0.15s',
+            }}>
+              {link.label}
+            </a>
+          ))}
+        </div>
+      </div>
 
       {/* PM Control Center — only for managers */}
       {isManager && (
@@ -779,7 +814,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
       )}
 
       {showNewTask && (
-        <CreateTaskModal
+        <NewTaskModal
           clients={clients}
           projects={allProjects}
           profiles={profiles}

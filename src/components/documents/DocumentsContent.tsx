@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   Folder, FileText, Image, Film, Archive, ExternalLink,
   ChevronRight, Home, Loader2, RefreshCw, LogIn, CheckCircle2, AlertCircle,
+  Bot, Trash2, X, ChevronDown, ChevronUp,
 } from 'lucide-react'
 
 interface DriveFile {
@@ -22,11 +23,25 @@ interface BreadcrumbItem {
   name: string
 }
 
+interface AgentDoc {
+  id: string
+  title: string
+  content: string
+  agent_id: string
+  agent_name: string
+  client_id: string | null
+  client_name: string | null
+  doc_type: string
+  created_at: string
+}
+
 interface Props {
   isConnected: boolean
   justConnected?: boolean
   error?: string
 }
+
+type MainTab = 'drive' | 'agents'
 
 const FOLDER_MIME = 'application/vnd.google-apps.folder'
 
@@ -51,7 +66,124 @@ function fmtDate(iso?: string) {
   return new Date(iso).toLocaleDateString('ca-ES', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+function AgentDocsTab() {
+  const [docs, setDocs] = useState<AgentDoc[]>([])
+  const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/agent-documents')
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      setDocs(data.documents ?? [])
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const deleteDoc = async (id: string) => {
+    setDeleting(id)
+    await fetch('/api/agent-documents', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    setDocs(prev => prev.filter(d => d.id !== id))
+    setDeleting(null)
+  }
+
+  if (loading) return (
+    <div className="loading-state"><Loader2 size={24} color="#9A9A9A" className="spin" /><span>Carregant assets...</span></div>
+  )
+
+  if (docs.length === 0) return (
+    <div className="empty-state">
+      <Bot size={36} color="#D0D0D0" strokeWidth={1.5} />
+      <span>Encara no hi ha assets generats pels agents.</span>
+      <span style={{ fontSize: 12, color: '#C0C0C0' }}>Desa les respostes dels agents des del xat.</span>
+    </div>
+  )
+
+  // Group by client
+  const groups: Record<string, AgentDoc[]> = {}
+  docs.forEach(d => {
+    const key = d.client_name || '__sense_client__'
+    if (!groups[key]) groups[key] = []
+    groups[key].push(d)
+  })
+
+  const sortedGroups = Object.entries(groups).sort(([a], [b]) =>
+    a === '__sense_client__' ? 1 : b === '__sense_client__' ? -1 : a.localeCompare(b)
+  )
+
+  return (
+    <div className="agent-docs">
+      {sortedGroups.map(([clientKey, clientDocs]) => (
+        <div key={clientKey} className="client-folder">
+          <div className="client-folder-header">
+            <Folder size={15} color="#4A82C6" fill="#EFF6FF" />
+            <span>{clientKey === '__sense_client__' ? 'Sense client' : clientKey}</span>
+            <span className="doc-count">{clientDocs.length}</span>
+          </div>
+          <div className="client-folder-docs">
+            {clientDocs.map(doc => (
+              <div key={doc.id} className="agent-doc-card">
+                <div className="agent-doc-top" onClick={() => setExpanded(expanded === doc.id ? null : doc.id)}>
+                  <FileText size={14} color="#5C5C5C" style={{ flexShrink: 0 }} />
+                  <div className="agent-doc-info">
+                    <span className="agent-doc-title">{doc.title}</span>
+                    <span className="agent-doc-meta">
+                      <span className="agent-badge">{doc.agent_name}</span>
+                      {fmtDate(doc.created_at)}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                    {expanded === doc.id ? <ChevronUp size={14} color="#9A9A9A" /> : <ChevronDown size={14} color="#9A9A9A" />}
+                    <button
+                      className="btn-del"
+                      onClick={e => { e.stopPropagation(); deleteDoc(doc.id) }}
+                      disabled={deleting === doc.id}
+                      title="Eliminar"
+                    >
+                      {deleting === doc.id ? <Loader2 size={12} className="spin" /> : <Trash2 size={12} />}
+                    </button>
+                  </div>
+                </div>
+                {expanded === doc.id && (
+                  <div className="agent-doc-content">{doc.content}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <style jsx>{`
+        .agent-docs { display: flex; flex-direction: column; gap: 12px; }
+        .client-folder { border: 1px solid #ECECEC; border-radius: 12px; background: white; overflow: hidden; }
+        .client-folder-header { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: #FAFAFA; border-bottom: 1px solid #F0F0F0; font-size: 13.5px; font-weight: 600; color: #1B2B4B; }
+        .doc-count { margin-left: auto; font-size: 11px; color: #9A9A9A; background: #F0F0F0; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+        .client-folder-docs { display: flex; flex-direction: column; }
+        .agent-doc-card { border-bottom: 1px solid #F8F8F8; }
+        .agent-doc-card:last-child { border-bottom: none; }
+        .agent-doc-top { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; cursor: pointer; transition: background 0.1s; }
+        .agent-doc-top:hover { background: #FAFAFA; }
+        .agent-doc-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+        .agent-doc-title { font-size: 13.5px; font-weight: 500; color: #0a0a0a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .agent-doc-meta { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #9A9A9A; }
+        .agent-badge { background: #EFF6FF; color: #4A82C6; border-radius: 4px; padding: 1px 6px; font-size: 10.5px; font-weight: 600; }
+        .agent-doc-content { padding: 0 16px 16px 40px; font-size: 13px; color: #3C3C3C; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .btn-del { border: none; background: none; cursor: pointer; color: #C0C0C0; display: flex; align-items: center; padding: 2px; border-radius: 4px; transition: color 0.15s; }
+        .btn-del:hover { color: #DC2626; }
+        .btn-del:disabled { opacity: 0.5; cursor: default; }
+      `}</style>
+    </div>
+  )
+}
+
 export function DocumentsContent({ isConnected, justConnected, error }: Props) {
+  const [mainTab, setMainTab] = useState<MainTab>('drive')
   const [files, setFiles] = useState<DriveFile[]>([])
   const [loading, setLoading] = useState(false)
   const [breadcrumb, setBreadcrumb] = useState<BreadcrumbItem[]>([{ id: 'root', name: 'El meu Drive' }])
@@ -136,6 +268,23 @@ export function DocumentsContent({ isConnected, justConnected, error }: Props) {
 
   return (
     <div className="docs-page">
+      {/* Main tabs */}
+      <div className="main-tabs">
+        <button className={`main-tab${mainTab === 'drive' ? ' main-tab--active' : ''}`} onClick={() => setMainTab('drive')}>
+          <svg width="14" height="14" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}><path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="M43.65 25L29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z" fill="#00ac47"/><path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.4 9.5z" fill="#ea4335"/><path d="M43.65 25L57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="M73.4 26.5l-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>
+          Google Drive
+        </button>
+        <button className={`main-tab${mainTab === 'agents' ? ' main-tab--active' : ''}`} onClick={() => setMainTab('agents')}>
+          <Bot size={14} />
+          Assets IA
+        </button>
+      </div>
+
+      {mainTab === 'agents' && (
+        <AgentDocsTab />
+      )}
+
+      {mainTab === 'drive' && (<>
       {/* Header */}
       <div className="docs-header">
         {/* Breadcrumb */}
@@ -230,9 +379,16 @@ export function DocumentsContent({ isConnected, justConnected, error }: Props) {
         </div>
       )}
 
+      </>)}
+
       <style jsx>{`
         .docs-page { flex: 1; padding: 20px 28px 60px; display: flex; flex-direction: column; gap: 16px; }
         @media (max-width: 768px) { .docs-page { padding: 12px 12px 80px; } }
+
+        .main-tabs { display: flex; gap: 4px; border-bottom: 1px solid #ECECEC; padding-bottom: 0; margin-bottom: 0; }
+        .main-tab { display: flex; align-items: center; gap: 7px; padding: 8px 16px; border: none; background: none; font-size: 13.5px; font-weight: 500; color: #9A9A9A; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; font-family: inherit; border-radius: 0; }
+        .main-tab:hover { color: #1B2B4B; }
+        .main-tab--active { color: #1B2B4B; font-weight: 600; border-bottom-color: #1B2B4B; }
 
         .docs-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 

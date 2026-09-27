@@ -255,7 +255,7 @@ RETURNS TABLE (
     CASE WHEN c.health = 'risk' THEN 'critical' ELSE 'warning' END
   FROM public.clients c
   WHERE c.status = 'active'
-    AND c.health IN ('attention','risk')
+    AND c.health = 'attention'
 $$;
 
 -- Detector 5: oportunitats estancades > 14 dies
@@ -278,7 +278,7 @@ RETURNS TABLE (
     'warning'::text
   FROM public.opportunities o
   WHERE o.stage NOT IN ('won','lost')
-    AND o.updated_at < now() - interval '14 days'
+    AND o.updated_at < now() - interval '30 days'
 $$;
 
 -- Detector 6: oportunitats sense next step
@@ -299,7 +299,8 @@ RETURNS TABLE (
     'warning'::text
   FROM public.opportunities o
   WHERE (o.next_step IS NULL OR TRIM(o.next_step) = '')
-    AND o.stage NOT IN ('won','lost','prospect')
+    AND o.stage IN ('proposal','negotiation','active')
+    AND o.updated_at > now() - interval '90 days'
 $$;
 
 -- Detector 7: sessions properes sense briefing
@@ -398,5 +399,5 @@ RETURNS TABLE (
       'checked_at',        now()
     ),
     'critical'::text
-  WHERE (SELECT cnt FROM recent_activity) = 0
+  WHERE (SELECT cnt FROM recent_activity) < 3
 $$;
