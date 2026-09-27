@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { readFileSync } from 'fs'
+import { join } from 'path'
+
+function getActiveVoiceId(): string {
+  try {
+    const cfg = JSON.parse(readFileSync(join(process.cwd(), 'data', 'voice-config.json'), 'utf8'))
+    if (cfg.voice_id) return cfg.voice_id
+  } catch {}
+  return process.env.ELEVEN_LABS_VOICE_ID || 'onwK4e9ZLuTAKqWW03F9'
+}
 
 export async function POST(req: NextRequest) {
-  const { text } = await req.json()
+  const body = await req.json()
+  const { text, voice_id: overrideVoiceId } = body
   if (!text?.trim()) return NextResponse.json({ error: 'Falta text' }, { status: 400 })
 
   const apiKey = process.env.ELEVEN_LABS_API_KEY
-  const voiceId = process.env.ELEVEN_LABS_VOICE_ID || 'onwK4e9ZLuTAKqWW03F9'
+  const voiceId = overrideVoiceId || getActiveVoiceId()
   if (!apiKey) return NextResponse.json({ error: 'ELEVEN_LABS_API_KEY no configurada' }, { status: 500 })
 
   const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {

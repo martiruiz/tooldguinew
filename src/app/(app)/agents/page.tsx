@@ -8,6 +8,7 @@ import {
   Square, Edit3, Eye, X, Send, Play, Pause, Loader2,
 } from 'lucide-react'
 import { BekaCore } from '@/components/agents/BekaCore'
+import VoiceSelector from '@/components/agents/VoiceSelector'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -188,7 +189,7 @@ function AgentNode({ agent, run, isActive, labelSide, onClick }: {
 
 // ── Floating Chat ──────────────────────────────────────────────────────────────
 
-function FloatingChat({ msgs, input, onInput, onSend, onMic, voiceState, selectedAgent, agents, bekaEnabled, onToggleBeka }: {
+function FloatingChat({ msgs, input, onInput, onSend, onMic, voiceState, selectedAgent, agents, bekaEnabled, onToggleBeka, onVoiceSettings }: {
   msgs: ChatMsg[]
   input: string
   onInput: (v: string) => void
@@ -199,6 +200,7 @@ function FloatingChat({ msgs, input, onInput, onSend, onMic, voiceState, selecte
   agents: AgentDef[]
   bekaEnabled: boolean
   onToggleBeka: () => void
+  onVoiceSettings: () => void
 }) {
   const endRef = useRef<HTMLDivElement>(null)
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs])
@@ -220,8 +222,14 @@ function FloatingChat({ msgs, input, onInput, onSend, onMic, voiceState, selecte
         <div style={{ fontSize: 9, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.20)', fontWeight: 600 }}>
           BEKA · {selDef ? selDef.name.toUpperCase() : 'SISTEMA'}
         </div>
-        <div style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.14)' }}>
-          {voiceState !== 'idle' ? `● ${voiceState.toUpperCase()}` : '◌ STANDBY'}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.14)' }}>
+            {voiceState !== 'idle' ? `● ${voiceState.toUpperCase()}` : '◌ STANDBY'}
+          </div>
+          <button onClick={onVoiceSettings} title="Configurar veu de BEKA" style={{
+            background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 0 2px',
+            color: 'rgba(255,255,255,0.18)', fontSize: 10, lineHeight: 1,
+          }}>⚙</button>
         </div>
       </div>
 
@@ -984,6 +992,7 @@ export default function AgentsPage() {
   const cam3DTargetRef   = useRef(900)
   const [bekaPaused, setBekaPaused] = useState(false)
   const [bekaVoiceEnabled, setBekaVoiceEnabled] = useState(false)
+  const [showVoiceSelector, setShowVoiceSelector] = useState(false)
   const bekaRecogRef        = useRef<any>(null)
   const bekaVoiceEnabledRef = useRef(false)
 
@@ -1125,7 +1134,7 @@ export default function AgentsPage() {
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chatMsgs])
 
   // ── Run agent with real Claude streaming ──────────────────────────────────
-  const runAgent = useCallback(async (agentId: string, task: string) => {
+  const runAgent = useCallback(async (agentId: string, task: string, onResult?: (text: string) => void) => {
     // Abort any existing stream
     abortRefs.current[agentId]?.abort()
     const abort = new AbortController()
@@ -1149,6 +1158,39 @@ export default function AgentsPage() {
     setSelectedAgent(agentId)
 
     try {
+      // BEKA (orchestrator) uses the full agentic loop with tools
+      if (agentId === 'orchestrator') {
+        const conversationHistory = history.map((h: { role: string; content: string }) => ({
+          role: h.role === 'user' ? 'user' : 'assistant',
+          content: h.content,
+        }))
+
+        const res = await fetch('/api/orchestrator', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: task, conversation_history: conversationHistory }),
+          signal: abort.signal,
+        })
+
+        if (!res.ok) throw new Error(`Error ${res.status}`)
+        const data = await res.json()
+        if (data.error) throw new Error(data.error)
+
+        const fullOutput = data.response ?? ''
+        setRuns(prev => ({ ...prev, [agentId]: { ...prev[agentId], output: fullOutput, status: 'done' } }))
+        setConvHistories(prev => ({
+          ...prev,
+          [agentId]: [...(prev[agentId] || []),
+            { role: 'user', content: task },
+            { role: 'assistant', content: fullOutput },
+          ],
+        }))
+        if (runId) fetch('/api/agents/runs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'complete', run_id: runId, result: fullOutput.slice(0, 200) }) }).catch(() => {})
+        onResult?.(fullOutput)
+        return
+      }
+
+      // All other agents use streaming chat
       const res = await fetch('/api/agents/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1176,7 +1218,6 @@ export default function AgentsPage() {
             }
             if (payload.done) {
               setRuns(prev => ({ ...prev, [agentId]: { ...prev[agentId], status: 'done' } }))
-              // Update local history
               setConvHistories(prev => ({
                 ...prev,
                 [agentId]: [...(prev[agentId] || []),
@@ -1184,7 +1225,6 @@ export default function AgentsPage() {
                   { role: 'assistant', content: fullOutput },
                 ],
               }))
-              // Complete run in Supabase
               if (runId) fetch('/api/agents/runs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'complete', run_id: runId, result: fullOutput.slice(0, 200) }) }).catch(() => {})
             }
             if (payload.error) throw new Error(payload.error)
@@ -1231,52 +1271,73 @@ export default function AgentsPage() {
     const detected = detectAgents(text)
     if (detected.length) setActiveAgents(new Set(['orchestrator', ...detected]))
 
-    // Start agent run (which also streams to the panel)
-    runAgent(targetId, text)
-
-    // For chat: get a short reply via the same stream but show in chat
+    // For chat: get reply, show in chat panel, and speak if BEKA
     try {
-      const res = await fetch('/api/agents/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agentId: targetId,
-          message: text,
-          systemPrompt: prompts[targetId] + '\n\nPer al xat: respostes molt breus (1-2 frases màxim).',
-          history: (convHistories[targetId] || []).slice(-6),
-        }),
-      })
-      if (res.ok && res.body) {
-        const reader = res.body.getReader()
-        const decoder = new TextDecoder()
-        let reply = ''
-        const replyTs = ts()
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          const lines = decoder.decode(value).split('\n')
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue
-            try {
-              const p = JSON.parse(line.slice(6))
-              if (p.text) {
-                reply += p.text
-                setChatMsgs(prev => {
-                  const last = prev[prev.length - 1]
-                  if (last?.role === 'agent' && last.agentId === targetId && last.ts === replyTs) {
-                    return [...prev.slice(0, -1), { ...last, text: reply }]
-                  }
-                  return [...prev, { role: 'agent', text: reply, agentId: targetId, ts: replyTs }]
-                })
-              }
-              if (p.done) break
-            } catch {}
+      const replyTs = ts()
+      if (targetId === 'orchestrator') {
+        // BEKA: show thinking placeholder, then speak the reply when it arrives
+        setChatMsgs(prev => [...prev, { role: 'agent', text: '⚙️ Processant amb eines...', agentId: targetId, ts: replyTs }])
+        runAgent(targetId, text, (fullReply) => {
+          // Replace placeholder with real reply in chat
+          setChatMsgs(prev => {
+            const idx = [...prev].reverse().findIndex(m => m.role === 'agent' && m.agentId === targetId && m.ts === replyTs)
+            if (idx === -1) return [...prev, { role: 'agent', text: fullReply, agentId: targetId, ts: replyTs }]
+            const realIdx = prev.length - 1 - idx
+            return [...prev.slice(0, realIdx), { ...prev[realIdx], text: fullReply }, ...prev.slice(realIdx + 1)]
+          })
+          // Speak first 2-3 sentences (max ~400 chars)
+          const shortReply = fullReply
+            .replace(/[*_`#>]/g, '')           // strip markdown
+            .split(/(?<=[.!?])\s+/)
+            .slice(0, 3)
+            .join(' ')
+            .slice(0, 400)
+          if (shortReply.trim()) v.speak(shortReply)
+        })
+      } else {
+        // Other agents: start the panel run (fire and forget)
+        runAgent(targetId, text)
+        const res = await fetch('/api/agents/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agentId: targetId,
+            message: text,
+            systemPrompt: prompts[targetId] + '\n\nPer al xat: respostes molt breus (1-2 frases màxim).',
+            history: (convHistories[targetId] || []).slice(-6),
+          }),
+        })
+        if (res.ok && res.body) {
+          const reader = res.body.getReader()
+          const decoder = new TextDecoder()
+          let reply = ''
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            const lines = decoder.decode(value).split('\n')
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue
+              try {
+                const p = JSON.parse(line.slice(6))
+                if (p.text) {
+                  reply += p.text
+                  setChatMsgs(prev => {
+                    const last = prev[prev.length - 1]
+                    if (last?.role === 'agent' && last.agentId === targetId && last.ts === replyTs) {
+                      return [...prev.slice(0, -1), { ...last, text: reply }]
+                    }
+                    return [...prev, { role: 'agent', text: reply, agentId: targetId, ts: replyTs }]
+                  })
+                }
+                if (p.done) break
+              } catch {}
+            }
           }
         }
       }
     } catch {}
     setChatting(false)
-  }, [selectedAgent, chatting, prompts, convHistories, runAgent])
+  }, [selectedAgent, chatting, prompts, convHistories, runAgent, v])
 
   // ── Voice mic ─────────────────────────────────────────────────────────────
   const handleMic = useCallback(() => {
@@ -1445,7 +1506,10 @@ export default function AgentsPage() {
             agents={AGENTS}
             bekaEnabled={bekaVoiceEnabled}
             onToggleBeka={toggleBekaVoice}
+            onVoiceSettings={() => setShowVoiceSelector(true)}
           />
+
+          {showVoiceSelector && <VoiceSelector onClose={() => setShowVoiceSelector(false)} />}
 
           {/* Detail Panel overlay */}
           {selectedAgent && selectedDef && (
