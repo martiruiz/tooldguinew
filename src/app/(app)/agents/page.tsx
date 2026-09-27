@@ -211,10 +211,20 @@ function FloatingChat({ msgs, input, onInput, onSend, onMic, voiceState, selecte
       position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
       width: 'min(440px, calc(100% - 40px))', zIndex: 8,
       background: 'rgba(5,9,20,0.82)', backdropFilter: 'blur(18px)',
-      border: `1px solid rgba(${rgb},0.14)`,
+      border: `1px solid rgba(${rgb},0.22)`,
       borderRadius: 14, overflow: 'hidden',
       boxShadow: `0 8px 40px rgba(0,0,0,0.55), 0 0 0 1px rgba(${rgb},0.06)`,
     }}>
+      {/* Title bar */}
+      <div style={{ padding: '6px 14px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontSize: 9, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.20)', fontWeight: 600 }}>
+          BEKA · {selDef ? selDef.name.toUpperCase() : 'SISTEMA'}
+        </div>
+        <div style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.14)' }}>
+          {voiceState !== 'idle' ? `● ${voiceState.toUpperCase()}` : '◌ STANDBY'}
+        </div>
+      </div>
+
       {/* Messages */}
       {msgs.length > 0 && (
         <div style={{ maxHeight: 130, overflowY: 'auto', padding: '10px 14px 6px', display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -265,8 +275,8 @@ function FloatingChat({ msgs, input, onInput, onSend, onMic, voiceState, selecte
         <input
           value={input} onChange={e => onInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && input.trim()) onSend() }}
-          placeholder={selDef ? `Parla amb ${selDef.name}…` : 'Pregunta o demana una tasca als agents…'}
-          style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, color: 'rgba(255,255,255,0.82)', fontSize: 11.5, padding: '6px 10px', fontFamily: 'inherit', outline: 'none' }}
+          placeholder={selDef ? `Parla amb ${selDef.name}…` : '▸ ORDRE O CONSULTA ALS AGENTS…'}
+          style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, color: 'rgba(255,255,255,0.82)', fontSize: 12, padding: '6px 10px', fontFamily: 'inherit', outline: 'none', letterSpacing: '0.01em' }}
         />
         <button onClick={onSend} style={{
           width: 30, height: 30, borderRadius: 7, flexShrink: 0,
@@ -307,6 +317,17 @@ function BekaBackground({ paused }: { paused: boolean }) {
     resize()
     const ro = new ResizeObserver(resize)
     ro.observe(canvas)
+
+    // Micro-particles
+    type MicroPt = { x: number; y: number; vx: number; vy: number; alpha: number; r: number }
+    const microParticles: MicroPt[] = Array.from({ length: 50 }, () => ({
+      x: Math.random(),
+      y: Math.random(),
+      vx: (Math.random() - 0.5) * 0.0002,
+      vy: (Math.random() - 0.5) * 0.0002,
+      alpha: 0.05 + Math.random() * 0.10,
+      r: 0.8 + Math.random() * 0.7,
+    }))
 
     // Grid line helper
     const drawGrid = (x0: number, y0: number, cols: number, rows: number, cellW: number, cellH: number, alpha: number) => {
@@ -378,6 +399,17 @@ function BekaBackground({ paused }: { paused: boolean }) {
       drawGrid(W - cell * 5, 0, 5, 4, cell, cell, gAlpha * 0.55)
       // Bottom-left
       drawGrid(0, H - cell * 4, 4, 4, cell, cell, gAlpha * 0.55)
+
+      // ── Micro-particles ───────────────────────────────────────
+      for (const p of microParticles) {
+        if (!pausedRef.current) {
+          p.x += p.vx; p.y += p.vy
+          if (p.x < 0) p.x = 1; if (p.x > 1) p.x = 0
+          if (p.y < 0) p.y = 1; if (p.y > 1) p.y = 0
+        }
+        ctx.beginPath(); ctx.arc(p.x * W, p.y * H, p.r, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(0,174,239,${p.alpha})`; ctx.fill()
+      }
 
       // ── Edge vignette ─────────────────────────────────────────
       const vig = ctx.createRadialGradient(W * 0.5, H * 0.5, W * 0.15, W * 0.5, H * 0.5, W * 0.9)
@@ -574,7 +606,7 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
         return {
           x: CX + norm.x * RX * s,
           y: CY + norm.y * RY * s,
-          r: Math.max(14, 24 * s * (INIT_CAM / FOCAL)),
+          r: Math.max(22, 32 * s * (INIT_CAM / FOCAL)),
           depth: dz,
         }
       }
@@ -612,6 +644,8 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
           grad.addColorStop(1,   `rgba(${rgb},${0.75 * fo})`)
 
           ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.quadraticCurveTo(cx2, cy2, sx1, sy1)
+          ctx.strokeStyle = `rgba(${rgb},${0.04 * fo})`; ctx.lineWidth = 14; ctx.stroke()
+          ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.quadraticCurveTo(cx2, cy2, sx1, sy1)
           ctx.strokeStyle = `rgba(${rgb},${0.07 * fo})`; ctx.lineWidth = 8; ctx.stroke()
           ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.quadraticCurveTo(cx2, cy2, sx1, sy1)
           ctx.strokeStyle = `rgba(${rgb},${0.18 * fo})`; ctx.lineWidth = 2.5; ctx.stroke()
@@ -625,9 +659,9 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
         } else {
           // Idle: solid luminous blue line (same style, lower opacity)
           ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.quadraticCurveTo(cx2, cy2, sx1, sy1)
-          ctx.strokeStyle = `rgba(0,174,239,${0.07 * fo})`; ctx.lineWidth = 5; ctx.stroke()
+          ctx.strokeStyle = `rgba(0,174,239,${0.12 * fo})`; ctx.lineWidth = 5; ctx.stroke()
           ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.quadraticCurveTo(cx2, cy2, sx1, sy1)
-          ctx.strokeStyle = `rgba(0,174,239,${0.20 * fo})`; ctx.lineWidth = 1.0; ctx.stroke()
+          ctx.strokeStyle = `rgba(0,174,239,${0.30 * fo})`; ctx.lineWidth = 1.0; ctx.stroke()
         }
       }
 
@@ -682,15 +716,28 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
 
         if (isAct) {
           const glow = ctx.createRadialGradient(proj.x, proj.y, 0, proj.x, proj.y, r * 3.5)
-          glow.addColorStop(0, `rgba(${rgb},${0.22 * fo})`); glow.addColorStop(1, 'rgba(0,0,0,0)')
+          glow.addColorStop(0, `rgba(${rgb},${0.28 * fo})`); glow.addColorStop(0.5, `rgba(${rgb},${0.10 * fo})`); glow.addColorStop(1, 'rgba(0,0,0,0)')
           ctx.fillStyle = glow
           ctx.beginPath(); ctx.arc(proj.x, proj.y, r * 3.5, 0, Math.PI * 2); ctx.fill()
         }
 
         if (isRun) {
           const pulse = 0.5 + 0.5 * Math.sin(t * 4.2)
+          // Outer glow ring (wide)
+          ctx.beginPath(); ctx.arc(proj.x, proj.y, r + 10 + pulse * 8, 0, Math.PI * 2)
+          ctx.strokeStyle = `rgba(${rgb},${0.15 * pulse * fo})`; ctx.lineWidth = 3; ctx.stroke()
+          // Inner pulse ring
           ctx.beginPath(); ctx.arc(proj.x, proj.y, r + 4 + pulse * 6, 0, Math.PI * 2)
           ctx.strokeStyle = `rgba(${rgb},${0.45 * pulse * fo})`; ctx.lineWidth = 1.2; ctx.stroke()
+        }
+
+        // Luminous exterior ring for active agents
+        if (isAct) {
+          const ringPulse = 0.6 + 0.4 * Math.sin(t * 2.8)
+          ctx.beginPath(); ctx.arc(proj.x, proj.y, r + 5, 0, Math.PI * 2)
+          ctx.strokeStyle = `rgba(${rgb},${0.25 * ringPulse * fo})`; ctx.lineWidth = 1.5; ctx.stroke()
+          ctx.beginPath(); ctx.arc(proj.x, proj.y, r + 7, 0, Math.PI * 2)
+          ctx.strokeStyle = `rgba(${rgb},${0.10 * ringPulse * fo})`; ctx.lineWidth = 2.5; ctx.stroke()
         }
 
         const fill = ctx.createRadialGradient(proj.x - r*0.28, proj.y - r*0.28, 0, proj.x, proj.y, r)
@@ -709,11 +756,20 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
           proj.x - r * 0.30, proj.y - r * 0.38, 0,
           proj.x - r * 0.06, proj.y - r * 0.06, r * 0.84
         )
-        glassSpec.addColorStop(0,    `rgba(255,255,255,${(isAct ? 0.32 : 0.15) * fo})`)
-        glassSpec.addColorStop(0.38, `rgba(255,255,255,${(isAct ? 0.07 : 0.03) * fo})`)
+        glassSpec.addColorStop(0,    `rgba(255,255,255,${(isAct ? 0.40 : 0.18) * fo})`)
+        glassSpec.addColorStop(0.38, `rgba(255,255,255,${(isAct ? 0.10 : 0.04) * fo})`)
         glassSpec.addColorStop(1,    'rgba(0,0,0,0)')
         ctx.fillStyle = glassSpec
         ctx.fillRect(proj.x - r, proj.y - r, r * 2, r * 2)
+        // Active extra glow layer inside dome
+        if (isAct) {
+          const innerGlow = ctx.createRadialGradient(proj.x, proj.y, 0, proj.x, proj.y, r * 0.9)
+          innerGlow.addColorStop(0,   `rgba(${rgb},${0.18 * fo})`)
+          innerGlow.addColorStop(0.6, `rgba(${rgb},${0.06 * fo})`)
+          innerGlow.addColorStop(1,   'rgba(0,0,0,0)')
+          ctx.fillStyle = innerGlow
+          ctx.fillRect(proj.x - r, proj.y - r, r * 2, r * 2)
+        }
         ctx.restore()
 
         if (isAct) {
@@ -729,17 +785,27 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
         const iconAlpha = isAct ? 0.72 * fo : 0.28 * fo
         drawAgentIcon(agent.id, proj.x, proj.y, r * 0.44, iconRgb, iconAlpha)
 
-        const fs = Math.max(8, Math.min(13, r * 0.52))
+        const fs = Math.max(8, Math.min(13, r * 0.58))
         ctx.font = `${isAct ? 700 : 500} ${fs}px Inter,system-ui,sans-serif`
         ctx.textAlign = 'center'; ctx.textBaseline = 'top'
         ctx.fillStyle = isAct ? agent.color : `rgba(255,255,255,${0.32 * fo})`
         ctx.fillText(agent.name, proj.x, proj.y + r + 5)
 
-        // Category label (small uppercase below name)
+        // Category label (small uppercase with letter-spacing simulation below name)
         const catFs = Math.max(5.5, Math.min(8.5, r * 0.34))
+        const catText = (AGENT_CAT[agent.id] ?? '').split('').join(' ')
         ctx.font = `600 ${catFs}px Inter,system-ui,sans-serif`
         ctx.fillStyle = `rgba(255,255,255,${(isAct ? 0.28 : 0.14) * fo})`
-        ctx.fillText(AGENT_CAT[agent.id] ?? '', proj.x, proj.y + r + 5 + fs + 4)
+        ctx.fillText(catText, proj.x, proj.y + r + 5 + fs + 4)
+
+        // Status label (third line) when active
+        if (isAct) {
+          const stCfg = STATUS_CFG[rnz[agent.id]?.status ?? 'idle']
+          const stFs = Math.max(5, Math.min(7.5, r * 0.28))
+          ctx.font = `700 ${stFs}px Inter,system-ui,sans-serif`
+          ctx.fillStyle = `rgba(${rgb},${0.70 * fo})`
+          ctx.fillText(stCfg.label.toUpperCase(), proj.x, proj.y + r + 5 + fs + 4 + catFs + 5)
+        }
 
         const cfg  = STATUS_CFG[rnz[agent.id]?.status ?? 'idle']
         const dotR = Math.max(3.5, r * 0.19)
@@ -1262,6 +1328,22 @@ export default function AgentsPage() {
           {/* Wave background */}
           <BekaBackground paused={bekaPaused} />
 
+          {/* Premium header overlay */}
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
+            pointerEvents: 'none',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+            padding: '18px 28px',
+          }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.12em' }}>GUINEW</div>
+              <div style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.18)', marginTop: 2 }}>AI OPERATING SYSTEM</div>
+            </div>
+            <div style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.18)', textAlign: 'right' }}>
+              v2026.1 &nbsp;● ONLINE
+            </div>
+          </div>
+
           {/* Floating button group: X (when panel open) + PAUSAR — always side by side */}
           <div style={{
             position: 'absolute', top: 10, right: 10, zIndex: 25,
@@ -1339,6 +1421,17 @@ export default function AgentsPage() {
             <div style={{ position: 'absolute', bottom: 86, left: '50%', transform: 'translateX(-50%)', zIndex: 9,
               fontSize: 10, color: '#EF4444', maxWidth: 240, textAlign: 'center' }}>{v.error}</div>
           )}
+
+          {/* B E K A status watermark */}
+          <div style={{
+            position: 'absolute', bottom: 80, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 7, pointerEvents: 'none', textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 9, letterSpacing: '0.35em', color: 'rgba(255,255,255,0.12)' }}>B E K A</div>
+            <div style={{ fontSize: 9, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.10)', marginTop: 3 }}>
+              {v.state !== 'idle' ? `● ${v.state.toUpperCase()}` : '● ONLINE'}
+            </div>
+          </div>
 
           {/* Floating chat */}
           <FloatingChat
