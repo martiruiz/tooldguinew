@@ -567,9 +567,17 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                     >
                       {entry ? (
                         <div
+                          className="asb-org-cell-filled"
                           onClick={() => { setCellModal(entry); setModalLabel(entry.label); setModalCopy(entry.copy ?? '') }}
-                          style={{ height: '100%', padding: '4px 5px', display: 'flex', flexDirection: 'column', gap: 3, overflow: 'hidden', cursor: 'pointer' }}
+                          style={{ height: '100%', padding: '4px 5px', display: 'flex', flexDirection: 'column', gap: 3, overflow: 'hidden', cursor: 'pointer', position: 'relative' }}
                         >
+                          <button
+                            onClick={e => { e.stopPropagation(); doDelete(entry.id) }}
+                            className="asb-org-delete-btn"
+                            style={{ position: 'absolute', top: 2, right: 2, width: 16, height: 16, borderRadius: 4, border: 'none', background: 'rgba(239,68,68,0.12)', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, opacity: 0, transition: 'opacity .15s', flexShrink: 0 }}
+                          >
+                            <Trash2 size={9} />
+                          </button>
                           {(() => {
                             let actionIcon: string | null = null
                             let isTop5 = false
@@ -910,6 +918,7 @@ export function AsobalContent() {
         .asb-match-header:hover { background:rgba(0,0,0,0.02); }
         .asb-action-row { display:flex; align-items:center; gap:8px; padding:6px 14px; border-top:1px solid rgba(0,0,0,0.05); flex-wrap:wrap; }
         .asb-action-row:hover { background:rgba(0,0,0,0.02); }
+        .asb-org-cell-filled:hover .asb-org-delete-btn { opacity: 1 !important; }
         .asb-badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:20px; letter-spacing:.04em; }
         .asb-aturada { background:rgba(27,59,218,0.1); color:#1b3bda; }
         .asb-gol { background:rgba(245,166,35,0.15); color:#d48a00; }
