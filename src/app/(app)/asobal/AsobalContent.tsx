@@ -529,7 +529,6 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                   const entry = getEntry(day, slot)
                   const cellId = `${day}__${slot}`
                   const isOver = dragOver === cellId
-                  const isEditing = editing?.day === day && editing?.slot === slot
                   const cfg = entry ? STATUS_CFG[entry.status as keyof typeof STATUS_CFG] : STATUS_CFG.pendent
                   return (
                     <td
