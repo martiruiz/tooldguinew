@@ -430,9 +430,10 @@ const STATUS_CFG = {
 } as const
 
 const CONTENT_TYPES = [
-  { key: 'post', label: 'Post estàtic', color: '#7c6fe0', abbr: 'POST' },
-  { key: 'carrusel', label: 'Carrusel', color: '#0ea5e9', abbr: 'CAR' },
-  { key: 'reel', label: 'Reel', color: '#e0526f', abbr: 'REEL' },
+  { key: 'post', label: 'Post estàtic', color: '#4f6ef7', abbr: 'POST', icon: '🖼️' },
+  { key: 'carrusel', label: 'Carrusel', color: '#16a34a', abbr: 'CAR', icon: '🎠' },
+  { key: 'reel', label: 'Reel', color: '#dc2626', abbr: 'REEL', icon: '🎬' },
+  { key: 'story', label: 'Story', color: '#d97706', abbr: 'STR', icon: '⚡' },
 ]
 
 function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose }: {
@@ -447,14 +448,38 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
   const [editing, setEditing] = useState<{ day: string; slot: string } | null>(null)
   const [editText, setEditText] = useState('')
   const [typeModal, setTypeModal] = useState<{ day: string; slot: string; actionData: string } | null>(null)
+  const [localEntries, setLocalEntries] = useState<OrgEntry[]>(entries)
+  const [orgError, setOrgError] = useState<string | null>(null)
+
+  useEffect(() => { setLocalEntries(entries) }, [entries])
 
   const getEntry = (day: string, slot: string) =>
-    entries.find(e => e.jornada === jornada && e.day === day && e.time_slot === slot)
+    localEntries.find(e => e.jornada === jornada && e.day === day && e.time_slot === slot)
+
+  const doUpdate = async (id: string, changes: Partial<OrgEntry>) => {
+    setLocalEntries(prev => prev.map(e => e.id === id ? { ...e, ...changes } : e))
+    try { await onUpdate(id, changes); setOrgError(null) } catch { setOrgError('Error actualitzant') }
+  }
+
+  const doDelete = async (id: string) => {
+    setLocalEntries(prev => prev.filter(e => e.id !== id))
+    try { await onDelete(id); setOrgError(null) } catch { setOrgError('Error eliminant') }
+  }
+
+  const doCreate = async (day: string, slot: string, extra?: Partial<OrgEntry>) => {
+    const tempId = `tmp_${Date.now()}`
+    const temp: OrgEntry = { id: tempId, jornada, day, time_slot: slot, label: '', status: 'pendent', ...extra }
+    setLocalEntries(prev => [...prev, temp])
+    try {
+      await onSave({ jornada, day, time_slot: slot, label: temp.label, status: 'pendent', content_type: extra?.content_type, action_ref: extra?.action_ref })
+      setOrgError(null)
+    } catch { setOrgError('Error guardant. Comprova que la taula asobal_organigram existeix a Supabase.') }
+  }
 
   const cycleStatus = async (entry: OrgEntry) => {
     const cycle: Array<OrgEntry['status']> = ['pendent', 'en_proces', 'fet', 'no_fet']
     const next = cycle[(cycle.indexOf(entry.status) + 1) % cycle.length]
-    await onUpdate(entry.id, { status: next })
+    await doUpdate(entry.id, { status: next })
   }
 
   return (
@@ -473,6 +498,12 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
           ))}
         </div>
       </div>
+      {orgError && (
+        <div style={{ padding: '6px 14px', background: '#fef2f2', borderBottom: '1px solid #fca5a5', fontSize: 11, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>⚠️</span> {orgError}
+          <button onClick={() => setOrgError(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 12 }}>✕</button>
+        </div>
+      )}
       {/* Grid */}
       <div style={{ overflow: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', tableLayout: 'fixed', width: '100%', minWidth: 380 }}>
@@ -511,7 +542,7 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                           setTypeModal({ day, slot, actionData })
                         } else {
                           const existing = getEntry(day, slot)
-                          if (!existing) await onSave({ jornada, day, time_slot: slot, label: '', status: 'pendent' })
+                          if (!existing) await doCreate(day, slot)
                         }
                       }}
                       style={{ border: `1px solid ${isOver ? '#1b3bda' : '#e5e7eb'}`, background: isOver ? 'rgba(27,59,218,0.08)' : (entry ? cfg.bg : '#fff'), padding: 0, verticalAlign: 'top', height: 52, transition: 'background .1s, border-color .1s' }}
@@ -523,9 +554,9 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                               autoFocus
                               value={editText}
                               onChange={e => setEditText(e.target.value)}
-                              onBlur={async () => { await onUpdate(entry.id, { label: editText }); setEditing(null) }}
+                              onBlur={async () => { await doUpdate(entry.id, { label: editText }); setEditing(null) }}
                               onKeyDown={async e => {
-                                if (e.key === 'Enter') { await onUpdate(entry.id, { label: editText }); setEditing(null) }
+                                if (e.key === 'Enter') { await doUpdate(entry.id, { label: editText }); setEditing(null) }
                                 else if (e.key === 'Escape') setEditing(null)
                               }}
                               style={{ width: '100%', fontSize: 9, border: 'none', outline: '1px solid #1b3bda', borderRadius: 2, background: 'white', fontFamily: 'inherit', color: cfg.text, padding: '1px 2px', fontWeight: 600, boxSizing: 'border-box' }}
@@ -548,15 +579,15 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                             >
                               {entry.content_type ? CONTENT_TYPES.find(t => t.key === entry.content_type)?.abbr : '+'}
                             </span>
-                            <button onClick={() => onDelete(entry.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#fca5a5', padding: 0, display: 'flex', lineHeight: 1, flexShrink: 0 }}>
+                            <button onClick={() => doDelete(entry.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#fca5a5', padding: 0, display: 'flex', lineHeight: 1, flexShrink: 0 }}>
                               <X size={8} />
                             </button>
                           </div>
                         </div>
                       ) : (
                         <div
-                          onClick={async () => {
-                            await onSave({ jornada, day, time_slot: slot, label: '', status: 'pendent' })
+                          onClick={() => {
+                            doCreate(day, slot)
                             setEditing({ day, slot })
                             setEditText('')
                           }}
@@ -595,29 +626,25 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
               <button
                 key={ct.key}
                 onClick={async () => {
-                  try {
-                    const existing = getEntry(typeModal.day, typeModal.slot)
-                    if (typeModal.actionData) {
-                      const action = JSON.parse(typeModal.actionData)
+                  const { day: md, slot: ms, actionData } = typeModal
+                  const existing = getEntry(md, ms)
+                  if (actionData) {
+                    try {
+                      const action = JSON.parse(actionData)
                       const actionLabel = action.type === 'gol' ? '🏐 Gol' : '🖐🏻 Aturada'
                       const label = `${actionLabel} · ${action.jugador}${action.minut ? ` (${action.minut}')` : ''}`
-                      if (existing) {
-                        await onUpdate(existing.id, { label, content_type: ct.key, action_ref: typeModal.actionData })
-                      } else {
-                        await onSave({ jornada, day: typeModal.day, time_slot: typeModal.slot, label, status: 'pendent', content_type: ct.key, action_ref: typeModal.actionData })
-                      }
-                    } else {
-                      if (existing) {
-                        await onUpdate(existing.id, { content_type: ct.key })
-                      } else {
-                        await onSave({ jornada, day: typeModal.day, time_slot: typeModal.slot, label: '', status: 'pendent', content_type: ct.key })
-                      }
-                    }
-                  } catch (_e) {}
+                      if (existing) { await doUpdate(existing.id, { label, content_type: ct.key, action_ref: actionData }) }
+                      else { await doCreate(md, ms, { label, content_type: ct.key, action_ref: actionData }) }
+                    } catch { /* noop */ }
+                  } else {
+                    if (existing) { await doUpdate(existing.id, { content_type: ct.key }) }
+                    else { await doCreate(md, ms, { content_type: ct.key }) }
+                  }
                   setTypeModal(null)
                 }}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', borderRadius: 9, border: `1.5px solid ${ct.color}`, background: `${ct.color}15`, color: ct.color, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 8, textAlign: 'left' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', borderRadius: 9, border: `1.5px solid ${ct.color}`, background: `${ct.color}10`, color: ct.color, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 8, textAlign: 'left' }}
               >
+                <span style={{ fontSize: 18 }}>{ct.icon}</span>
                 {ct.label}
               </button>
             ))}
@@ -824,7 +851,7 @@ export function AsobalContent() {
       </div>
 
       {/* Jornada strip */}
-      <div style={{ overflowX: 'auto', background: '#F0F2F5', borderBottom: '1px solid rgba(0,0,0,0.08)', padding: '6px 10px', display: 'flex', gap: 4, flexShrink: 0, justifyContent: 'flex-start' }}>
+      <div style={{ overflowX: 'auto', background: '#F0F2F5', borderBottom: '1px solid rgba(0,0,0,0.08)', padding: '6px 10px', display: 'flex', gap: 4, flexShrink: 0, justifyContent: 'center' }}>
         {CALENDAR.map((_, ji) => {
           const { aturades, gols } = jornadaStats(ji)
           const hasData = aturades + gols > 0
