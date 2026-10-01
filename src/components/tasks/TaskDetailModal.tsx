@@ -1470,7 +1470,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
           z-index: 1000; padding: 20px;
         }
         .modal {
-          background: white; border-radius: 16px; width: 100%; max-width: 520px;
+          background: white; border-radius: 16px; width: 100%; max-width: 680px;
           max-height: 92vh; display: flex; flex-direction: column;
           box-shadow: 0 24px 64px rgba(0,0,0,0.22); overflow: hidden;
         }
