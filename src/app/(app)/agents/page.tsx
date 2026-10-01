@@ -1745,21 +1745,6 @@ export default function AgentsPage() {
           {/* Wave background */}
           <BekaBackground paused={bekaPaused} />
 
-          {/* Premium header overlay */}
-          <div style={{
-            position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
-            pointerEvents: 'none',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-            padding: '18px 28px',
-          }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.12em' }}>GUINEW</div>
-              <div style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.18)', marginTop: 2 }}>AI OPERATING SYSTEM</div>
-            </div>
-            <div style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.18)', textAlign: 'right' }}>
-              v2026.1 &nbsp;● ONLINE
-            </div>
-          </div>
 
           {/* Floating button group: vista toggle + X + PAUSAR */}
           <div style={{
