@@ -624,8 +624,8 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                                 {ct && (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 8, fontWeight: 700, color: '#6b7280', background: '#f3f4f6', borderRadius: 3, padding: '1px 4px' }}>
-                                    <ct.Icon size={7} />{ct.abbr}
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 700, color: '#374151', background: '#e5e7eb', borderRadius: 4, padding: '2px 6px' }}>
+                                    <ct.Icon size={9} />{ct.abbr}
                                   </span>
                                 )}
                                 {entry.copy && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#a78bfa', display: 'inline-block' }} title="Té copy" />}
