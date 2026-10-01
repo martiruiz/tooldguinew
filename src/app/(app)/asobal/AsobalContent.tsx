@@ -440,7 +440,7 @@ const CONTENT_TYPES = [
 function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose }: {
   jornada: number
   entries: OrgEntry[]
-  onSave: (entry: Omit<OrgEntry, 'id'>) => Promise<void>
+  onSave: (entry: Omit<OrgEntry, 'id'>) => Promise<OrgEntry | null>
   onUpdate: (id: string, changes: Partial<OrgEntry>) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onClose: () => void
@@ -473,7 +473,16 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
     const temp: OrgEntry = { id: tempId, jornada, day, time_slot: slot, label: '', status: 'pendent', ...extra }
     setLocalEntries(prev => [...prev, temp])
     try {
-      await onSave({ jornada, day, time_slot: slot, label: temp.label, status: 'pendent', content_type: extra?.content_type, action_ref: extra?.action_ref })
+      const real = await onSave({ jornada, day, time_slot: slot, label: '', status: 'pendent', content_type: extra?.content_type, action_ref: extra?.action_ref })
+      if (real) {
+        setLocalEntries(prev => prev.map(e => e.id === tempId ? real : e))
+        setCellModal(real)
+        setModalLabel(real.label ?? '')
+        setModalCopy(real.copy ?? '')
+      } else {
+        setLocalEntries(prev => prev.filter(e => e.id !== tempId))
+        setOrgError('Error guardant. Comprova la connexió a Supabase.')
+      }
       setOrgError(null)
     } catch { setOrgError('Error guardant. Comprova que la taula asobal_organigram existeix a Supabase.') }
   }
@@ -588,8 +597,9 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
         const ct = CONTENT_TYPES.find(t => t.key === liveEntry.content_type)
         const cfg = STATUS_CFG[liveEntry.status as keyof typeof STATUS_CFG] ?? STATUS_CFG.pendent
         const saveAndClose = async () => {
-          if (liveEntry.id.startsWith('tmp_')) { setCellModal(null); return }
-          await doUpdate(liveEntry.id, { label: modalLabel, copy: modalCopy })
+          if (!liveEntry.id.startsWith('tmp_')) {
+            await doUpdate(liveEntry.id, { label: modalLabel, copy: modalCopy })
+          }
           setCellModal(null)
         }
         return (
@@ -826,9 +836,11 @@ export function AsobalContent() {
     if (data) setOrgEntries(data as OrgEntry[])
   }, [supabase])
 
-  const saveOrgEntry = useCallback(async (entry: Omit<OrgEntry, 'id'>) => {
-    await supabase.from('asobal_organigram').insert(entry)
+  const saveOrgEntry = useCallback(async (entry: Omit<OrgEntry, 'id'>): Promise<OrgEntry | null> => {
+    const { data, error } = await supabase.from('asobal_organigram').insert(entry).select().single()
+    if (error) { console.error('saveOrgEntry error:', error); return null }
     await refreshOrg()
+    return data as OrgEntry
   }, [supabase, refreshOrg])
 
   const updateOrgEntry = useCallback(async (id: string, changes: Partial<OrgEntry>) => {
