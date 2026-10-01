@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X, Image as ImageIcon, Layers, Film, Zap, Copy } from 'lucide-react'
+import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X, Image as ImageIcon, Layers, Film, Zap, Copy, Youtube } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const TEAMS: Record<string, string> = {
@@ -434,7 +434,8 @@ const CONTENT_TYPES = [
   { key: 'post', label: 'Post estàtic', color: '#4f6ef7', abbr: 'POST', Icon: ImageIcon },
   { key: 'carrusel', label: 'Carrusel', color: '#16a34a', abbr: 'CAR', Icon: Layers },
   { key: 'reel', label: 'Reel', color: '#dc2626', abbr: 'REEL', Icon: Film },
-  { key: 'story', label: 'Story', color: '#d97706', abbr: 'STR', Icon: Zap },
+  { key: 'story', label: 'Storie', color: '#d97706', abbr: 'STR', Icon: Zap },
+  { key: 'video_ytb', label: 'Video YTB', color: '#ff0000', abbr: 'YTB', Icon: Youtube },
 ]
 
 function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose }: {
@@ -700,7 +701,7 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                   <div style={{ display: 'flex', gap: 6 }}>
                     {(Object.entries(STATUS_CFG) as Array<[string, typeof STATUS_CFG.pendent]>).map(([k, v]) => (
                       <button key={k} onClick={async () => { await doUpdate(liveEntry.id, { status: k as OrgEntry['status'] }); setCellModal(prev => prev ? { ...prev, status: k as OrgEntry['status'] } : prev) }}
-                        style={{ flex: 1, padding: '6px 4px', borderRadius: 8, border: `1.5px solid ${liveEntry.status === k ? v.dot : '#e5e7eb'}`, background: liveEntry.status === k ? v.bg : '#fff', color: v.text, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all .12s' }}>
+                        style={{ flex: 1, padding: '6px 4px', borderRadius: 8, border: `1.5px solid ${liveEntry.status === k ? v.dot : '#e5e7eb'}`, background: liveEntry.status === k ? v.bg : '#fff', color: v.text, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all .12s', textTransform: 'uppercase', letterSpacing: '.04em' }}>
                         {v.label}
                       </button>
                     ))}
@@ -708,10 +709,10 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                 </div>
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 8 }}>Tipus</div>
-                  <div style={{ display: 'flex', gap: 6 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
                     {CONTENT_TYPES.map(t => (
                       <button key={t.key} onClick={async () => { await doUpdate(liveEntry.id, { content_type: t.key }); setCellModal(prev => prev ? { ...prev, content_type: t.key } : prev) }}
-                        style={{ flex: 1, padding: '7px 4px', borderRadius: 8, border: `1.5px solid ${liveEntry.content_type === t.key ? t.color : '#e5e7eb'}`, background: liveEntry.content_type === t.key ? `${t.color}12` : '#fff', color: liveEntry.content_type === t.key ? t.color : '#9ca3af', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, transition: 'all .12s' }}>
+                        style={{ padding: '7px 4px', borderRadius: 8, border: `1.5px solid ${liveEntry.content_type === t.key ? t.color : '#e5e7eb'}`, background: liveEntry.content_type === t.key ? `${t.color}12` : '#fff', color: liveEntry.content_type === t.key ? t.color : '#9ca3af', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, transition: 'all .12s', textTransform: 'uppercase', letterSpacing: '.04em' }}>
                         <t.Icon size={13} />
                         {t.abbr}
                       </button>
