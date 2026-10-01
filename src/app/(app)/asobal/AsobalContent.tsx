@@ -472,19 +472,27 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
     const tempId = `tmp_${Date.now()}`
     const temp: OrgEntry = { id: tempId, jornada, day, time_slot: slot, label: '', status: 'pendent', ...extra }
     setLocalEntries(prev => [...prev, temp])
+    // Obrir popup immediatament amb l'entry temporal
+    setCellModal(temp)
+    setModalLabel('')
+    setModalCopy('')
+    // Desar a Supabase en segon pla
     try {
       const real = await onSave({ jornada, day, time_slot: slot, label: '', status: 'pendent', content_type: extra?.content_type, action_ref: extra?.action_ref })
       if (real) {
         setLocalEntries(prev => prev.map(e => e.id === tempId ? real : e))
-        setCellModal(real)
-        setModalLabel(real.label ?? '')
-        setModalCopy(real.copy ?? '')
+        setCellModal(prev => prev?.id === tempId ? real : prev)
+        setOrgError(null)
       } else {
         setLocalEntries(prev => prev.filter(e => e.id !== tempId))
-        setOrgError('Error guardant. Comprova la connexió a Supabase.')
+        setCellModal(prev => prev?.id === tempId ? null : prev)
+        setOrgError('Error guardant. Comprova la connexió a Supabase i que la taula existeix.')
       }
-      setOrgError(null)
-    } catch { setOrgError('Error guardant. Comprova que la taula asobal_organigram existeix a Supabase.') }
+    } catch {
+      setLocalEntries(prev => prev.filter(e => e.id !== tempId))
+      setCellModal(prev => prev?.id === tempId ? null : prev)
+      setOrgError('Error guardant. Comprova que la taula asobal_organigram existeix a Supabase.')
+    }
   }
 
   const cycleStatus = async (entry: OrgEntry) => {
