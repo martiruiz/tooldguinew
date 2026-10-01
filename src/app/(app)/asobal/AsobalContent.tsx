@@ -607,7 +607,7 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                                   {ct && (
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 800, letterSpacing: '.04em', color: ct.color, background: `${ct.color}15`, borderRadius: 4, padding: '2px 5px' }}>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 700, letterSpacing: '.04em', color: '#6b7280', background: '#f3f4f6', borderRadius: 4, padding: '2px 5px' }}>
                                       <ct.Icon size={8} />
                                       {ct.abbr}
                                     </span>
