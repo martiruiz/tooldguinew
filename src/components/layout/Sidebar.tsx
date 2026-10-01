@@ -174,6 +174,7 @@ export function Sidebar({ user }: Props) {
   const gmailBtnRef = useRef<HTMLButtonElement>(null)
 
   const inFinances = pathname.startsWith('/finances')
+  const isAgents = pathname.startsWith('/agents')
   const activeFinanceSection = searchParams.get('s') || 'resum'
   const c = collapsed
 
@@ -275,7 +276,7 @@ export function Sidebar({ user }: Props) {
   }
 
   return (
-    <aside className={cn('sb', c && 'sb--collapsed')}>
+    <aside className={cn('sb', c && 'sb--collapsed', isAgents && 'sb--agents')}>
       {/* Header: avatar + user */}
       <div className="sb-header">
         <button className="sb-avatar-btn sb-avatar-btn--logo" onClick={toggle} title={c ? 'Expandir menú' : 'Col·lapsar menú'}>
@@ -978,6 +979,94 @@ export function Sidebar({ user }: Props) {
           cursor: pointer; font-size: 12px; font-weight: 500; font-family: inherit;
         }
         .sb-logout-no:hover { border-color: #D0D0D0; color: #5C5C5C; }
+
+        /* ── Agents theme (chameleon) ── */
+        .sb--agents {
+          background: #060914;
+          border-right: 1px solid rgba(0,200,255,0.10);
+          transition: background 0.35s, border-color 0.35s, width 0.22s ease, min-width 0.22s ease;
+        }
+        .sb--agents .sb-header {
+          border-bottom: 1px solid rgba(0,200,255,0.07);
+          background: rgba(0,0,0,0.2);
+        }
+        .sb--agents .sb-avatar-btn--logo {
+          background: rgba(0,20,50,0.8) !important;
+          border-color: rgba(0,180,255,0.20) !important;
+          box-shadow: 0 0 12px rgba(0,150,255,0.12);
+        }
+        .sb--agents .sb-greeting { color: rgba(0,200,255,0.40); }
+        .sb--agents .sb-name { color: rgba(255,255,255,0.80); }
+
+        .sb--agents .sb-body { }
+        .sb--agents .sb-section-lbl {
+          color: rgba(0,200,255,0.45);
+        }
+        .sb--agents .sb-section-toggle:hover { background: rgba(0,200,255,0.05); }
+        .sb--agents .sb-toggle-arrow { color: rgba(0,200,255,0.35); }
+        .sb--agents .sb-section-lbl--fin { color: rgba(0,200,255,0.45); }
+
+        .sb--agents :global(.sb-item) {
+          color: rgba(255,255,255,0.35);
+        }
+        .sb--agents :global(.sb-item:hover):not(:global(.sb-item--active)) {
+          background: rgba(0,200,255,0.07);
+          color: rgba(255,255,255,0.75);
+        }
+        .sb--agents :global(.sb-item--active) {
+          background: linear-gradient(135deg, rgba(0,50,100,0.8) 0%, rgba(0,100,160,0.5) 100%) !important;
+          color: #00D4FF !important;
+          border: 1px solid rgba(0,200,255,0.30) !important;
+          box-shadow: 0 0 12px rgba(0,180,255,0.15), inset 0 0 8px rgba(0,200,255,0.04) !important;
+        }
+        .sb--agents :global(.sb-item--active svg) {
+          filter: drop-shadow(0 0 4px rgba(0,212,255,0.6));
+        }
+
+        .sb--agents .sb-divider {
+          border-top-color: rgba(0,200,255,0.06);
+        }
+
+        .sb--agents .sb-services-card {
+          background: rgba(0,10,30,0.6);
+          border-color: rgba(0,200,255,0.08);
+        }
+        .sb--agents .sb-service-row:hover { background: rgba(0,200,255,0.06); }
+        .sb--agents .sb-service-row-wrap:hover { background: rgba(0,200,255,0.06); }
+        .sb--agents .sb-service-label { color: rgba(255,255,255,0.45); }
+        .sb--agents .sb-service-badge { background: rgba(255,255,255,0.05) !important; }
+        .sb--agents .sb-service-icon-btn:hover { background: rgba(0,200,255,0.06); }
+
+        .sb--agents .sb-newtask-icon-btn {
+          background: linear-gradient(135deg, rgba(0,60,120,0.8) 0%, rgba(0,100,180,0.6) 100%);
+          border: 1px solid rgba(0,200,255,0.25);
+          color: #00D4FF;
+          box-shadow: 0 0 14px rgba(0,150,255,0.15);
+        }
+        .sb--agents .sb-newtask-icon-btn:hover {
+          background: linear-gradient(135deg, rgba(0,80,150,0.9) 0%, rgba(0,120,200,0.7) 100%);
+          box-shadow: 0 0 20px rgba(0,180,255,0.25);
+        }
+        .sb--agents .sb-newtask-card {
+          background: rgba(0,10,30,0.7);
+          border-color: rgba(0,200,255,0.10);
+        }
+        .sb--agents .sb-newtask-card:hover {
+          border-color: rgba(0,200,255,0.25);
+          box-shadow: 0 4px 16px rgba(0,150,255,0.12);
+        }
+        .sb--agents .sb-newtask-circle {
+          background: linear-gradient(135deg, rgba(0,60,120,0.9), rgba(0,120,200,0.8));
+          box-shadow: 0 4px 12px rgba(0,150,255,0.25);
+        }
+        .sb--agents .sb-newtask-label { color: rgba(255,255,255,0.7); }
+        .sb--agents .sb-newtask-sub { color: rgba(0,200,255,0.35); }
+
+        .sb--agents .sb-footer {
+          border-top-color: rgba(0,200,255,0.07);
+        }
+        .sb--agents .sb-logout-btn { color: rgba(255,255,255,0.22); }
+        .sb--agents .sb-logout-btn:hover { background: rgba(239,68,68,0.08); color: rgba(239,68,68,0.7); }
       `}</style>
     </aside>
   )
