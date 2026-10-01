@@ -562,8 +562,10 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                         if (actionData) { setTypeModal({ day, slot, actionData }) }
                         else { await doCreate(day, slot) }
                       }}
-                      style={{ border: `1px solid ${isOver ? '#4f6ef7' : '#eef0f3'}`, background: isOver ? 'rgba(79,110,247,0.06)' : '#fff', padding: 0, verticalAlign: 'top', transition: 'background .12s, border-color .12s' }}
+                      className="asb-org-td"
+                      style={{ border: `1px solid ${isOver ? '#4f6ef7' : '#eef0f3'}`, background: isOver ? 'rgba(79,110,247,0.06)' : '#fff', padding: 0, verticalAlign: 'top', position: 'relative', transition: 'background .12s, border-color .12s' }}
                     >
+                      {/* Entries fill the cell */}
                       <div style={{ display: 'flex', flexDirection: 'column', minHeight: 80 }}>
                         {cellEntries.map(entry => {
                           const cfg = STATUS_CFG[entry.status as keyof typeof STATUS_CFG] ?? STATUS_CFG.pendent
@@ -584,7 +586,7 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                               key={entry.id}
                               className="asb-org-cell-filled"
                               onClick={() => { setCellModal(entry); setModalLabel(entry.label); setModalCopy(entry.copy ?? '') }}
-                              style={{ padding: '6px 8px 5px', display: 'flex', flexDirection: 'column', gap: 3, cursor: 'pointer', position: 'relative', borderLeft: `3px solid ${cfg.dot}`, borderBottom: '1px solid #eef0f3' }}
+                              style={{ padding: '6px 8px 5px', display: 'flex', flexDirection: 'column', gap: 3, cursor: 'pointer', position: 'relative', borderLeft: `3px solid ${cfg.dot}`, borderBottom: cellEntries.length > 1 ? '1px solid #eef0f3' : 'none' }}
                             >
                               <button
                                 onClick={e => { e.stopPropagation(); doDelete(entry.id) }}
@@ -616,13 +618,14 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                             </div>
                           )
                         })}
-                        <div
-                          onClick={() => { doCreate(day, slot) }}
-                          className={hasEntries ? 'asb-org-cell-add' : 'asb-org-cell-empty'}
-                          style={{ flex: 1, minHeight: hasEntries ? 22 : 78, cursor: 'cell', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        >
-                          <Plus size={hasEntries ? 10 : 13} color="#d1d5db" strokeWidth={1.5} className="asb-org-plus" />
-                        </div>
+                      </div>
+                      {/* "+" overlay button — visible on hover of the td */}
+                      <div
+                        onClick={() => { doCreate(day, slot) }}
+                        className="asb-org-cell-add-btn"
+                        style={{ position: 'absolute', bottom: 4, right: 4, width: 18, height: 18, borderRadius: 5, background: 'rgba(79,110,247,0.12)', border: '1px solid rgba(79,110,247,0.25)', color: '#4f6ef7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity .15s', zIndex: 2 }}
+                      >
+                        <Plus size={10} strokeWidth={2.5} />
                       </div>
                     </td>
                   )
@@ -918,10 +921,7 @@ export function AsobalContent() {
         .asb-action-row { display:flex; align-items:center; gap:8px; padding:6px 14px; border-top:1px solid rgba(0,0,0,0.05); flex-wrap:wrap; }
         .asb-action-row:hover { background:rgba(0,0,0,0.02); }
         .asb-org-cell-filled:hover .asb-org-delete-btn { opacity: 1 !important; }
-        .asb-org-cell-empty .asb-org-plus { opacity: 0; transition: opacity .15s; }
-        .asb-org-cell-empty:hover .asb-org-plus { opacity: 1; }
-        .asb-org-cell-add .asb-org-plus { opacity: 0; transition: opacity .15s; }
-        .asb-org-cell-add:hover .asb-org-plus { opacity: 1; }
+        .asb-org-td:hover .asb-org-cell-add-btn { opacity: 1 !important; }
         .asb-badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:20px; letter-spacing:.04em; }
         .asb-aturada { background:rgba(27,59,218,0.1); color:#1b3bda; }
         .asb-gol { background:rgba(245,166,35,0.15); color:#d48a00; }
