@@ -1052,7 +1052,7 @@ export function AsobalContent() {
             })}
           </div>
         </div>
-        <div style={{ padding: '0 8px 20px', width: '100%', boxSizing: 'border-box' }}>
+        <div style={{ padding: '0 8px 20px', width: '100%', maxWidth: 1400, margin: '0 auto', boxSizing: 'border-box' }}>
           <OrganigramPanel
             jornada={selectedJ}
             entries={orgEntries}
