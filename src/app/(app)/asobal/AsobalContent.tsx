@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil } from 'lucide-react'
+import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const TEAMS: Record<string, string> = {
@@ -407,6 +407,216 @@ interface Action {
 type MatchKey = string
 type StoreData = Record<MatchKey, Action[]>
 
+interface OrgEntry {
+  id: string
+  jornada: number
+  day: string
+  time_slot: string
+  label: string
+  status: 'pendent' | 'en_proces' | 'fet' | 'no_fet'
+  content_type?: string
+  action_ref?: string
+}
+
+const ORG_DAYS = ['Dll', 'Dm', 'Mc', 'Dj', 'Dv', 'Ds', 'Dg']
+const ORG_DAY_LABELS = ['Dilluns', 'Dimarts', 'Dimecres', 'Dijous', 'Divendres', 'Dissabte', 'Diumenge']
+const ORG_TIMES = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00']
+
+const STATUS_CFG = {
+  pendent: { bg: '#fff', border: '#e5e7eb', text: '#9ca3af', dot: '#d1d5db', label: 'Per fer' },
+  en_proces: { bg: '#fffbeb', border: '#fcd34d', text: '#d97706', dot: '#f59e0b', label: 'En procés' },
+  fet: { bg: '#f0fdf4', border: '#86efac', text: '#16a34a', dot: '#22c55e', label: 'Fet' },
+  no_fet: { bg: '#fef2f2', border: '#fca5a5', text: '#dc2626', dot: '#ef4444', label: 'No fet' },
+} as const
+
+const CONTENT_TYPES = [
+  { key: 'post', label: 'Post estàtic', color: '#7c6fe0', abbr: 'POST' },
+  { key: 'carrusel', label: 'Carrusel', color: '#0ea5e9', abbr: 'CAR' },
+  { key: 'reel', label: 'Reel', color: '#e0526f', abbr: 'REEL' },
+]
+
+function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose }: {
+  jornada: number
+  entries: OrgEntry[]
+  onSave: (entry: Omit<OrgEntry, 'id'>) => Promise<void>
+  onUpdate: (id: string, changes: Partial<OrgEntry>) => Promise<void>
+  onDelete: (id: string) => Promise<void>
+  onClose: () => void
+}) {
+  const [dragOver, setDragOver] = useState<string | null>(null)
+  const [editing, setEditing] = useState<{ day: string; slot: string } | null>(null)
+  const [editText, setEditText] = useState('')
+  const [typeModal, setTypeModal] = useState<{ day: string; slot: string; actionData: string } | null>(null)
+
+  const getEntry = (day: string, slot: string) =>
+    entries.find(e => e.jornada === jornada && e.day === day && e.time_slot === slot)
+
+  const cycleStatus = async (entry: OrgEntry) => {
+    const cycle: Array<OrgEntry['status']> = ['pendent', 'en_proces', 'fet', 'no_fet']
+    const next = cycle[(cycle.indexOf(entry.status) + 1) % cycle.length]
+    await onUpdate(entry.id, { status: next })
+  }
+
+  return (
+    <div className="asb-org-panel" style={{ width: 480, flexShrink: 0, display: 'flex', flexDirection: 'column', borderLeft: '1px solid rgba(0,0,0,0.08)', background: '#fafafa', overflow: 'hidden', position: 'relative' }}>
+      {/* Header */}
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, background: '#fff' }}>
+        <LayoutGrid size={14} color="#1b3bda" />
+        <span style={{ fontWeight: 700, fontSize: 12, color: '#1a202c' }}>Organigrama · J{jornada + 1}</span>
+        <div style={{ display: 'flex', gap: 8, marginLeft: 8, flexWrap: 'wrap' }}>
+          {(Object.entries(STATUS_CFG) as Array<[string, { bg: string; border: string; text: string; dot: string; label: string }]>).map(([k, v]) => (
+            <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, color: v.text }}>
+              <span style={{ width: 6, height: 6, borderRadius: 1, background: v.dot, flexShrink: 0, display: 'inline-block' }} />
+              {v.label}
+            </div>
+          ))}
+        </div>
+        <button onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#9aa5b4', padding: 4, display: 'flex', flexShrink: 0 }}>
+          <X size={14} />
+        </button>
+      </div>
+      {/* Grid */}
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <table style={{ borderCollapse: 'collapse', tableLayout: 'fixed', width: '100%', minWidth: 380 }}>
+          <colgroup>
+            <col style={{ width: 44 }} />
+            {ORG_DAYS.map(d => <col key={d} />)}
+          </colgroup>
+          <thead>
+            <tr>
+              <th style={{ position: 'sticky', top: 0, left: 0, zIndex: 10, background: '#f0f2f5', padding: '5px 4px', fontSize: 9, fontWeight: 700, color: '#9aa5b4', border: '1px solid #e5e7eb', textAlign: 'center', whiteSpace: 'nowrap' }}>HORA</th>
+              {ORG_DAYS.map((d, i) => (
+                <th key={d} style={{ position: 'sticky', top: 0, zIndex: 9, background: '#f0f2f5', padding: '5px 2px', fontSize: 9, fontWeight: 700, color: '#1a202c', border: '1px solid #e5e7eb', textAlign: 'center' }} title={ORG_DAY_LABELS[i]}>{d}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {ORG_TIMES.map(slot => (
+              <tr key={slot}>
+                <td style={{ position: 'sticky', left: 0, zIndex: 5, background: '#f0f2f5', padding: '3px 4px', fontSize: 9, fontWeight: 700, color: '#6b7280', border: '1px solid #e5e7eb', textAlign: 'center', whiteSpace: 'nowrap' }}>{slot}</td>
+                {ORG_DAYS.map(day => {
+                  const entry = getEntry(day, slot)
+                  const cellId = `${day}__${slot}`
+                  const isOver = dragOver === cellId
+                  const isEditing = editing?.day === day && editing?.slot === slot
+                  const cfg = entry ? STATUS_CFG[entry.status as keyof typeof STATUS_CFG] : STATUS_CFG.pendent
+                  return (
+                    <td
+                      key={day}
+                      onDragOver={e => { e.preventDefault(); setDragOver(cellId) }}
+                      onDragLeave={e => { if (!e.relatedTarget || !e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null) }}
+                      onDrop={async e => {
+                        e.preventDefault()
+                        setDragOver(null)
+                        const actionData = e.dataTransfer.getData('asobal-action')
+                        if (actionData) {
+                          setTypeModal({ day, slot, actionData })
+                        } else {
+                          const existing = getEntry(day, slot)
+                          if (!existing) await onSave({ jornada, day, time_slot: slot, label: '', status: 'pendent' })
+                        }
+                      }}
+                      style={{ border: `1px solid ${isOver ? '#1b3bda' : '#e5e7eb'}`, background: isOver ? 'rgba(27,59,218,0.08)' : (entry ? cfg.bg : '#fff'), padding: 0, verticalAlign: 'top', height: 52, transition: 'background .1s, border-color .1s' }}
+                    >
+                      {entry ? (
+                        <div style={{ height: '100%', padding: '3px 4px', display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden' }}>
+                          {isEditing ? (
+                            <input
+                              autoFocus
+                              value={editText}
+                              onChange={e => setEditText(e.target.value)}
+                              onBlur={async () => { await onUpdate(entry.id, { label: editText }); setEditing(null) }}
+                              onKeyDown={async e => {
+                                if (e.key === 'Enter') { await onUpdate(entry.id, { label: editText }); setEditing(null) }
+                                else if (e.key === 'Escape') setEditing(null)
+                              }}
+                              style={{ width: '100%', fontSize: 9, border: 'none', outline: '1px solid #1b3bda', borderRadius: 2, background: 'white', fontFamily: 'inherit', color: cfg.text, padding: '1px 2px', fontWeight: 600, boxSizing: 'border-box' }}
+                            />
+                          ) : (
+                            <div
+                              onClick={() => { setEditing({ day, slot }); setEditText(entry.label) }}
+                              title={entry.label}
+                              style={{ flex: 1, fontSize: 9, fontWeight: 600, color: cfg.text, cursor: 'text', overflow: 'hidden', lineHeight: 1.3, wordBreak: 'break-word' }}
+                            >
+                              {entry.label || <span style={{ color: '#d1d5db' }}>—</span>}
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                            <span onClick={() => cycleStatus(entry)} style={{ width: 7, height: 7, borderRadius: 1, background: cfg.dot, cursor: 'pointer', flexShrink: 0, display: 'inline-block' }} title={`${cfg.label} — clica per canviar`} />
+                            {entry.content_type && (
+                              <span style={{ fontSize: 8, fontWeight: 800, color: CONTENT_TYPES.find(t => t.key === entry.content_type)?.color ?? '#9ca3af', letterSpacing: '.02em' }}>
+                                {CONTENT_TYPES.find(t => t.key === entry.content_type)?.abbr}
+                              </span>
+                            )}
+                            <button onClick={() => onDelete(entry.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#fca5a5', padding: 0, display: 'flex', lineHeight: 1, flexShrink: 0 }}>
+                              <X size={8} />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ height: '100%', minHeight: 52 }} />
+                      )}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {/* Type selection modal */}
+      {typeModal && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setTypeModal(null)}
+        >
+          <div
+            style={{ background: '#fff', borderRadius: 16, padding: '20px 22px', boxShadow: '0 24px 60px rgba(0,0,0,0.25)', minWidth: 270, maxWidth: 320 }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ fontWeight: 800, fontSize: 15, color: '#1a202c', marginBottom: 4 }}>Tipus de contingut</div>
+            <div style={{ fontSize: 11, color: '#9aa5b4', marginBottom: 16 }}>
+              {(() => {
+                try {
+                  const a = JSON.parse(typeModal.actionData)
+                  return `${a.type === 'gol' ? '🏐 Gol' : '🖐🏻 Aturada'} · ${a.jugador}${a.minut ? ` · ${a.minut}'` : ''}`
+                } catch { return '' }
+              })()}
+            </div>
+            {CONTENT_TYPES.map(ct => (
+              <button
+                key={ct.key}
+                onClick={async () => {
+                  try {
+                    const action = JSON.parse(typeModal.actionData)
+                    const actionLabel = action.type === 'gol' ? '🏐 Gol' : '🖐🏻 Aturada'
+                    const label = `${actionLabel} · ${action.jugador}${action.minut ? ` (${action.minut}')` : ''}`
+                    const existing = getEntry(typeModal.day, typeModal.slot)
+                    if (existing) {
+                      await onUpdate(existing.id, { label, content_type: ct.key, action_ref: typeModal.actionData })
+                    } else {
+                      await onSave({ jornada, day: typeModal.day, time_slot: typeModal.slot, label, status: 'pendent', content_type: ct.key, action_ref: typeModal.actionData })
+                    }
+                  } catch (_e) {}
+                  setTypeModal(null)
+                }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', borderRadius: 9, border: `1.5px solid ${ct.color}`, background: `${ct.color}15`, color: ct.color, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 8, textAlign: 'left' }}
+              >
+                {ct.label}
+              </button>
+            ))}
+            <button
+              onClick={() => setTypeModal(null)}
+              style={{ width: '100%', padding: '8px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb', color: '#9aa5b4', fontFamily: 'inherit', fontSize: 12, cursor: 'pointer', marginTop: 4 }}
+            >
+              Cancel·lar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function AsobalContent() {
   const supabase = useRef(createClient()).current
@@ -490,6 +700,33 @@ export function AsobalContent() {
     await supabase.from('asobal_actions').delete().eq('id', id)
   }, [supabase])
 
+  const [orgEntries, setOrgEntries] = useState<OrgEntry[]>([])
+  const [showOrg, setShowOrg] = useState(false)
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase.from('asobal_organigram').select('*').order('created_at')
+      if (data) setOrgEntries(data as OrgEntry[])
+    }
+    load()
+    const ch = supabase.channel('asobal_org_rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'asobal_organigram' }, load)
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [supabase])
+
+  const saveOrgEntry = useCallback(async (entry: Omit<OrgEntry, 'id'>) => {
+    await supabase.from('asobal_organigram').insert(entry)
+  }, [supabase])
+
+  const updateOrgEntry = useCallback(async (id: string, changes: Partial<OrgEntry>) => {
+    await supabase.from('asobal_organigram').update(changes).eq('id', id)
+  }, [supabase])
+
+  const deleteOrgEntry = useCallback(async (id: string) => {
+    await supabase.from('asobal_organigram').delete().eq('id', id)
+  }, [supabase])
+
   const jornada = CALENDAR[selectedJ]
 
   const jornadaStats = (ji: number) => {
@@ -531,6 +768,11 @@ export function AsobalContent() {
         .asb-top5-cb { accent-color:#16a34a; width:14px; height:14px; cursor:pointer; }
         .asb-mobile-actions { display: none; }
         .asb-desktop-actions { display: block; }
+        .asb-org-toggle { flex-shrink: 0; }
+        @media (max-width: 768px) {
+          .asb-org-panel { display: none !important; }
+          .asb-org-toggle { display: none !important; }
+        }
         @media (max-width: 640px) {
           .asb-match-header { flex-wrap:wrap; gap:6px; }
           .asb-link { min-width:0; padding:10px 14px; flex:none; width:100%; box-sizing:border-box; font-size:13px !important; }
@@ -575,24 +817,35 @@ export function AsobalContent() {
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden', minWidth: 0 }}>
 
         {/* Jornada detail */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 0 }}>
           <div className="asb-jornada-header" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, width: '100%', maxWidth: 900, justifyContent: 'center' }}>
             <Trophy size={16} color="#1b3bda" />
             <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#1a202c' }}>Jornada {selectedJ + 1}</h2>
             <span style={{ fontSize: 12, color: '#9aa5b4' }}>{jornada.date}</span>
-            {(() => {
-              const { aturades, gols, top5 } = jornadaStats(selectedJ)
-              return (aturades + gols > 0) ? (
-                <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
-                  {aturades > 0 && <span className="asb-badge asb-aturada">{aturades} aturades</span>}
-                  {gols > 0 && <span className="asb-badge asb-gol">{gols} gols</span>}
-                  {top5 > 0 && <span className="asb-badge asb-top5">{top5} top5</span>}
-                </div>
-              ) : null
-            })()}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto', flexShrink: 0 }}>
+              {(() => {
+                const { aturades, gols, top5 } = jornadaStats(selectedJ)
+                return (aturades + gols > 0) ? (
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {aturades > 0 && <span className="asb-badge asb-aturada">{aturades} aturades</span>}
+                    {gols > 0 && <span className="asb-badge asb-gol">{gols} gols</span>}
+                    {top5 > 0 && <span className="asb-badge asb-top5">{top5} top5</span>}
+                  </div>
+                ) : null
+              })()}
+              <button
+                className="asb-org-toggle"
+                onClick={() => setShowOrg(o => !o)}
+                title={showOrg ? 'Tancar organigrama' : 'Obrir organigrama'}
+                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, border: showOrg ? '1.5px solid #1b3bda' : '1px solid rgba(0,0,0,0.12)', background: showOrg ? 'rgba(27,59,218,0.07)' : '#fff', color: showOrg ? '#1b3bda' : '#6b7280', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', flexShrink: 0 }}
+              >
+                <LayoutGrid size={12} />
+                Organigrama
+              </button>
+            </div>
           </div>
 
           <div style={{ width: '100%', maxWidth: 900 }}>
@@ -670,7 +923,12 @@ export function AsobalContent() {
                       {actions.length > 0 && (() => {
                         const sorted = [...actions].sort((a, b) => (parseInt(a.minut) || 999) - (parseInt(b.minut) || 999))
                         const actionBtn = (action: Action) => (
-                          <div className="asb-action-cell" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 12px', minHeight: 48 }}>
+                          <div
+                            className="asb-action-cell"
+                            draggable={showOrg}
+                            onDragStart={e => { e.dataTransfer.setData('asobal-action', JSON.stringify(action)); e.dataTransfer.effectAllowed = 'copy' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 12px', minHeight: 48, cursor: showOrg ? 'grab' : undefined }}
+                          >
                             <span style={{ fontSize: 18, flexShrink: 0 }}>{action.type === 'aturada' ? '🖐🏻' : '🏐'}</span>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontSize: 13, color: '#1a202c', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{action.jugador}</div>
@@ -799,6 +1057,16 @@ export function AsobalContent() {
             })}
           </div>
         </div>
+        {showOrg && (
+          <OrganigramPanel
+            jornada={selectedJ}
+            entries={orgEntries}
+            onSave={saveOrgEntry}
+            onUpdate={updateOrgEntry}
+            onDelete={deleteOrgEntry}
+            onClose={() => setShowOrg(false)}
+          />
+        )}
       </div>
     </div>
   )
