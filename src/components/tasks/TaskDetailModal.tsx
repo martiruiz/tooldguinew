@@ -1088,7 +1088,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
                         onClick={() => toggleAssignee(p.id)}>
                         <div className="tdm-ap-av" style={{ background: isOn ? '#1B2B4B' : avColor(p.full_name) }}>
                           {p.avatar_url
-                            ? <img src={p.avatar_url} alt={p.full_name} style={{ width:'100%',height:'100%',objectFit:'cover' }}/>
+                            ? <img src={p.avatar_url} alt={p.full_name} style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }}/>
                             : getInitials(p.full_name)}
                         </div>
                         <span className="tdm-ap-name">{p.full_name.split(' ')[0]}</span>
@@ -1706,12 +1706,13 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         .fld-chip-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
         /* Assignee picker */
         .tdm-ap-grid { display: flex; flex-wrap: wrap; gap: 6px; }
-        .tdm-ap-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 7px 8px; border: 1.5px solid #E5E7EB; border-radius: 10px; background: white; cursor: pointer; font-family: inherit; transition: all 0.12s; min-width: 50px; position: relative; }
+        .tdm-ap-item { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 9px 8px; border: 1.5px solid #E5E7EB; border-radius: 12px; background: white; cursor: pointer; font-family: inherit; transition: all 0.12s; min-width: 58px; position: relative; }
         .tdm-ap-item:hover { border-color: #1B2B4B; background: #F0F3F8; }
         .tdm-ap-item--on { border-color: #1B2B4B; background: #EEF2FA; }
-        .tdm-ap-av { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; overflow: hidden; flex-shrink: 0; }
-        .tdm-ap-av--none { background: #E5E7EB; color: #9CA3AF; font-size: 14px; font-weight: 400; }
-        .tdm-ap-name { font-size: 10.5px; font-weight: 600; color: #374151; white-space: nowrap; max-width: 56px; overflow: hidden; text-overflow: ellipsis; }
+        .tdm-ap-av { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; overflow: hidden; flex-shrink: 0; }
+        .tdm-ap-av img { width: 100%; height: 100%; object-fit: cover; image-rendering: high-quality; }
+        .tdm-ap-av--none { background: #E5E7EB; color: #9CA3AF; font-size: 16px; font-weight: 400; }
+        .tdm-ap-name { font-size: 10.5px; font-weight: 600; color: #374151; white-space: nowrap; max-width: 60px; overflow: hidden; text-overflow: ellipsis; }
         .tdm-ap-check { position: absolute; top: 3px; right: 3px; width: 13px; height: 13px; border-radius: 50%; background: #1B2B4B; color: white; display: flex; align-items: center; justify-content: center; }
         /* Client picker dropdown */
         .tdm-cl-trigger { display: flex; align-items: center; gap: 8px; width: 100%; height: 36px; padding: 0 10px; border: 1.5px solid #E5E7EB; border-radius: 8px; background: white; cursor: pointer; font-family: inherit; transition: border-color 0.15s; }
