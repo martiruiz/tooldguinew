@@ -488,10 +488,10 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
         setCellModal(prev => prev?.id === tempId ? null : prev)
         setOrgError('Error guardant. Comprova la connexió a Supabase i que la taula existeix.')
       }
-    } catch {
+    } catch (err) {
       setLocalEntries(prev => prev.filter(e => e.id !== tempId))
       setCellModal(prev => prev?.id === tempId ? null : prev)
-      setOrgError('Error guardant. Comprova que la taula asobal_organigram existeix a Supabase.')
+      setOrgError(err instanceof Error ? err.message : 'Error guardant a Supabase.')
     }
   }
 
@@ -846,7 +846,7 @@ export function AsobalContent() {
 
   const saveOrgEntry = useCallback(async (entry: Omit<OrgEntry, 'id'>): Promise<OrgEntry | null> => {
     const { data, error } = await supabase.from('asobal_organigram').insert(entry).select().single()
-    if (error) { console.error('saveOrgEntry error:', error); return null }
+    if (error) { throw new Error(`Supabase: ${error.message} (code: ${error.code})`) }
     await refreshOrg()
     return data as OrgEntry
   }, [supabase, refreshOrg])
