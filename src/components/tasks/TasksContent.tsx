@@ -1389,6 +1389,7 @@ function KanbanCard({ task, allLabels, profiles, isDragging, onDragStart, onDrag
 }) {
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState(task.title)
+  const [moveMenuOpen, setMoveMenuOpen] = useState(false)
   const client = task.client as any
   const responsible = task.responsible as any
   const taskAny = task as any
@@ -1518,6 +1519,34 @@ function KanbanCard({ task, allLabels, profiles, isDragging, onDragStart, onDrag
           />
         </div>
       )}
+
+      {/* Mobile move button */}
+      <div className="kcard-move-wrap" onClick={e => e.stopPropagation()}>
+        <button
+          className="kcard-move-btn"
+          onClick={e => { e.stopPropagation(); setMoveMenuOpen(v => !v) }}
+          title="Moure a..."
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <path d="M8 2v12M2 8l6-6 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Moure
+        </button>
+        {moveMenuOpen && (
+          <div className="kcard-move-menu">
+            {columns.filter(c => c.status !== task.status).map(col => (
+              <button
+                key={col.status}
+                className="kcard-move-option"
+                onClick={e => { e.stopPropagation(); onStatusChange(task.id, col.status); setMoveMenuOpen(false) }}
+              >
+                <span className="kcard-move-dot" style={{ background: col.color }} />
+                {col.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       <style jsx>{`
         .kcard {
@@ -1688,6 +1717,42 @@ function KanbanCard({ task, allLabels, profiles, isDragging, onDragStart, onDrag
           background: linear-gradient(90deg, #3B6FD4, #1B2B4B);
           transition: width 0.3s ease;
           min-width: 4px;
+        }
+
+        .kcard-move-wrap {
+          position: relative;
+          display: none;
+        }
+        @media (hover: none) and (pointer: coarse) {
+          .kcard-move-wrap { display: block; }
+        }
+        .kcard-move-btn {
+          width: 100%; height: 32px;
+          border: 1px solid #E8E8E8; background: #F9FAFB;
+          border-radius: 8px; cursor: pointer;
+          display: flex; align-items: center; justify-content: center; gap: 5px;
+          font-size: 12px; font-weight: 600; color: #5C5C5C;
+          font-family: inherit;
+          transition: background 0.15s, border-color 0.15s;
+        }
+        .kcard-move-btn:active { background: #EEF3FA; border-color: #1B2B4B40; }
+        .kcard-move-menu {
+          position: absolute; bottom: calc(100% + 4px); left: 0; right: 0;
+          background: white; border: 1px solid #E8E8E8; border-radius: 10px;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+          overflow: hidden; z-index: 100;
+        }
+        .kcard-move-option {
+          width: 100%; padding: 11px 14px;
+          border: none; background: transparent; cursor: pointer;
+          display: flex; align-items: center; gap: 8px;
+          font-size: 13px; font-weight: 600; color: #111827;
+          font-family: inherit; text-align: left;
+          transition: background 0.1s;
+        }
+        .kcard-move-option:active { background: #F5F5F5; }
+        .kcard-move-dot {
+          width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
         }
       `}</style>
     </div>
