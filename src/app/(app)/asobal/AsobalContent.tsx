@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X } from 'lucide-react'
+import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X, Image as ImageIcon, Layers, Film, Zap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const TEAMS: Record<string, string> = {
@@ -430,10 +430,10 @@ const STATUS_CFG = {
 } as const
 
 const CONTENT_TYPES = [
-  { key: 'post', label: 'Post estàtic', color: '#4f6ef7', abbr: 'POST', icon: '🖼️' },
-  { key: 'carrusel', label: 'Carrusel', color: '#16a34a', abbr: 'CAR', icon: '🎠' },
-  { key: 'reel', label: 'Reel', color: '#dc2626', abbr: 'REEL', icon: '🎬' },
-  { key: 'story', label: 'Story', color: '#d97706', abbr: 'STR', icon: '⚡' },
+  { key: 'post', label: 'Post estàtic', color: '#4f6ef7', abbr: 'POST', Icon: ImageIcon },
+  { key: 'carrusel', label: 'Carrusel', color: '#16a34a', abbr: 'CAR', Icon: Layers },
+  { key: 'reel', label: 'Reel', color: '#dc2626', abbr: 'REEL', Icon: Film },
+  { key: 'story', label: 'Story', color: '#d97706', abbr: 'STR', Icon: Zap },
 ]
 
 function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose }: {
@@ -644,7 +644,7 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                 }}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', borderRadius: 9, border: `1.5px solid ${ct.color}`, background: `${ct.color}10`, color: ct.color, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 8, textAlign: 'left' }}
               >
-                <span style={{ fontSize: 18 }}>{ct.icon}</span>
+                <ct.Icon size={16} />
                 {ct.label}
               </button>
             ))}
