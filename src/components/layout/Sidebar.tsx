@@ -708,7 +708,7 @@ export function Sidebar({ user }: Props) {
           font-weight: 600;
         }
         :global(.sb-item--crm-active) {
-          background: linear-gradient(135deg, #1A0505 0%, #3B0A0A 50%, #5C1010 100%) !important;
+          background: linear-gradient(135deg, #3D0A0A 0%, #6B1212 50%, #8B1A1A 100%) !important;
           color: #FFFFFF !important;
           font-weight: 700;
           border: 1px solid rgba(255,80,80,0.22) !important;
@@ -735,7 +735,7 @@ export function Sidebar({ user }: Props) {
           100% { transform: translateX(700%) skewX(-15deg); opacity: 0; }
         }
         :global(.sb-item--crm-active:hover) {
-          background: linear-gradient(135deg, #200808 0%, #4A0F0F 50%, #6B1515 100%) !important;
+          background: linear-gradient(135deg, #4A0F0F 0%, #7A1818 50%, #9C2020 100%) !important;
           box-shadow: 0 4px 20px rgba(220,0,0,0.28), inset 0 0 22px rgba(255,60,60,0.07) !important;
           border-color: rgba(255,80,80,0.38) !important;
           transform: translateY(-1px);
