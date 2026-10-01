@@ -160,6 +160,9 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const photoRef = useRef<HTMLInputElement>(null)
   const [watcherIds, setWatcherIds] = useState<string[]>(t.watcher_ids || [])
+  const [assigneeIds, setAssigneeIds] = useState<string[]>(
+    t.assignee_ids?.length ? t.assignee_ids : (t.responsible_id ? [t.responsible_id] : [])
+  )
   const [labelIds, setLabelIds] = useState<string[]>(t.labels || [])
   const [allLabels, setAllLabels] = useState<Label[]>([])
   const [comments, setComments] = useState<Comment[]>([])
@@ -353,6 +356,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
       photos,
       watcher_ids: watcherIds,
       labels: labelIds,
+      assignee_ids: assigneeIds,
       completed_at: form.status === 'done' ? new Date().toISOString() : null,
     })
     if (updated) {
@@ -629,6 +633,25 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
     }
   }
 
+  // Assignees (multi)
+  const toggleAssignee = (id: string) => {
+    const adding = !assigneeIds.includes(id)
+    const ids = adding ? [...assigneeIds, id] : assigneeIds.filter(a => a !== id)
+    setAssigneeIds(ids)
+    const primaryId = ids[0] || null
+    persist({ assignee_ids: ids, responsible_id: primaryId })
+    setForm(f => ({ ...f, responsible_id: primaryId || '' }))
+    const name = profiles.find(p => p.id === id)?.full_name || ''
+    logActivity(adding ? 'assigned' : 'unassigned', { name })
+    if (adding && id !== currentUserId) {
+      fetch('/api/tasks/notify-assigned', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskId: task.id, taskTitle: form.title || task.title, assignedUserId: id }),
+      }).catch(() => {})
+    }
+  }
+
   // Labels
   const toggleLabel = (id: string) => {
     const adding = !labelIds.includes(id)
@@ -882,7 +905,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
 
             {/* Meta card: Assignat / Etiquetes / Seguiment */}
             {(() => {
-              const rp = profiles.find(p => p.id === form.responsible_id) as any
+              const assignedProfiles = assigneeIds.map(id => profiles.find(p => p.id === id)).filter(Boolean) as any[]
               return (
                 <div className="meta-card">
                   {/* Assignat a */}
@@ -890,14 +913,25 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
                     <div className="meta-col-lbl">Assignat a</div>
                     <div className="rel-wrap">
                       <button className="mc-resp-btn" onClick={() => setShowResponsiblePicker(v => !v)}>
-                        {rp ? (
+                        {assignedProfiles.length > 0 ? (
                           <>
-                            <div className="mc-av">
-                              {rp.avatar_url ? <img src={rp.avatar_url} alt="" /> : getInitials(rp.full_name)}
+                            <div className="mc-av-stack">
+                              {assignedProfiles.slice(0, 3).map((p, i) => (
+                                <div key={p.id} className="mc-av mc-av-stack-item" style={{ zIndex: 3 - i, marginLeft: i > 0 ? -8 : 0 }}>
+                                  {p.avatar_url ? <img src={p.avatar_url} alt="" /> : getInitials(p.full_name)}
+                                </div>
+                              ))}
+                              {assignedProfiles.length > 3 && (
+                                <div className="mc-av mc-av-stack-item mc-av--more" style={{ zIndex: 0, marginLeft: -8 }}>+{assignedProfiles.length - 3}</div>
+                              )}
                             </div>
                             <div className="mc-resp-info">
-                              <span className="mc-resp-name">{rp.full_name}</span>
-                              <span className="mc-resp-sub">Responsable</span>
+                              <span className="mc-resp-name">
+                                {assignedProfiles.length === 1 ? assignedProfiles[0].full_name : `${assignedProfiles.length} persones`}
+                              </span>
+                              <span className="mc-resp-sub">
+                                {assignedProfiles.length === 1 ? 'Responsable' : assignedProfiles.map((p: any) => p.full_name.split(' ')[0]).join(', ')}
+                              </span>
                             </div>
                           </>
                         ) : (
@@ -912,21 +946,22 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
                       </button>
                       {showResponsiblePicker && (
                         <div className="resp-picker" onClick={e => e.stopPropagation()}>
-                          <button className="resp-picker-opt" onClick={() => { saveDropdown('responsible_id', ''); setShowResponsiblePicker(false) }}>
+                          <button className="resp-picker-opt" onClick={() => { setAssigneeIds([]); persist({ assignee_ids: [], responsible_id: null }); setForm(f => ({ ...f, responsible_id: '' })) }}>
                             <div className="resp-av resp-av--empty" style={{ fontSize: 14 }}>—</div>
                             <span>Sense assignar</span>
                           </button>
                           {profiles.map(p => {
                             const pa = p as any
+                            const isOn = assigneeIds.includes(p.id)
                             return (
                               <button key={p.id}
-                                className={`resp-picker-opt${form.responsible_id === p.id ? ' resp-picker-opt--on' : ''}`}
-                                onClick={() => { saveDropdown('responsible_id', p.id); setShowResponsiblePicker(false) }}>
-                                <div className="resp-av" style={{ background: avColor(p.full_name) }}>
+                                className={`resp-picker-opt${isOn ? ' resp-picker-opt--on' : ''}`}
+                                onClick={() => toggleAssignee(p.id)}>
+                                <div className="resp-av" style={{ background: isOn ? '#1B2B4B' : avColor(p.full_name) }}>
                                   {pa.avatar_url ? <img src={pa.avatar_url} alt="" /> : getInitials(p.full_name)}
                                 </div>
                                 <span>{p.full_name}</span>
-                                {form.responsible_id === p.id && <Check size={11} style={{ marginLeft: 'auto', color: '#1B2B4B' }} />}
+                                {isOn && <Check size={11} style={{ marginLeft: 'auto', color: '#1B2B4B' }} />}
                               </button>
                             )
                           })}
@@ -1043,26 +1078,30 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
                   ))}
                 </div>
               </div>
-              <div className="field"><label>Responsable</label>
+              <div className="field"><label>Assignat a</label>
                 <div className="tdm-ap-grid">
                   <button type="button"
-                    className={`tdm-ap-item${!form.responsible_id ? ' tdm-ap-item--on' : ''}`}
-                    onClick={() => saveDropdown('responsible_id', '')}>
+                    className={`tdm-ap-item${assigneeIds.length === 0 ? ' tdm-ap-item--on' : ''}`}
+                    onClick={() => { setAssigneeIds([]); persist({ assignee_ids: [], responsible_id: null }); setForm(f => ({ ...f, responsible_id: '' })) }}>
                     <div className="tdm-ap-av tdm-ap-av--none">—</div>
                     <span className="tdm-ap-name">Cap</span>
                   </button>
-                  {profiles.map(p => (
-                    <button key={p.id} type="button"
-                      className={`tdm-ap-item${form.responsible_id === p.id ? ' tdm-ap-item--on' : ''}`}
-                      onClick={() => saveDropdown('responsible_id', p.id)}>
-                      <div className="tdm-ap-av" style={{ background: form.responsible_id === p.id ? '#1B2B4B' : avColor(p.full_name) }}>
-                        {p.avatar_url
-                          ? <img src={p.avatar_url} alt={p.full_name} style={{ width:'100%',height:'100%',objectFit:'cover' }}/>
-                          : getInitials(p.full_name)}
-                      </div>
-                      <span className="tdm-ap-name">{p.full_name.split(' ')[0]}</span>
-                    </button>
-                  ))}
+                  {profiles.map(p => {
+                    const isOn = assigneeIds.includes(p.id)
+                    return (
+                      <button key={p.id} type="button"
+                        className={`tdm-ap-item${isOn ? ' tdm-ap-item--on' : ''}`}
+                        onClick={() => toggleAssignee(p.id)}>
+                        <div className="tdm-ap-av" style={{ background: isOn ? '#1B2B4B' : avColor(p.full_name) }}>
+                          {p.avatar_url
+                            ? <img src={p.avatar_url} alt={p.full_name} style={{ width:'100%',height:'100%',objectFit:'cover' }}/>
+                            : getInitials(p.full_name)}
+                        </div>
+                        <span className="tdm-ap-name">{p.full_name.split(' ')[0]}</span>
+                        {isOn && <div className="tdm-ap-check"><Check size={8} strokeWidth={3} /></div>}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
               <div className="field"><label>Data límit</label>
@@ -1664,12 +1703,16 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         .fld-chip-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
         /* Assignee picker */
         .tdm-ap-grid { display: flex; flex-wrap: wrap; gap: 6px; }
-        .tdm-ap-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 7px 8px; border: 1.5px solid #E5E7EB; border-radius: 10px; background: white; cursor: pointer; font-family: inherit; transition: all 0.12s; min-width: 50px; }
+        .tdm-ap-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 7px 8px; border: 1.5px solid #E5E7EB; border-radius: 10px; background: white; cursor: pointer; font-family: inherit; transition: all 0.12s; min-width: 50px; position: relative; }
         .tdm-ap-item:hover { border-color: #1B2B4B; background: #F0F3F8; }
         .tdm-ap-item--on { border-color: #1B2B4B; background: #EEF2FA; }
         .tdm-ap-av { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; overflow: hidden; flex-shrink: 0; }
         .tdm-ap-av--none { background: #E5E7EB; color: #9CA3AF; font-size: 14px; font-weight: 400; }
         .tdm-ap-name { font-size: 10.5px; font-weight: 600; color: #374151; white-space: nowrap; max-width: 56px; overflow: hidden; text-overflow: ellipsis; }
+        .tdm-ap-check { position: absolute; top: 3px; right: 3px; width: 13px; height: 13px; border-radius: 50%; background: #1B2B4B; color: white; display: flex; align-items: center; justify-content: center; }
+        .mc-av-stack { display: flex; align-items: center; }
+        .mc-av-stack-item { border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+        .mc-av--more { background: #E5E7EB; color: #6B7280; font-size: 10px; font-weight: 700; }
         /* Client picker dropdown */
         .tdm-cl-trigger { display: flex; align-items: center; gap: 8px; width: 100%; height: 36px; padding: 0 10px; border: 1.5px solid #E5E7EB; border-radius: 8px; background: white; cursor: pointer; font-family: inherit; transition: border-color 0.15s; }
         .tdm-cl-trigger:hover { border-color: #1B2B4B; }

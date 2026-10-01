@@ -51,6 +51,7 @@ export function NewTaskModal({ clients, projects, profiles, currentUserId, defau
         client_id: form.client_id || null,
         project_id: form.project_id || null,
         responsible_id: form.responsible_id || null,
+        assignee_ids: form.responsible_id ? [form.responsible_id] : [],
         created_by: user?.id ?? null,
         priority: form.priority,
         status: form.status,
