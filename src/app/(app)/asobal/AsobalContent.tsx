@@ -458,6 +458,9 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
   const getEntry = (day: string, slot: string) =>
     localEntries.find(e => e.jornada === jornada && e.day === day && e.time_slot === slot)
 
+  const getEntries = (day: string, slot: string) =>
+    localEntries.filter(e => e.jornada === jornada && e.day === day && e.time_slot === slot)
+
   const doUpdate = async (id: string, changes: Partial<OrgEntry>) => {
     setLocalEntries(prev => prev.map(e => e.id === id ? { ...e, ...changes } : e))
     try { await onUpdate(id, changes); setOrgError(null) } catch { setOrgError('Error actualitzant') }
@@ -543,10 +546,10 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
               <tr key={slot}>
                 <td style={{ position: 'sticky', left: 0, zIndex: 5, background: '#f7f8fa', padding: '0 6px', fontSize: 9, fontWeight: 700, color: '#c0c4cc', border: '1px solid #eef0f3', textAlign: 'center', whiteSpace: 'nowrap', letterSpacing: '.03em' }}>{slot}</td>
                 {ORG_DAYS.map(day => {
-                  const entry = getEntry(day, slot)
+                  const cellEntries = getEntries(day, slot)
                   const cellId = `${day}__${slot}`
                   const isOver = dragOver === cellId
-                  const cfg = entry ? STATUS_CFG[entry.status as keyof typeof STATUS_CFG] : STATUS_CFG.pendent
+                  const hasEntries = cellEntries.length > 0
                   return (
                     <td
                       key={day}
@@ -556,77 +559,71 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                         e.preventDefault()
                         setDragOver(null)
                         const actionData = e.dataTransfer.getData('asobal-action')
-                        if (actionData) {
-                          setTypeModal({ day, slot, actionData })
-                        } else {
-                          const existing = getEntry(day, slot)
-                          if (!existing) await doCreate(day, slot)
-                        }
+                        if (actionData) { setTypeModal({ day, slot, actionData }) }
+                        else { await doCreate(day, slot) }
                       }}
-                      style={{ border: `1px solid ${isOver ? '#4f6ef7' : '#eef0f3'}`, background: isOver ? 'rgba(79,110,247,0.06)' : (entry ? cfg.bg : '#fff'), padding: 0, verticalAlign: 'top', height: 80, transition: 'background .12s, border-color .12s' }}
+                      style={{ border: `1px solid ${isOver ? '#4f6ef7' : '#eef0f3'}`, background: isOver ? 'rgba(79,110,247,0.06)' : '#fff', padding: 0, verticalAlign: 'top', transition: 'background .12s, border-color .12s' }}
                     >
-                      {entry ? (
-                        <div
-                          className="asb-org-cell-filled"
-                          onClick={() => { setCellModal(entry); setModalLabel(entry.label); setModalCopy(entry.copy ?? '') }}
-                          style={{ height: '100%', padding: '7px 8px 6px', display: 'flex', flexDirection: 'column', gap: 4, overflow: 'hidden', cursor: 'pointer', position: 'relative', borderLeft: `3px solid ${cfg.dot}` }}
-                        >
-                          <button
-                            onClick={e => { e.stopPropagation(); doDelete(entry.id) }}
-                            className="asb-org-delete-btn"
-                            style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: 5, border: 'none', background: 'rgba(239,68,68,0.1)', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, opacity: 0, transition: 'opacity .15s', flexShrink: 0 }}
-                          >
-                            <Trash2 size={10} />
-                          </button>
-                          {(() => {
-                            let actionIcon: string | null = null
-                            let isTop5 = false
-                            let minut: string | null = null
-                            const ct = CONTENT_TYPES.find(t => t.key === entry.content_type)
-                            if (entry.action_ref) {
-                              try {
-                                const a = JSON.parse(entry.action_ref)
-                                actionIcon = a.type === 'gol' ? '🏐' : '🖐🏻'
-                                isTop5 = !!a.top5
-                                minut = a.minut ?? null
-                              } catch { /* noop */ }
-                            }
-                            return (
-                              <>
-                                <div style={{ flex: 1, overflow: 'hidden' }}>
-                                  {actionIcon && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginBottom: 3 }}>
-                                      <span style={{ fontSize: 10, lineHeight: 1 }}>{actionIcon}</span>
-                                      {isTop5 && <Star size={8} color="#f59e0b" fill="#f59e0b" />}
-                                      {minut && <span style={{ fontSize: 9, color: '#a0aec0', fontWeight: 600 }}>{minut}&apos;</span>}
-                                    </div>
-                                  )}
-                                  <div style={{ fontSize: 11, fontWeight: 700, color: cfg.text, overflow: 'hidden', lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                                    {entry.label || <span style={{ color: '#d1d5db', fontSize: 10, fontWeight: 400 }}>Sense títol</span>}
+                      <div style={{ display: 'flex', flexDirection: 'column', minHeight: 80 }}>
+                        {cellEntries.map(entry => {
+                          const cfg = STATUS_CFG[entry.status as keyof typeof STATUS_CFG] ?? STATUS_CFG.pendent
+                          let actionIcon: string | null = null
+                          let isTop5 = false
+                          let minut: string | null = null
+                          const ct = CONTENT_TYPES.find(t => t.key === entry.content_type)
+                          if (entry.action_ref) {
+                            try {
+                              const a = JSON.parse(entry.action_ref)
+                              actionIcon = a.type === 'gol' ? '🏐' : '🖐🏻'
+                              isTop5 = !!a.top5
+                              minut = a.minut ?? null
+                            } catch { /* noop */ }
+                          }
+                          return (
+                            <div
+                              key={entry.id}
+                              className="asb-org-cell-filled"
+                              onClick={() => { setCellModal(entry); setModalLabel(entry.label); setModalCopy(entry.copy ?? '') }}
+                              style={{ padding: '6px 8px 5px', display: 'flex', flexDirection: 'column', gap: 3, cursor: 'pointer', position: 'relative', borderLeft: `3px solid ${cfg.dot}`, borderBottom: '1px solid #eef0f3' }}
+                            >
+                              <button
+                                onClick={e => { e.stopPropagation(); doDelete(entry.id) }}
+                                className="asb-org-delete-btn"
+                                style={{ position: 'absolute', top: 3, right: 3, width: 16, height: 16, borderRadius: 4, border: 'none', background: 'rgba(239,68,68,0.1)', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, opacity: 0, transition: 'opacity .15s' }}
+                              >
+                                <Trash2 size={9} />
+                              </button>
+                              <div style={{ paddingRight: 14 }}>
+                                {actionIcon && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginBottom: 2 }}>
+                                    <span style={{ fontSize: 9, lineHeight: 1 }}>{actionIcon}</span>
+                                    {isTop5 && <Star size={7} color="#f59e0b" fill="#f59e0b" />}
+                                    {minut && <span style={{ fontSize: 8, color: '#a0aec0', fontWeight: 600 }}>{minut}&apos;</span>}
                                   </div>
+                                )}
+                                <div style={{ fontSize: 10, fontWeight: 700, color: cfg.text, lineHeight: 1.25, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                  {entry.label || <span style={{ color: '#d1d5db', fontWeight: 400 }}>Sense títol</span>}
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                                  {ct && (
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 700, letterSpacing: '.04em', color: '#6b7280', background: '#f3f4f6', borderRadius: 4, padding: '2px 5px' }}>
-                                      <ct.Icon size={8} />
-                                      {ct.abbr}
-                                    </span>
-                                  )}
-                                  {entry.copy && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#a78bfa', flexShrink: 0, display: 'inline-block' }} title="Té copy" />}
-                                </div>
-                              </>
-                            )
-                          })()}
-                        </div>
-                      ) : (
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                                {ct && (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 8, fontWeight: 700, color: '#6b7280', background: '#f3f4f6', borderRadius: 3, padding: '1px 4px' }}>
+                                    <ct.Icon size={7} />{ct.abbr}
+                                  </span>
+                                )}
+                                {entry.copy && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#a78bfa', display: 'inline-block' }} title="Té copy" />}
+                              </div>
+                            </div>
+                          )
+                        })}
                         <div
                           onClick={() => { doCreate(day, slot) }}
-                          className="asb-org-cell-empty"
-                          style={{ height: '100%', minHeight: 78, cursor: 'cell', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          className={hasEntries ? 'asb-org-cell-add' : 'asb-org-cell-empty'}
+                          style={{ flex: 1, minHeight: hasEntries ? 22 : 78, cursor: 'cell', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         >
-                          <Plus size={13} color="#d1d5db" strokeWidth={1.5} className="asb-org-plus" />
+                          <Plus size={hasEntries ? 10 : 13} color="#d1d5db" strokeWidth={1.5} className="asb-org-plus" />
                         </div>
-                      )}
+                      </div>
                     </td>
                   )
                 })}
@@ -923,6 +920,8 @@ export function AsobalContent() {
         .asb-org-cell-filled:hover .asb-org-delete-btn { opacity: 1 !important; }
         .asb-org-cell-empty .asb-org-plus { opacity: 0; transition: opacity .15s; }
         .asb-org-cell-empty:hover .asb-org-plus { opacity: 1; }
+        .asb-org-cell-add .asb-org-plus { opacity: 0; transition: opacity .15s; }
+        .asb-org-cell-add:hover .asb-org-plus { opacity: 1; }
         .asb-badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:20px; letter-spacing:.04em; }
         .asb-aturada { background:rgba(27,59,218,0.1); color:#1b3bda; }
         .asb-gol { background:rgba(245,166,35,0.15); color:#d48a00; }
