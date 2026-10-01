@@ -416,6 +416,7 @@ interface OrgEntry {
   status: 'pendent' | 'en_proces' | 'fet' | 'no_fet'
   content_type?: string
   action_ref?: string
+  copy?: string
 }
 
 const ORG_DAYS = ['Dll', 'Dm', 'Mc', 'Dj', 'Dv', 'Ds', 'Dg']
@@ -445,11 +446,12 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
   onClose: () => void
 }) {
   const [dragOver, setDragOver] = useState<string | null>(null)
-  const [editing, setEditing] = useState<{ day: string; slot: string } | null>(null)
-  const [editText, setEditText] = useState('')
   const [typeModal, setTypeModal] = useState<{ day: string; slot: string; actionData: string } | null>(null)
   const [localEntries, setLocalEntries] = useState<OrgEntry[]>(entries)
   const [orgError, setOrgError] = useState<string | null>(null)
+  const [cellModal, setCellModal] = useState<OrgEntry | null>(null)
+  const [modalLabel, setModalLabel] = useState('')
+  const [modalCopy, setModalCopy] = useState('')
 
   useEffect(() => { setLocalEntries(entries) }, [entries])
 
@@ -513,16 +515,16 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
           </colgroup>
           <thead>
             <tr>
-              <th style={{ position: 'sticky', top: 0, left: 0, zIndex: 10, background: '#f0f2f5', padding: '5px 4px', fontSize: 9, fontWeight: 700, color: '#9aa5b4', border: '1px solid #e5e7eb', textAlign: 'center', whiteSpace: 'nowrap' }}>HORA</th>
+              <th style={{ position: 'sticky', top: 0, left: 0, zIndex: 10, background: '#f5f5f7', padding: '7px 4px', fontSize: 9, fontWeight: 600, color: '#b0b0b8', border: '1px solid #ebebeb', textAlign: 'center', whiteSpace: 'nowrap', letterSpacing: '.06em' }}>HORA</th>
               {ORG_DAYS.map((d, i) => (
-                <th key={d} style={{ position: 'sticky', top: 0, zIndex: 9, background: '#f0f2f5', padding: '5px 2px', fontSize: 9, fontWeight: 700, color: '#1a202c', border: '1px solid #e5e7eb', textAlign: 'center' }} title={ORG_DAY_LABELS[i]}>{d}</th>
+                <th key={d} style={{ position: 'sticky', top: 0, zIndex: 9, background: '#f5f5f7', padding: '7px 4px', fontSize: 10, fontWeight: 700, color: '#3a3a4a', border: '1px solid #ebebeb', textAlign: 'center', letterSpacing: '.04em' }} title={ORG_DAY_LABELS[i]}>{d}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {ORG_TIMES.map(slot => (
               <tr key={slot}>
-                <td style={{ position: 'sticky', left: 0, zIndex: 5, background: '#f0f2f5', padding: '3px 4px', fontSize: 9, fontWeight: 700, color: '#6b7280', border: '1px solid #e5e7eb', textAlign: 'center', whiteSpace: 'nowrap' }}>{slot}</td>
+                <td style={{ position: 'sticky', left: 0, zIndex: 5, background: '#f5f5f7', padding: '4px 6px', fontSize: 9, fontWeight: 600, color: '#a0a0a8', border: '1px solid #ebebeb', textAlign: 'center', whiteSpace: 'nowrap', letterSpacing: '.02em' }}>{slot}</td>
                 {ORG_DAYS.map(day => {
                   const entry = getEntry(day, slot)
                   const cellId = `${day}__${slot}`
@@ -545,54 +547,33 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                           if (!existing) await doCreate(day, slot)
                         }
                       }}
-                      style={{ border: `1px solid ${isOver ? '#1b3bda' : '#e5e7eb'}`, background: isOver ? 'rgba(27,59,218,0.08)' : (entry ? cfg.bg : '#fff'), padding: 0, verticalAlign: 'top', height: 52, transition: 'background .1s, border-color .1s' }}
+                      style={{ border: `1px solid ${isOver ? '#4f6ef7' : '#f0f0f0'}`, background: isOver ? 'rgba(79,110,247,0.07)' : (entry ? cfg.bg : '#fafafa'), padding: 0, verticalAlign: 'top', height: 64, transition: 'background .12s, border-color .12s' }}
                     >
                       {entry ? (
-                        <div style={{ height: '100%', padding: '3px 4px', display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden' }}>
-                          {isEditing ? (
-                            <input
-                              autoFocus
-                              value={editText}
-                              onChange={e => setEditText(e.target.value)}
-                              onBlur={async () => { await doUpdate(entry.id, { label: editText }); setEditing(null) }}
-                              onKeyDown={async e => {
-                                if (e.key === 'Enter') { await doUpdate(entry.id, { label: editText }); setEditing(null) }
-                                else if (e.key === 'Escape') setEditing(null)
-                              }}
-                              style={{ width: '100%', fontSize: 9, border: 'none', outline: '1px solid #1b3bda', borderRadius: 2, background: 'white', fontFamily: 'inherit', color: cfg.text, padding: '1px 2px', fontWeight: 600, boxSizing: 'border-box' }}
-                            />
-                          ) : (
-                            <div
-                              onClick={() => { setEditing({ day, slot }); setEditText(entry.label) }}
-                              title={entry.label}
-                              style={{ flex: 1, fontSize: 9, fontWeight: 600, color: cfg.text, cursor: 'text', overflow: 'hidden', lineHeight: 1.3, wordBreak: 'break-word' }}
-                            >
-                              {entry.label || <span style={{ color: '#d1d5db' }}>—</span>}
-                            </div>
-                          )}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-                            <span onClick={() => cycleStatus(entry)} style={{ width: 7, height: 7, borderRadius: 1, background: cfg.dot, cursor: 'pointer', flexShrink: 0, display: 'inline-block' }} title={`${cfg.label} — clica per canviar`} />
-                            <span
-                              onClick={e => { e.stopPropagation(); setTypeModal({ day, slot, actionData: '' }) }}
-                              title="Canviar tipus de contingut"
-                              style={{ fontSize: 8, fontWeight: 800, cursor: 'pointer', letterSpacing: '.02em', color: entry.content_type ? (CONTENT_TYPES.find(t => t.key === entry.content_type)?.color ?? '#9ca3af') : '#d1d5db' }}
-                            >
-                              {entry.content_type ? CONTENT_TYPES.find(t => t.key === entry.content_type)?.abbr : '+'}
-                            </span>
-                            <button onClick={() => doDelete(entry.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#fca5a5', padding: 0, display: 'flex', lineHeight: 1, flexShrink: 0 }}>
-                              <X size={8} />
-                            </button>
+                        <div
+                          onClick={() => { setCellModal(entry); setModalLabel(entry.label); setModalCopy(entry.copy ?? '') }}
+                          style={{ height: '100%', padding: '4px 5px', display: 'flex', flexDirection: 'column', gap: 3, overflow: 'hidden', cursor: 'pointer' }}
+                        >
+                          <div style={{ flex: 1, fontSize: 10, fontWeight: 600, color: cfg.text, overflow: 'hidden', lineHeight: 1.3, wordBreak: 'break-word' }}>
+                            {entry.label || <span style={{ color: '#d1d5db', fontSize: 9 }}>Clic per editar</span>}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                            <span style={{ width: 7, height: 7, borderRadius: 2, background: cfg.dot, flexShrink: 0, display: 'inline-block' }} />
+                            {entry.content_type && (
+                              <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: '.04em', color: CONTENT_TYPES.find(t => t.key === entry.content_type)?.color ?? '#9ca3af' }}>
+                                {CONTENT_TYPES.find(t => t.key === entry.content_type)?.abbr}
+                              </span>
+                            )}
+                            {entry.copy && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#a78bfa', flexShrink: 0, display: 'inline-block', marginLeft: 1 }} title="Té copy" />}
                           </div>
                         </div>
                       ) : (
                         <div
-                          onClick={() => {
-                            doCreate(day, slot)
-                            setEditing({ day, slot })
-                            setEditText('')
-                          }}
-                          style={{ height: '100%', minHeight: 52, cursor: 'cell' }}
-                        />
+                          onClick={() => { doCreate(day, slot) }}
+                          style={{ height: '100%', minHeight: 58, cursor: 'cell', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <span style={{ fontSize: 14, color: '#e5e7eb', fontWeight: 300, lineHeight: 1 }}>+</span>
+                        </div>
                       )}
                     </td>
                   )
@@ -602,6 +583,89 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
           </tbody>
         </table>
       </div>
+      {/* Cell detail modal */}
+      {cellModal && (() => {
+        const liveEntry = localEntries.find(e => e.id === cellModal.id) ?? cellModal
+        const ct = CONTENT_TYPES.find(t => t.key === liveEntry.content_type)
+        const cfg = STATUS_CFG[liveEntry.status as keyof typeof STATUS_CFG] ?? STATUS_CFG.pendent
+        const saveAndClose = async () => {
+          if (liveEntry.id.startsWith('tmp_')) { setCellModal(null); return }
+          await doUpdate(liveEntry.id, { label: modalLabel, copy: modalCopy })
+          setCellModal(null)
+        }
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={saveAndClose}>
+            <div style={{ background: '#fff', borderRadius: 18, boxShadow: '0 32px 80px rgba(0,0,0,0.22)', width: '100%', maxWidth: 500, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+              {/* Modal header */}
+              <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 10 }}>
+                {ct ? <ct.Icon size={18} color={ct.color} /> : <LayoutGrid size={18} color="#9ca3af" />}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <input
+                    value={modalLabel}
+                    onChange={e => setModalLabel(e.target.value)}
+                    placeholder="Títol del contingut..."
+                    style={{ width: '100%', fontSize: 15, fontWeight: 700, color: '#1a202c', border: 'none', outline: 'none', fontFamily: 'inherit', background: 'transparent', padding: 0 }}
+                  />
+                  <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+                    {ORG_DAY_LABELS[ORG_DAYS.indexOf(liveEntry.day)]} · {liveEntry.time_slot}
+                  </div>
+                </div>
+                <button onClick={saveAndClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 4, display: 'flex', borderRadius: 6, flexShrink: 0 }}><X size={18} /></button>
+              </div>
+              {/* Copy textarea */}
+              <div style={{ padding: '16px 20px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 8 }}>Copy de la publicació</div>
+                <textarea
+                  value={modalCopy}
+                  onChange={e => setModalCopy(e.target.value)}
+                  placeholder="Escriu aquí el text de la publicació..."
+                  rows={5}
+                  style={{ width: '100%', fontSize: 13, color: '#1a202c', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '10px 12px', fontFamily: 'inherit', resize: 'vertical', outline: 'none', lineHeight: 1.6, boxSizing: 'border-box', background: '#fafafa', transition: 'border-color .15s' }}
+                  onFocus={e => (e.target.style.borderColor = '#4f6ef7')}
+                  onBlur={e => (e.target.style.borderColor = '#e5e7eb')}
+                />
+              </div>
+              {/* Status + Type row */}
+              <div style={{ padding: '0 20px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 8 }}>Estat</div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {(Object.entries(STATUS_CFG) as Array<[string, typeof STATUS_CFG.pendent]>).map(([k, v]) => (
+                      <button key={k} onClick={async () => { await doUpdate(liveEntry.id, { status: k as OrgEntry['status'] }); setCellModal(prev => prev ? { ...prev, status: k as OrgEntry['status'] } : prev) }}
+                        style={{ flex: 1, padding: '6px 4px', borderRadius: 8, border: `1.5px solid ${liveEntry.status === k ? v.dot : '#e5e7eb'}`, background: liveEntry.status === k ? v.bg : '#fff', color: v.text, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all .12s' }}>
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 8 }}>Tipus</div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {CONTENT_TYPES.map(t => (
+                      <button key={t.key} onClick={async () => { await doUpdate(liveEntry.id, { content_type: t.key }); setCellModal(prev => prev ? { ...prev, content_type: t.key } : prev) }}
+                        style={{ flex: 1, padding: '7px 4px', borderRadius: 8, border: `1.5px solid ${liveEntry.content_type === t.key ? t.color : '#e5e7eb'}`, background: liveEntry.content_type === t.key ? `${t.color}12` : '#fff', color: liveEntry.content_type === t.key ? t.color : '#9ca3af', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, transition: 'all .12s' }}>
+                        <t.Icon size={13} />
+                        {t.abbr}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              {/* Footer */}
+              <div style={{ padding: '12px 20px 16px', borderTop: '1px solid #f0f0f0', display: 'flex', gap: 8, justifyContent: 'space-between' }}>
+                <button onClick={async () => { await doDelete(liveEntry.id); setCellModal(null) }}
+                  style={{ padding: '8px 14px', borderRadius: 9, border: '1px solid #fca5a5', background: '#fff', color: '#ef4444', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Eliminar
+                </button>
+                <button onClick={saveAndClose}
+                  style={{ padding: '8px 22px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#4f6ef7,#3a55d6)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Guardar
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
       {/* Type selection modal */}
       {typeModal && (
         <div
