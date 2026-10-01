@@ -655,7 +655,7 @@ export function Sidebar({ user }: Props) {
         .sb-avatar-btn:hover { opacity: 0.85; box-shadow: 0 0 0 3px rgba(0,0,0,0.08); }
         .sb-avatar-btn--logo { background: white !important; border-radius: 8px; border: 1.5px solid #E0E8F0; overflow: visible; padding: 2px; }
         .sb-avatar-btn--logo:hover { box-shadow: 0 0 0 3px rgba(37,64,103,0.1); opacity: 1; }
-        .sb-avatar-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .sb-avatar-img { width: 100%; height: 100%; object-fit: cover; object-position: center; border-radius: 50%; image-rendering: high-quality; }
         .sb-avatar-img--logo { object-fit: contain; border-radius: 6px; }
         .sb-user { flex: 1; min-width: 0; overflow: hidden; }
         .sb-greeting { font-size: 10.5px; color: #9CA3AF; font-weight: 500; white-space: nowrap; }
@@ -897,7 +897,7 @@ export function Sidebar({ user }: Props) {
           font-size: 11px; font-weight: 700; color: white;
           flex-shrink: 0; overflow: hidden;
         }
-        .sb-gmail-avatar-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .sb-gmail-avatar-img { width: 100%; height: 100%; object-fit: cover; object-position: center; border-radius: 50%; image-rendering: high-quality; }
         .sb-gmail-info { min-width: 0; flex: 1; }
         .sb-gmail-name { font-size: 12.5px; font-weight: 600; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .sb-gmail-email { font-size: 10.5px; color: #9CA3AF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

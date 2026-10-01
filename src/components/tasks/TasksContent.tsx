@@ -312,7 +312,7 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
 
           {/* Views */}
           {view === 'kanban' ? (
-            <KanbanView tasks={filtered} allLabels={allLabels} onStatusChange={handleStatusChange} onTaskClick={setSelectedTask}
+            <KanbanView tasks={filtered} allLabels={allLabels} profiles={profiles} onStatusChange={handleStatusChange} onTaskClick={setSelectedTask}
               onDelete={handleDeleteTask}
               onTitleSave={handleTitleSave}
               onColDoubleClick={(status) => { setNewTaskStatus(status as Task['status']); setShowNew(true) }} />
@@ -817,7 +817,7 @@ const ICON_OPTIONS: { key: string; Icon: React.ComponentType<{ size?: number; co
 const DEFAULT_COL_ICONS: Record<string, string> = { inbox: 'Inbox', todo: 'CheckSquare', in_progress: 'RefreshCw', review: 'HelpCircle', blocked: 'AlertTriangle', done: 'Star' }
 const COL_COLORS = ['#2196F3','#00BCD4','#3F51B5','#9C27B0','#E91E63','#F44336','#FF9800','#FFC107','#4CAF50','#388E3C','#616161','#9E9E9E']
 
-function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, onTitleSave, onColDoubleClick }: { tasks: Task[]; allLabels: LabelDef[]; onStatusChange: (id: string, status: string) => void; onTaskClick: (t: Task) => void; onDelete: (id: string) => void; onTitleSave: (id: string, title: string) => void; onColDoubleClick: (status: string) => void }) {
+function KanbanView({ tasks, allLabels, profiles, onStatusChange, onTaskClick, onDelete, onTitleSave, onColDoubleClick }: { tasks: Task[]; allLabels: LabelDef[]; profiles: { id: string; full_name: string; avatar_url?: string }[]; onStatusChange: (id: string, status: string) => void; onTaskClick: (t: Task) => void; onDelete: (id: string) => void; onTitleSave: (id: string, title: string) => void; onColDoubleClick: (status: string) => void }) {
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const draggedIdRef = useRef<string | null>(null)
   const [dragOverCol, setDragOverCol] = useState<string | null>(null)
@@ -1096,6 +1096,7 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
                     <KanbanCard
                       task={task}
                       allLabels={allLabels}
+                      profiles={profiles}
                       isDragging={draggedId === task.id}
                       onDragStart={(e) => { draggedIdRef.current = task.id; setDraggedId(task.id); e.dataTransfer.effectAllowed = 'move' }}
                       onDragEnd={() => { draggedIdRef.current = null; setDraggedId(null); setDragOverCol(null); setDragOverTaskId(null) }}
@@ -1372,9 +1373,10 @@ function StatusBadge({ status, taskId, onStatusChange }: { status: string; taskI
   )
 }
 
-function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onDragOver, onDragLeave, onStatusChange, onClick, onDelete, onTitleSave }: {
+function KanbanCard({ task, allLabels, profiles, isDragging, onDragStart, onDragEnd, onDragOver, onDragLeave, onStatusChange, onClick, onDelete, onTitleSave }: {
   task: Task
   allLabels: LabelDef[]
+  profiles: { id: string; full_name: string; avatar_url?: string }[]
   isDragging: boolean
   onDragStart: (e: React.DragEvent) => void
   onDragEnd: () => void
@@ -1439,14 +1441,27 @@ function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onDra
           >
             <Trash2 size={13} />
           </button>
-          {responsible
-            ? <div className="kcard-avatar" title={responsible.full_name}>
-                {responsible.avatar_url
-                  ? <img src={responsible.avatar_url} alt="" />
-                  : getInitials(responsible.full_name)}
+          {(() => {
+            const assigneeIds: string[] = (taskAny.assignee_ids || [])
+            const assignees = assigneeIds.length > 0
+              ? assigneeIds.map((id: string) => profiles.find(p => p.id === id)).filter(Boolean) as typeof profiles
+              : responsible ? [responsible] : []
+            if (assignees.length === 0) return null
+            return (
+              <div className="kcard-av-stack">
+                {assignees.slice(0, 3).map((p, i) => (
+                  <div key={p.id} className="kcard-avatar" title={p.full_name} style={{ marginLeft: i > 0 ? -7 : 0, zIndex: 3 - i }}>
+                    {(p as any).avatar_url
+                      ? <img src={(p as any).avatar_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+                      : getInitials(p.full_name)}
+                  </div>
+                ))}
+                {assignees.length > 3 && (
+                  <div className="kcard-avatar kcard-avatar--more" style={{ marginLeft: -7 }}>+{assignees.length - 3}</div>
+                )}
               </div>
-            : null
-          }
+            )
+          })()}
         </div>
       </div>
 
@@ -1560,7 +1575,9 @@ function KanbanCard({ task, allLabels, isDragging, onDragStart, onDragEnd, onDra
           flex-shrink: 0; overflow: hidden;
           border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.15);
         }
-        .kcard-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+        .kcard-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: center; border-radius: 50%; display: block; image-rendering: high-quality; }
+        .kcard-av-stack { display: flex; align-items: center; }
+        .kcard-avatar--more { background: #E5E7EB; color: #6B7280; font-size: 11px; font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
         .kcard-photos {
           display: flex;

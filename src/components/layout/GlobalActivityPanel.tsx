@@ -204,7 +204,7 @@ export function GlobalActivityPanel({ currentUserId, profiles }: Props) {
                     overflow: 'hidden', flexShrink: 0,
                   }}>
                     {item.profile?.avatar_url
-                      ? <img src={item.profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ? <img src={item.profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', imageRendering: 'high-quality' as any }} />
                       : getInitials(item.profile?.full_name || '?')}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -255,7 +255,7 @@ export function GlobalActivityPanel({ currentUserId, profiles }: Props) {
                   overflow: 'hidden',
                 }}>
                   {u.avatar_url
-                    ? <img src={u.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ? <img src={u.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', imageRendering: 'high-quality' as any }} />
                     : getInitials(u.full_name)}
                 </div>
                 <div style={{ color: '#9CA3AF', fontSize: 10, textAlign: 'center', maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

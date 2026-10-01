@@ -440,7 +440,7 @@ export function Topbar({ user, title, titleIcon }: Props) {
           flex-shrink: 0; overflow: hidden;
           border: 2px solid #1B2B4B20;
         }
-        .topbar-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .topbar-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: center; image-rendering: high-quality; }
         .topbar-avatar--logo {
           background: white;
           border: 1.5px solid #E0E8F0;
