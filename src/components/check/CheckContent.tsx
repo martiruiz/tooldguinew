@@ -270,7 +270,12 @@ export function CheckContent({ sessions: initialSessions, clients, currentUserId
       const json = await res.json()
       if (json.error) { setSaveError(json.error); return }
       if (json.session) {
-        router.push(`/check/${json.session.id}`)
+        setSessions(prev => [...prev, json.session as Session])
+        const d = new Date(json.session.session_date)
+        setYear(d.getFullYear())
+        setMonth(d.getMonth())
+        setShowAdd(false)
+        setForm({ client_id: '', session_date: '', session_types: [], notes: '', start_time: '', end_time: '' })
       }
     } finally { setSaving(false) }
   }

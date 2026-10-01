@@ -5,7 +5,7 @@
       "name": "guinew-os",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["next", "dev"],
-      "port": 3000,
+      "port": 3010,
       "autoPort": true
     }
   ]

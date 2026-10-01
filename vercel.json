@@ -1,3 +1,9 @@
 {
-  "alias": ["tools.agenciaguinew.com"]
+  "alias": ["tools.agenciaguinew.com"],
+  "crons": [
+    {
+      "path": "/api/cron/agents",
+      "schedule": "0 * * * *"
+    }
+  ]
 }

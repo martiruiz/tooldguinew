@@ -324,7 +324,7 @@ export function useJarvisVoice() {
 
   return {
     open, state, transcript, history, error,
-    getAmplitude, openJarvis, closeJarvis, send, startListening,
+    getAmplitude, openJarvis, closeJarvis, send, speak, startListening,
     amplitudeRef, audioElRef,
   }
 }

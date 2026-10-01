@@ -6,6 +6,8 @@ import {
   Database, Zap, Mail, BarChart2, ClipboardList,
   Users, Target, DollarSign, PenLine, Mic, MicOff,
   Square, Edit3, Eye, X, Send, Play, Pause, Loader2,
+  Copy, Check, Maximize2, Trash2, AlertCircle,
+  LayoutList, LayoutGrid, ChevronRight,
 } from 'lucide-react'
 import { BekaCore } from '@/components/agents/BekaCore'
 import VoiceSelector from '@/components/agents/VoiceSelector'
@@ -31,6 +33,19 @@ interface AgentRun {
   runId?: string
   startedAt?: string
   taskDesc?: string
+  usage?: { input: number; output: number }
+}
+
+interface AgentSchedule {
+  id: string
+  agent_id: string
+  task: string
+  frequency: 'daily' | 'weekly'
+  weekday?: number
+  hour: number
+  minute: number
+  enabled: boolean
+  last_run?: string
 }
 
 interface ConvMessage { role: 'user' | 'assistant'; content: string; created_at?: string }
@@ -203,49 +218,84 @@ function FloatingChat({ msgs, input, onInput, onSend, onMic, voiceState, selecte
   onVoiceSettings: () => void
 }) {
   const endRef = useRef<HTMLDivElement>(null)
+  const [prevAgent, setPrevAgent] = useState(selectedAgent)
+  const [agentFlash, setAgentFlash] = useState(false)
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs])
+  useEffect(() => {
+    if (selectedAgent !== prevAgent) {
+      setPrevAgent(selectedAgent)
+      setAgentFlash(true)
+      setTimeout(() => setAgentFlash(false), 700)
+    }
+  }, [selectedAgent, prevAgent])
   const selDef = agents.find(a => a.id === selectedAgent)
   const rgb = selDef ? hexToRgb(selDef.color) : '0,212,255'
   const col = selDef?.color ?? '#00D4FF'
+  const AgentIcon = selDef?.icon
 
   return (
     <div style={{
       position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
-      width: 'min(440px, calc(100% - 40px))', zIndex: 8,
-      background: 'rgba(5,9,20,0.82)', backdropFilter: 'blur(18px)',
-      border: `1px solid rgba(${rgb},0.22)`,
+      width: 'min(460px, calc(100% - 40px))', zIndex: 8,
+      background: 'rgba(5,9,20,0.88)', backdropFilter: 'blur(20px)',
+      border: `1px solid rgba(${rgb},0.25)`,
       borderRadius: 14, overflow: 'hidden',
-      boxShadow: `0 8px 40px rgba(0,0,0,0.55), 0 0 0 1px rgba(${rgb},0.06)`,
+      boxShadow: `0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(${rgb},0.08)`,
+      transition: 'border-color .3s, box-shadow .3s',
     }}>
-      {/* Title bar */}
-      <div style={{ padding: '6px 14px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontSize: 9, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.20)', fontWeight: 600 }}>
-          BEKA · {selDef ? selDef.name.toUpperCase() : 'SISTEMA'}
+      {/* Title bar — agent actiu prominent */}
+      <div style={{ padding: '8px 14px 6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          {/* Agent indicator chip */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '3px 8px 3px 5px', borderRadius: 20,
+            background: `rgba(${rgb},0.10)`,
+            border: `1px solid rgba(${rgb},${agentFlash ? '0.6' : '0.2'})`,
+            transition: 'border-color .3s',
+            boxShadow: agentFlash ? `0 0 12px rgba(${rgb},0.4)` : 'none',
+          }}>
+            {AgentIcon ? (
+              <div style={{ width: 16, height: 16, borderRadius: 5, background: `rgba(${rgb},0.15)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <AgentIcon size={9} color={col} strokeWidth={2} />
+              </div>
+            ) : (
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00D4FF', flexShrink: 0 }} />
+            )}
+            <span style={{ fontSize: 10, fontWeight: 700, color: col, letterSpacing: '0.04em' }}>
+              {selDef ? selDef.name : 'BEKA'}
+            </span>
+          </div>
+          {selDef && selDef.id !== 'orchestrator' && (
+            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.18)', letterSpacing: '0.06em' }}>via BEKA</span>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.14)' }}>
-            {voiceState !== 'idle' ? `● ${voiceState.toUpperCase()}` : '◌ STANDBY'}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9, letterSpacing: '0.10em', color: voiceState !== 'idle' ? col : 'rgba(255,255,255,0.14)', transition: 'color .2s' }}>
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: voiceState !== 'idle' ? col : 'rgba(255,255,255,0.1)', boxShadow: voiceState !== 'idle' ? `0 0 6px ${col}` : 'none', transition: 'all .2s' }} />
+            {voiceState !== 'idle' ? voiceState.toUpperCase() : 'STANDBY'}
           </div>
-          <button onClick={onVoiceSettings} title="Configurar veu de BEKA" style={{
-            background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 0 2px',
-            color: 'rgba(255,255,255,0.18)', fontSize: 10, lineHeight: 1,
-          }}>⚙</button>
+          <button onClick={onVoiceSettings} title="Configurar veu de BEKA" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 0 2px', color: 'rgba(255,255,255,0.18)', fontSize: 10, lineHeight: 1 }}>⚙</button>
         </div>
       </div>
 
       {/* Messages */}
       {msgs.length > 0 && (
-        <div style={{ maxHeight: 130, overflowY: 'auto', padding: '10px 14px 6px', display: 'flex', flexDirection: 'column', gap: 5 }}>
-          {msgs.slice(-6).map((msg, i) => {
+        <div style={{ maxHeight: 150, overflowY: 'auto', padding: '8px 14px 4px', display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {msgs.slice(-8).map((msg, i) => {
             const agDef = msg.agentId ? agents.find(a => a.id === msg.agentId) : null
+            const agRgb = agDef ? hexToRgb(agDef.color) : rgb
             return (
-              <div key={i} style={{ display: 'flex', gap: 6, justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+              <div key={i} style={{ display: 'flex', gap: 6, justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', animation: 'fadeUp .15s ease' }}>
                 {msg.role === 'agent' && agDef && (
-                  <div style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, marginTop: 1, background: `rgba(${hexToRgb(agDef.color)},0.15)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 17, height: 17, borderRadius: 5, flexShrink: 0, marginTop: 1, background: `rgba(${agRgb},0.15)`, border: `1px solid rgba(${agRgb},0.2)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {(() => { const Icon = agDef.icon; return <Icon size={8} color={agDef.color} strokeWidth={2} /> })()}
                   </div>
                 )}
-                <div style={{ maxWidth: '72%', padding: '4px 8px', borderRadius: 6, fontSize: 10.5, lineHeight: 1.5, background: msg.role === 'user' ? `rgba(${rgb},0.08)` : 'rgba(255,255,255,0.04)', border: `1px solid ${msg.role === 'user' ? `rgba(${rgb},0.15)` : 'rgba(255,255,255,0.05)'}`, color: msg.role === 'user' ? `rgba(200,230,255,0.8)` : 'rgba(255,255,255,0.55)' }}>
+                <div style={{ maxWidth: '75%', padding: '5px 9px', borderRadius: 7, fontSize: 10.5, lineHeight: 1.5, background: msg.role === 'user' ? `rgba(${rgb},0.09)` : 'rgba(255,255,255,0.04)', border: `1px solid ${msg.role === 'user' ? `rgba(${rgb},0.18)` : 'rgba(255,255,255,0.05)'}`, color: msg.role === 'user' ? `rgba(200,230,255,0.85)` : 'rgba(255,255,255,0.55)', userSelect: 'text' }}>
+                  {msg.role === 'agent' && agDef && agDef.id !== 'orchestrator' && (
+                    <div style={{ fontSize: 8, color: agDef.color, fontWeight: 700, marginBottom: 2, opacity: 0.7 }}>{agDef.name.toUpperCase()}</div>
+                  )}
                   {msg.text}
                 </div>
               </div>
@@ -256,26 +306,11 @@ function FloatingChat({ msgs, input, onInput, onSend, onMic, voiceState, selecte
       )}
 
       {/* Input row */}
-      <div style={{ padding: msgs.length > 0 ? '6px 10px 10px' : '10px', display: 'flex', gap: 6, alignItems: 'center' }}>
-        {/* BEKA wake-word toggle */}
-        <button onClick={onToggleBeka} title={bekaEnabled ? 'Desactivar BEKA per veu' : 'Activar BEKA per veu — digues "BEKA"'} style={{
-          width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-          border: `1.5px solid ${bekaEnabled ? 'rgba(0,212,255,0.6)' : 'rgba(255,255,255,0.08)'}`,
-          background: bekaEnabled ? 'rgba(0,212,255,0.10)' : 'rgba(255,255,255,0.03)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-          boxShadow: bekaEnabled ? '0 0 10px rgba(0,212,255,0.35)' : 'none',
-          transition: 'all .2s',
-        }}>
+      <div style={{ padding: msgs.length > 0 ? '5px 10px 10px' : '10px', display: 'flex', gap: 6, alignItems: 'center' }}>
+        <button onClick={onToggleBeka} title={bekaEnabled ? 'Desactivar BEKA per veu' : 'Activar BEKA per veu — digues "BEKA"'} style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, border: `1.5px solid ${bekaEnabled ? 'rgba(0,212,255,0.6)' : 'rgba(255,255,255,0.08)'}`, background: bekaEnabled ? 'rgba(0,212,255,0.10)' : 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: bekaEnabled ? '0 0 10px rgba(0,212,255,0.35)' : 'none', transition: 'all .2s' }}>
           <Zap size={11} color={bekaEnabled ? '#00D4FF' : 'rgba(255,255,255,0.2)'} strokeWidth={1.8} />
         </button>
-        <button onClick={onMic} style={{
-          width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-          border: `1.5px solid ${voiceState !== 'idle' ? col : 'rgba(255,255,255,0.1)'}`,
-          background: voiceState === 'listening' ? `rgba(${rgb},0.12)` : 'rgba(255,255,255,0.03)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-          boxShadow: voiceState !== 'idle' ? `0 0 8px rgba(${rgb},0.3)` : 'none',
-          transition: 'all .2s',
-        }}>
+        <button onClick={onMic} style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, border: `1.5px solid ${voiceState !== 'idle' ? col : 'rgba(255,255,255,0.1)'}`, background: voiceState === 'listening' ? `rgba(${rgb},0.12)` : 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: voiceState !== 'idle' ? `0 0 8px rgba(${rgb},0.3)` : 'none', transition: 'all .2s' }}>
           {voiceState === 'thinking' || voiceState === 'speaking'
             ? <MicOff size={11} color={col} strokeWidth={1.5} />
             : <Mic size={11} color={voiceState !== 'idle' ? col : 'rgba(255,255,255,0.3)'} strokeWidth={1.5} />}
@@ -283,16 +318,10 @@ function FloatingChat({ msgs, input, onInput, onSend, onMic, voiceState, selecte
         <input
           value={input} onChange={e => onInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && input.trim()) onSend() }}
-          placeholder={selDef ? `Parla amb ${selDef.name}…` : '▸ ORDRE O CONSULTA ALS AGENTS…'}
-          style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, color: 'rgba(255,255,255,0.82)', fontSize: 12, padding: '6px 10px', fontFamily: 'inherit', outline: 'none', letterSpacing: '0.01em' }}
+          placeholder={selDef && selDef.id !== 'orchestrator' ? `Missatge a ${selDef.name}…` : '▸ Escriu a BEKA o a qualsevol agent…'}
+          style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: `1px solid rgba(${rgb},0.12)`, borderRadius: 10, color: 'rgba(255,255,255,0.82)', fontSize: 12, padding: '6px 10px', fontFamily: 'inherit', outline: 'none', letterSpacing: '0.01em', transition: 'border-color .2s' }}
         />
-        <button onClick={onSend} style={{
-          width: 30, height: 30, borderRadius: 7, flexShrink: 0,
-          background: input.trim() ? `rgba(${rgb},0.14)` : 'rgba(255,255,255,0.03)',
-          border: input.trim() ? `1px solid rgba(${rgb},0.3)` : '1px solid rgba(255,255,255,0.05)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: input.trim() ? 'pointer' : 'default', color: input.trim() ? col : '#253545', transition: 'all .15s',
-        }}>
+        <button onClick={onSend} style={{ width: 30, height: 30, borderRadius: 7, flexShrink: 0, background: input.trim() ? `rgba(${rgb},0.18)` : 'rgba(255,255,255,0.03)', border: input.trim() ? `1px solid rgba(${rgb},0.35)` : '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: input.trim() ? 'pointer' : 'default', color: input.trim() ? col : '#253545', transition: 'all .15s' }}>
           <Send size={11} />
         </button>
       </div>
@@ -604,18 +633,16 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
 
       const CX = W / 2
       const CY = H / 2
-      const RX = (W / 2) * 0.90 * (INIT_CAM / FOCAL)
-      const RY = (H / 2) * 0.84 * (INIT_CAM / FOCAL)
+      // Fixed 2D radial positions — nodes never move with zoom
+      const RX = (W / 2) * 0.84
+      const RY = (H / 2) * 0.78
 
       const project = (norm: { x: number; y: number; z: number }) => {
-        const dz = camZ - norm.z
-        if (dz < 10) return null
-        const s = FOCAL / dz
         return {
-          x: CX + norm.x * RX * s,
-          y: CY + norm.y * RY * s,
-          r: Math.max(22, 32 * s * (INIT_CAM / FOCAL)),
-          depth: dz,
+          x: CX + norm.x * RX,
+          y: CY + norm.y * RY,
+          r: Math.max(26, 30 + norm.z * 0.04),
+          depth: 900,
         }
       }
 
@@ -631,7 +658,7 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
         const proj = project(norm); if (!proj) continue
         const isAct = active.has(agent.id) || sel === agent.id
         const rgb   = hexToRgb(agent.color)
-        const fo    = Math.min(1, 0.3 + 0.7 * (FOCAL / proj.depth))
+        const fo    = 1
 
         const dx = proj.x - CX; const dy = proj.y - CY
         const dist = Math.sqrt(dx*dx + dy*dy) || 1
@@ -647,29 +674,29 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
 
         if (isAct) {
           const grad = ctx.createLinearGradient(sx0, sy0, sx1, sy1)
-          grad.addColorStop(0,   `rgba(${rgb},0.10)`)
-          grad.addColorStop(0.5, `rgba(${rgb},${0.45 * fo})`)
-          grad.addColorStop(1,   `rgba(${rgb},${0.75 * fo})`)
+          grad.addColorStop(0,   `rgba(${rgb},0.15)`)
+          grad.addColorStop(0.5, `rgba(${rgb},0.55)`)
+          grad.addColorStop(1,   `rgba(${rgb},0.85)`)
 
           ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.quadraticCurveTo(cx2, cy2, sx1, sy1)
-          ctx.strokeStyle = `rgba(${rgb},${0.04 * fo})`; ctx.lineWidth = 14; ctx.stroke()
+          ctx.strokeStyle = `rgba(${rgb},0.06)`; ctx.lineWidth = 16; ctx.stroke()
           ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.quadraticCurveTo(cx2, cy2, sx1, sy1)
-          ctx.strokeStyle = `rgba(${rgb},${0.07 * fo})`; ctx.lineWidth = 8; ctx.stroke()
+          ctx.strokeStyle = `rgba(${rgb},0.12)`; ctx.lineWidth = 8; ctx.stroke()
           ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.quadraticCurveTo(cx2, cy2, sx1, sy1)
-          ctx.strokeStyle = `rgba(${rgb},${0.18 * fo})`; ctx.lineWidth = 2.5; ctx.stroke()
+          ctx.strokeStyle = `rgba(${rgb},0.28)`; ctx.lineWidth = 2.5; ctx.stroke()
           ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.quadraticCurveTo(cx2, cy2, sx1, sy1)
-          ctx.strokeStyle = grad; ctx.lineWidth = 0.9; ctx.stroke()
+          ctx.strokeStyle = grad; ctx.lineWidth = 1.2; ctx.stroke()
 
-          const endGlow = ctx.createRadialGradient(sx1, sy1, 0, sx1, sy1, 10)
-          endGlow.addColorStop(0, `rgba(${rgb},${0.55 * fo})`); endGlow.addColorStop(1, 'rgba(0,0,0,0)')
+          const endGlow = ctx.createRadialGradient(sx1, sy1, 0, sx1, sy1, 12)
+          endGlow.addColorStop(0, `rgba(${rgb},0.65)`); endGlow.addColorStop(1, 'rgba(0,0,0,0)')
           ctx.fillStyle = endGlow
-          ctx.beginPath(); ctx.arc(sx1, sy1, 10, 0, Math.PI * 2); ctx.fill()
+          ctx.beginPath(); ctx.arc(sx1, sy1, 12, 0, Math.PI * 2); ctx.fill()
         } else {
-          // Idle: solid luminous blue line (same style, lower opacity)
+          // Idle: visible blue line
           ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.quadraticCurveTo(cx2, cy2, sx1, sy1)
-          ctx.strokeStyle = `rgba(0,174,239,${0.12 * fo})`; ctx.lineWidth = 5; ctx.stroke()
+          ctx.strokeStyle = `rgba(0,174,239,0.12)`; ctx.lineWidth = 6; ctx.stroke()
           ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.quadraticCurveTo(cx2, cy2, sx1, sy1)
-          ctx.strokeStyle = `rgba(0,174,239,${0.30 * fo})`; ctx.lineWidth = 1.0; ctx.stroke()
+          ctx.strokeStyle = `rgba(0,174,239,0.45)`; ctx.lineWidth = 1.2; ctx.stroke()
         }
       }
 
@@ -679,7 +706,7 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
         const proj = project(norm); if (!proj) continue
         const isAct = active.has(agent.id) || sel === agent.id
         const isRun = rnz[agent.id]?.status === 'running'
-        const fo    = Math.min(1, FOCAL / proj.depth)
+        const fo    = 1
 
         const dx = proj.x - CX; const dy = proj.y - CY
         const dist = Math.sqrt(dx*dx + dy*dy) || 1
@@ -718,7 +745,7 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
         const isRun = rnz[agent.id]?.status === 'running'
         const rgb   = hexToRgb(agent.color)
         const r     = proj.r
-        const fo    = Math.min(1, 0.4 + 0.6 * (FOCAL / proj.depth))
+        const fo    = 1
 
         newProj[agent.id] = { x: proj.x, y: proj.y, r }
 
@@ -750,9 +777,9 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
 
         const fill = ctx.createRadialGradient(proj.x - r*0.28, proj.y - r*0.28, 0, proj.x, proj.y, r)
         if (isAct) {
-          fill.addColorStop(0, `rgba(${rgb},${0.45 * fo})`); fill.addColorStop(1, `rgba(${rgb},${0.08 * fo})`)
+          fill.addColorStop(0, `rgba(${rgb},0.50)`); fill.addColorStop(1, `rgba(${rgb},0.10)`)
         } else {
-          fill.addColorStop(0, `rgba(255,255,255,${0.07 * fo})`); fill.addColorStop(1, `rgba(255,255,255,${0.01 * fo})`)
+          fill.addColorStop(0, `rgba(255,255,255,0.11)`); fill.addColorStop(1, `rgba(255,255,255,0.02)`)
         }
         ctx.fillStyle = fill
         ctx.beginPath(); ctx.arc(proj.x, proj.y, r, 0, Math.PI * 2); ctx.fill()
@@ -764,8 +791,8 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
           proj.x - r * 0.30, proj.y - r * 0.38, 0,
           proj.x - r * 0.06, proj.y - r * 0.06, r * 0.84
         )
-        glassSpec.addColorStop(0,    `rgba(255,255,255,${(isAct ? 0.40 : 0.18) * fo})`)
-        glassSpec.addColorStop(0.38, `rgba(255,255,255,${(isAct ? 0.10 : 0.04) * fo})`)
+        glassSpec.addColorStop(0,    `rgba(255,255,255,${isAct ? 0.42 : 0.25})`)
+        glassSpec.addColorStop(0.38, `rgba(255,255,255,${isAct ? 0.10 : 0.05})`)
         glassSpec.addColorStop(1,    'rgba(0,0,0,0)')
         ctx.fillStyle = glassSpec
         ctx.fillRect(proj.x - r, proj.y - r, r * 2, r * 2)
@@ -785,34 +812,32 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
           ctx.strokeStyle = `rgba(${rgb},${0.18 * fo})`; ctx.lineWidth = 1.5; ctx.stroke()
         }
         ctx.beginPath(); ctx.arc(proj.x, proj.y, r, 0, Math.PI * 2)
-        ctx.strokeStyle = isAct ? agent.color + 'CC' : `rgba(255,255,255,${0.11 * fo})`
-        ctx.lineWidth = isAct ? 1.4 : 0.8; ctx.stroke()
+        ctx.strokeStyle = isAct ? agent.color + 'DD' : `rgba(255,255,255,0.22)`
+        ctx.lineWidth = isAct ? 1.6 : 1.0; ctx.stroke()
 
         // icon inside node
         const iconRgb   = isAct ? hexToRgb(agent.color) : '255,255,255'
-        const iconAlpha = isAct ? 0.72 * fo : 0.28 * fo
+        const iconAlpha = isAct ? 0.80 : 0.50
         drawAgentIcon(agent.id, proj.x, proj.y, r * 0.44, iconRgb, iconAlpha)
 
-        const fs = Math.max(8, Math.min(13, r * 0.58))
+        const fs = Math.max(11, Math.min(14, r * 0.58))
         ctx.font = `${isAct ? 700 : 500} ${fs}px Inter,system-ui,sans-serif`
         ctx.textAlign = 'center'; ctx.textBaseline = 'top'
-        ctx.fillStyle = isAct ? agent.color : `rgba(255,255,255,${0.32 * fo})`
-        ctx.fillText(agent.name, proj.x, proj.y + r + 5)
+        ctx.fillStyle = isAct ? agent.color : `rgba(255,255,255,0.55)`
+        ctx.fillText(agent.name, proj.x, proj.y + r + 6)
 
-        // Category label (small uppercase with letter-spacing simulation below name)
-        const catFs = Math.max(5.5, Math.min(8.5, r * 0.34))
+        const catFs = Math.max(8, Math.min(9.5, r * 0.34))
         const catText = (AGENT_CAT[agent.id] ?? '').split('').join(' ')
         ctx.font = `600 ${catFs}px Inter,system-ui,sans-serif`
-        ctx.fillStyle = `rgba(255,255,255,${(isAct ? 0.28 : 0.14) * fo})`
-        ctx.fillText(catText, proj.x, proj.y + r + 5 + fs + 4)
+        ctx.fillStyle = isAct ? `rgba(${rgb},0.55)` : `rgba(255,255,255,0.22)`
+        ctx.fillText(catText, proj.x, proj.y + r + 6 + fs + 3)
 
-        // Status label (third line) when active
         if (isAct) {
           const stCfg = STATUS_CFG[rnz[agent.id]?.status ?? 'idle']
-          const stFs = Math.max(5, Math.min(7.5, r * 0.28))
+          const stFs = Math.max(7, Math.min(9, r * 0.28))
           ctx.font = `700 ${stFs}px Inter,system-ui,sans-serif`
-          ctx.fillStyle = `rgba(${rgb},${0.70 * fo})`
-          ctx.fillText(stCfg.label.toUpperCase(), proj.x, proj.y + r + 5 + fs + 4 + catFs + 5)
+          ctx.fillStyle = `rgba(${rgb},0.80)`
+          ctx.fillText(stCfg.label.toUpperCase(), proj.x, proj.y + r + 6 + fs + 3 + catFs + 5)
         }
 
         const cfg  = STATUS_CFG[rnz[agent.id]?.status ?? 'idle']
@@ -842,10 +867,12 @@ function AgentRadial3D({ agents, runs, activeAgents, selectedAgent, onSelect, be
 
 // ── Agent Panel ────────────────────────────────────────────────────────────────
 
-function AgentPanel({ agent, run, prompt, onClose, onStop, onRun, onSavePrompt, convHistory }: {
+function AgentPanel({ agent, run, prompt, onClose, onStop, onRun, onSavePrompt, convHistory, onClearHistory, schedules, onAddSchedule, onDeleteSchedule, onToggleSchedule, memory, onClearMemory }: {
   agent: AgentDef; run: AgentRun; prompt: string; onClose: () => void
   onStop: () => void; onRun: (t: string) => void; onSavePrompt: (p: string) => void
-  convHistory: ConvMessage[]
+  convHistory: ConvMessage[]; onClearHistory: () => void
+  schedules: AgentSchedule[]; onAddSchedule: (s: Omit<AgentSchedule,'id'>) => void; onDeleteSchedule: (id: string) => void; onToggleSchedule: (id: string, enabled: boolean) => void
+  memory: string; onClearMemory: () => void
 }) {
   const Icon = agent.icon
   const cfg = STATUS_CFG[run.status]
@@ -853,10 +880,46 @@ function AgentPanel({ agent, run, prompt, onClose, onStop, onRun, onSavePrompt, 
   const [task, setTask] = useState('')
   const [editPrompt, setEditPrompt] = useState(false)
   const [promptDraft, setPromptDraft] = useState(prompt)
+  const [copied, setCopied] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [activeTab, setActiveTab] = useState<'output' | 'history' | 'schedule'>('output')
+  const [showScheduleForm, setShowScheduleForm] = useState(false)
+  const [schedForm, setSchedForm] = useState({ task: '', frequency: 'daily' as 'daily'|'weekly', weekday: 1, hour: 9, minute: 0 })
+  const [histSearch, setHistSearch] = useState('')
   const outputEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { outputEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [run.output])
   useEffect(() => { setPromptDraft(prompt) }, [prompt])
+
+  // Cost estimate (Claude Sonnet 4.5 pricing)
+  const costEstimate = run.usage
+    ? ((run.usage.input * 3 + run.usage.output * 15) / 1_000_000).toFixed(4)
+    : null
+  const totalTokens = run.usage ? run.usage.input + run.usage.output : null
+
+  const copyOutput = () => {
+    const text = run.output || convHistory.map(m => `${m.role === 'user' ? 'TU' : agent.name}: ${m.content}`).join('\n\n')
+    if (!text) return
+    navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) })
+  }
+
+  const downloadOutput = (format: 'txt' | 'md') => {
+    const text = run.output
+    if (!text) return
+    const date = new Date().toLocaleString('ca-ES', { dateStyle: 'short', timeStyle: 'short' })
+    const content = format === 'md'
+      ? `# ${agent.name} — ${run.taskDesc || 'Output'}\n*${date}*\n\n---\n\n${text}`
+      : `${agent.name} — ${run.taskDesc || 'Output'}\n${date}\n\n${text}`
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${agent.id}-${Date.now()}.${format}`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const WEEKDAYS = ['Diu','Dll','Dim','Dmc','Dij','Div','Dis']
 
   return (
     <div style={{ width: 340, flexShrink: 0, background: '#080C18', borderLeft: `1px solid rgba(${hexToRgb(agent.color)},0.2)`, display: 'flex', flexDirection: 'column', animation: 'slideIn .2s ease' }}>
@@ -903,6 +966,15 @@ function AgentPanel({ agent, run, prompt, onClose, onStop, onRun, onSavePrompt, 
             <button onClick={() => { onSavePrompt(promptDraft); setEditPrompt(false) }} style={{ flex: 1, padding: '4px', borderRadius: 5, background: `rgba(${hexToRgb(agent.color)},0.14)`, border: `1px solid rgba(${hexToRgb(agent.color)},0.3)`, color: agent.color, fontSize: 10.5, fontWeight: 600, cursor: 'pointer' }}>Guardar</button>
             <button onClick={() => setEditPrompt(false)} style={{ padding: '4px 9px', borderRadius: 5, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.35)', fontSize: 10.5, cursor: 'pointer' }}>Cancel</button>
           </div>
+          {memory && (
+            <div style={{ marginTop: 8, padding: '7px 9px', background: 'rgba(0,0,0,0.2)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <span style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.25)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Memòria activa</span>
+                <button onClick={onClearMemory} style={{ fontSize: 8.5, color: 'rgba(239,68,68,0.4)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Esborrar</button>
+              </div>
+              <div style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.22)', lineHeight: 1.5, maxHeight: 72, overflowY: 'auto', userSelect: 'text' }}>{memory}</div>
+            </div>
+          )}
         </div>
       )}
 
@@ -923,37 +995,202 @@ function AgentPanel({ agent, run, prompt, onClose, onStop, onRun, onSavePrompt, 
         </div>
       </div>
 
-      {/* Real-time output */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '10px 14px' }}>
-        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.28)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
-          <Eye size={9} /> Output en temps real
-          {running && <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#00D4FF', animation: 'brainBreath 0.9s ease infinite' }} />}
-        </div>
-        {run.output ? (
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', lineHeight: 1.65, fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-            {run.output}
-            {running && <span style={{ animation: 'blink 1s step-end infinite', color: agent.color }}>▋</span>}
-          </div>
-        ) : (
-          <>
-            {convHistory.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.18)', marginBottom: 4, letterSpacing: '0.06em' }}>HISTORIAL RECENT</div>
-                {convHistory.slice(-6).map((m, i) => (
-                  <div key={i} style={{ fontSize: 10.5, color: m.role === 'user' ? 'rgba(200,230,255,0.55)' : 'rgba(255,255,255,0.4)', lineHeight: 1.5, padding: '5px 8px', background: m.role === 'user' ? 'rgba(0,212,255,0.04)' : 'rgba(255,255,255,0.02)', borderRadius: 5, borderLeft: `2px solid ${m.role === 'user' ? 'rgba(0,212,255,0.25)' : 'rgba(255,255,255,0.1)'}` }}>
-                    <span style={{ fontSize: 8, color: m.role === 'user' ? '#00D4FF' : 'rgba(255,255,255,0.25)', fontWeight: 700, display: 'block', marginBottom: 2 }}>{m.role === 'user' ? 'TU' : agent.name.toUpperCase()}</span>
-                    {m.content.slice(0, 120)}{m.content.length > 120 ? '…' : ''}
-                  </div>
-                ))}
-              </div>
-            )}
-            {convHistory.length === 0 && (
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.12)', textAlign: 'center', marginTop: 20 }}>Cap activitat recent.</div>
-            )}
-          </>
-        )}
-        <div ref={outputEndRef} />
+      {/* Tab selector */}
+      <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+        {(['output', 'history', 'schedule'] as const).map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab)} style={{
+            flex: 1, padding: '7px 0', fontSize: 9.5, fontWeight: 600, letterSpacing: '0.06em',
+            background: 'none', border: 'none', cursor: 'pointer', textTransform: 'uppercase',
+            color: activeTab === tab ? agent.color : 'rgba(255,255,255,0.22)',
+            borderBottom: activeTab === tab ? `2px solid ${agent.color}` : '2px solid transparent',
+            transition: 'color .15s',
+          }}>
+            {tab === 'output' ? 'Output' : tab === 'history' ? `Historial (${convHistory.length / 2 | 0})` : `Cron (${schedules.filter(s => s.agent_id === agent.id).length})`}
+          </button>
+        ))}
       </div>
+
+      {/* Output tab */}
+      {activeTab === 'output' && (
+        <div style={{ flex: 1, overflowY: 'auto', padding: '10px 14px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.28)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Eye size={9} /> Output en temps real
+            {running && <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#00D4FF', animation: 'brainBreath 0.9s ease infinite' }} />}
+            {costEstimate && !running && (
+              <span style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.2)', fontWeight: 500, letterSpacing: '0.03em', textTransform: 'none', marginLeft: 2 }}>
+                ~${costEstimate} · {totalTokens! > 999 ? `${(totalTokens! / 1000).toFixed(1)}k` : totalTokens} tok
+              </span>
+            )}
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+              {run.output && (
+                <>
+                  <button onClick={() => downloadOutput('md')} title="Descarregar .md" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', padding: 2, display: 'flex', alignItems: 'center', fontSize: 8, gap: 2 }}>
+                    ↓md
+                  </button>
+                  <button onClick={() => downloadOutput('txt')} title="Descarregar .txt" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', padding: 2, display: 'flex', alignItems: 'center', fontSize: 8, gap: 2 }}>
+                    ↓txt
+                  </button>
+                  <button onClick={() => setExpanded(true)} title="Expandir" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', padding: 2, display: 'flex', alignItems: 'center' }}>
+                    <Maximize2 size={10} />
+                  </button>
+                </>
+              )}
+              <button onClick={copyOutput} title="Copiar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied ? '#22C55E' : 'rgba(255,255,255,0.25)', padding: 2, display: 'flex', alignItems: 'center', transition: 'color .2s' }}>
+                {copied ? <Check size={10} /> : <Copy size={10} />}
+              </button>
+            </div>
+          </div>
+          {run.output ? (
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', lineHeight: 1.65, fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-word', userSelect: 'text' }}>
+              {run.output}
+              {running && <span style={{ animation: 'blink 1s step-end infinite', color: agent.color }}>▋</span>}
+            </div>
+          ) : (
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.12)', textAlign: 'center', marginTop: 20 }}>
+              {convHistory.length > 0 ? 'Escriu una tasca per iniciar.' : 'Cap activitat recent.'}
+            </div>
+          )}
+          <div ref={outputEndRef} />
+        </div>
+      )}
+
+      {/* History tab */}
+      {activeTab === 'history' && (
+        <div style={{ flex: 1, overflowY: 'auto', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {convHistory.length > 0 ? (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.18)', letterSpacing: '0.06em' }}>{convHistory.length / 2 | 0} CONVERSES GUARDADES</span>
+                <button onClick={onClearHistory} title="Esborrar historial" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(239,68,68,0.4)', display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, padding: 0 }}>
+                  <Trash2 size={9} /> Netejar
+                </button>
+              </div>
+              <input
+                value={histSearch}
+                onChange={e => setHistSearch(e.target.value)}
+                placeholder="Cercar a l'historial…"
+                style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, color: 'rgba(255,255,255,0.6)', fontSize: 10.5, padding: '5px 9px', outline: 'none', fontFamily: 'inherit', marginBottom: 2 }}
+              />
+              {convHistory.filter(m => !histSearch || m.content.toLowerCase().includes(histSearch.toLowerCase())).map((m, i) => (
+                <div key={i} style={{ fontSize: 10.5, color: m.role === 'user' ? 'rgba(200,230,255,0.6)' : 'rgba(255,255,255,0.45)', lineHeight: 1.6, padding: '6px 9px', background: m.role === 'user' ? 'rgba(0,212,255,0.05)' : 'rgba(255,255,255,0.02)', borderRadius: 6, borderLeft: `2px solid ${m.role === 'user' ? 'rgba(0,212,255,0.3)' : 'rgba(255,255,255,0.12)'}`, userSelect: 'text' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                    <span style={{ fontSize: 8, color: m.role === 'user' ? '#00D4FF' : `rgba(${hexToRgb(agent.color)},0.6)`, fontWeight: 700 }}>{m.role === 'user' ? 'TU' : agent.name.toUpperCase()}</span>
+                    {m.created_at && <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.15)' }}>{new Date(m.created_at).toLocaleString('ca-ES', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}</span>}
+                  </div>
+                  {m.content}
+                </div>
+              ))}
+            </>
+          ) : (
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.12)', textAlign: 'center', marginTop: 20 }}>Cap historial guardat.</div>
+          )}
+        </div>
+      )}
+
+      {/* Schedule tab */}
+      {activeTab === 'schedule' && (
+        <div style={{ flex: 1, overflowY: 'auto', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.28)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Execucions programades</span>
+            <button onClick={() => setShowScheduleForm(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '2px 7px', borderRadius: 5, border: `1px solid rgba(${hexToRgb(agent.color)},0.3)`, background: `rgba(${hexToRgb(agent.color)},0.08)`, color: agent.color, fontSize: 9.5, fontWeight: 600, cursor: 'pointer' }}>
+              + Nova
+            </button>
+          </div>
+
+          {showScheduleForm && (
+            <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 7 }}>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.28)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Nova programació</div>
+              <textarea
+                value={schedForm.task}
+                onChange={e => setSchedForm(f => ({ ...f, task: e.target.value }))}
+                placeholder="Tasca a executar…"
+                style={{ width: '100%', boxSizing: 'border-box', minHeight: 56, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, color: 'rgba(255,255,255,0.7)', fontSize: 10.5, lineHeight: 1.5, padding: '6px 9px', resize: 'vertical', outline: 'none', fontFamily: 'inherit' }}
+              />
+              <div style={{ display: 'flex', gap: 5 }}>
+                <select value={schedForm.frequency} onChange={e => setSchedForm(f => ({ ...f, frequency: e.target.value as 'daily'|'weekly' }))}
+                  style={{ flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 5, color: 'rgba(255,255,255,0.6)', fontSize: 10.5, padding: '4px 6px', outline: 'none' }}>
+                  <option value="daily">Cada dia</option>
+                  <option value="weekly">Cada setmana</option>
+                </select>
+                {schedForm.frequency === 'weekly' && (
+                  <select value={schedForm.weekday} onChange={e => setSchedForm(f => ({ ...f, weekday: +e.target.value }))}
+                    style={{ flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 5, color: 'rgba(255,255,255,0.6)', fontSize: 10.5, padding: '4px 6px', outline: 'none' }}>
+                    {WEEKDAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+                  </select>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Hora:</span>
+                <input type="number" min={0} max={23} value={schedForm.hour} onChange={e => setSchedForm(f => ({ ...f, hour: +e.target.value }))}
+                  style={{ width: 46, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 5, color: 'rgba(255,255,255,0.6)', fontSize: 10.5, padding: '4px 6px', outline: 'none', textAlign: 'center' }} />
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>:</span>
+                <input type="number" min={0} max={59} step={5} value={schedForm.minute} onChange={e => setSchedForm(f => ({ ...f, minute: +e.target.value }))}
+                  style={{ width: 46, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 5, color: 'rgba(255,255,255,0.6)', fontSize: 10.5, padding: '4px 6px', outline: 'none', textAlign: 'center' }} />
+              </div>
+              <div style={{ display: 'flex', gap: 5 }}>
+                <button onClick={() => {
+                  if (!schedForm.task.trim()) return
+                  onAddSchedule({ agent_id: agent.id, task: schedForm.task, frequency: schedForm.frequency, weekday: schedForm.frequency === 'weekly' ? schedForm.weekday : undefined, hour: schedForm.hour, minute: schedForm.minute, enabled: true })
+                  setSchedForm({ task: '', frequency: 'daily', weekday: 1, hour: 9, minute: 0 })
+                  setShowScheduleForm(false)
+                }} style={{ flex: 1, padding: '4px', borderRadius: 5, background: `rgba(${hexToRgb(agent.color)},0.14)`, border: `1px solid rgba(${hexToRgb(agent.color)},0.3)`, color: agent.color, fontSize: 10.5, fontWeight: 600, cursor: 'pointer' }}>Guardar</button>
+                <button onClick={() => setShowScheduleForm(false)} style={{ padding: '4px 9px', borderRadius: 5, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.35)', fontSize: 10.5, cursor: 'pointer' }}>Cancel</button>
+              </div>
+            </div>
+          )}
+
+          {schedules.filter(s => s.agent_id === agent.id).length === 0 && !showScheduleForm ? (
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.12)', textAlign: 'center', marginTop: 20 }}>Cap programació activa.</div>
+          ) : (
+            schedules.filter(s => s.agent_id === agent.id).map(s => (
+              <div key={s.id} style={{ background: s.enabled ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.01)', border: `1px solid ${s.enabled ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.03)'}`, borderRadius: 7, padding: '8px 10px' }}>
+                <div style={{ fontSize: 10.5, color: s.enabled ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.2)', lineHeight: 1.4, marginBottom: 5 }}>{s.task}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>
+                    {s.frequency === 'daily' ? 'Diari' : `${WEEKDAYS[s.weekday ?? 1]}`} {String(s.hour).padStart(2,'0')}:{String(s.minute ?? 0).padStart(2,'0')}
+                  </span>
+                  {s.last_run && <span style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.15)' }}>Últim: {new Date(s.last_run).toLocaleString('ca-ES', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}</span>}
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 5 }}>
+                    <button onClick={() => onToggleSchedule(s.id, !s.enabled)} style={{ fontSize: 9, padding: '2px 6px', borderRadius: 4, border: `1px solid ${s.enabled ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.08)'}`, background: s.enabled ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.03)', color: s.enabled ? '#22C55E' : 'rgba(255,255,255,0.3)', cursor: 'pointer', fontWeight: 600 }}>
+                      {s.enabled ? 'ON' : 'OFF'}
+                    </button>
+                    <button onClick={() => onDeleteSchedule(s.id)} style={{ fontSize: 9, padding: '2px 5px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.05)', color: 'rgba(239,68,68,0.4)', cursor: 'pointer' }}>✕</button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Expanded output modal */}
+      {expanded && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(3,6,15,0.92)', backdropFilter: 'blur(12px)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ width: 26, height: 26, borderRadius: 7, background: `rgba(${hexToRgb(agent.color)},0.14)`, border: `1px solid rgba(${hexToRgb(agent.color)},0.3)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Icon size={12} color={agent.color} />
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 700, color: agent.color, flex: 1 }}>{agent.name} — Output complet</span>
+            {run.output && (
+              <>
+                <button onClick={() => downloadOutput('md')} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)', fontSize: 10.5, cursor: 'pointer' }}>↓ .md</button>
+                <button onClick={() => downloadOutput('txt')} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)', fontSize: 10.5, cursor: 'pointer' }}>↓ .txt</button>
+              </>
+            )}
+            <button onClick={copyOutput} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 6, background: copied ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.05)', border: `1px solid ${copied ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.1)'}`, color: copied ? '#22C55E' : 'rgba(255,255,255,0.5)', fontSize: 10.5, cursor: 'pointer', transition: 'all .2s' }}>
+              {copied ? <><Check size={10} /> Copiat!</> : <><Copy size={10} /> Copiar</>}
+            </button>
+            <button onClick={() => setExpanded(false)} style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.35)' }}>
+              <X size={12} />
+            </button>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px' }}>
+            <pre style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 1.75, fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, userSelect: 'text' }}>
+              {run.output}
+            </pre>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -993,6 +1230,10 @@ export default function AgentsPage() {
   const [bekaPaused, setBekaPaused] = useState(false)
   const [bekaVoiceEnabled, setBekaVoiceEnabled] = useState(false)
   const [showVoiceSelector, setShowVoiceSelector] = useState(false)
+  const [micError, setMicError] = useState<string | null>(null)
+  const [listView, setListView] = useState(false)
+  const [schedules, setSchedules] = useState<AgentSchedule[]>([])
+  const [memories, setMemories] = useState<Record<string, string>>({})
   const bekaRecogRef        = useRef<any>(null)
   const bekaVoiceEnabledRef = useRef(false)
 
@@ -1064,6 +1305,75 @@ export default function AgentsPage() {
       } catch {}
     }
     loadHistory()
+  }, [])
+
+  // ── Load agent prompts from Supabase on mount (point 5) ───────────────────
+  useEffect(() => {
+    async function loadPrompts() {
+      try {
+        const res = await fetch('/api/agents/config')
+        if (!res.ok) return
+        const { configs } = await res.json()
+        if (!configs?.length) return
+        setPrompts(prev => {
+          const next = { ...prev }
+          for (const c of configs) {
+            if (c.agent_id && c.system_prompt) next[c.agent_id] = c.system_prompt
+          }
+          try { localStorage.setItem('guinew-agent-prompts', JSON.stringify(next)) } catch {}
+          return next
+        })
+        const memMap: Record<string, string> = {}
+        for (const c of configs) {
+          if (c.agent_id && c.memory) memMap[c.agent_id] = c.memory
+        }
+        setMemories(memMap)
+      } catch {}
+    }
+    loadPrompts()
+  }, [])
+
+  // ── Load schedules from Supabase on mount (point 7) ──────────────────────
+  useEffect(() => {
+    fetch('/api/agents/schedule')
+      .then(r => r.json())
+      .then(({ schedules: s }) => { if (s?.length) setSchedules(s) })
+      .catch(() => {})
+  }, [])
+
+  const addSchedule = useCallback(async (s: Omit<AgentSchedule, 'id'>) => {
+    try {
+      const res = await fetch('/api/agents/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(s),
+      })
+      if (res.ok) {
+        const { schedule } = await res.json()
+        if (schedule) setSchedules(prev => [schedule, ...prev])
+      }
+    } catch {}
+  }, [])
+
+  const deleteSchedule = useCallback(async (id: string) => {
+    setSchedules(prev => prev.filter(s => s.id !== id))
+    try { await fetch(`/api/agents/schedule?id=${id}`, { method: 'DELETE' }) } catch {}
+  }, [])
+
+  const clearMemory = useCallback(async (agentId: string) => {
+    setMemories(prev => ({ ...prev, [agentId]: '' }))
+    try { await fetch(`/api/agents/config?agentId=${agentId}`, { method: 'DELETE' }) } catch {}
+  }, [])
+
+  const toggleSchedule = useCallback(async (id: string, enabled: boolean) => {
+    setSchedules(prev => prev.map(s => s.id === id ? { ...s, enabled } : s))
+    try {
+      await fetch('/api/agents/schedule', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, enabled }),
+      })
+    } catch {}
   }, [])
 
   // Load history for selected agent when panel opens
@@ -1177,7 +1487,8 @@ export default function AgentsPage() {
         if (data.error) throw new Error(data.error)
 
         const fullOutput = data.response ?? ''
-        setRuns(prev => ({ ...prev, [agentId]: { ...prev[agentId], output: fullOutput, status: 'done' } }))
+        const orchUsage = data.usage ? { input: data.usage.input_tokens, output: data.usage.output_tokens } : undefined
+        setRuns(prev => ({ ...prev, [agentId]: { ...prev[agentId], output: fullOutput, status: 'done', usage: orchUsage } }))
         setConvHistories(prev => ({
           ...prev,
           [agentId]: [...(prev[agentId] || []),
@@ -1185,6 +1496,10 @@ export default function AgentsPage() {
             { role: 'assistant', content: fullOutput },
           ],
         }))
+        // Persist to Supabase
+        const base = { method: 'POST', headers: { 'Content-Type': 'application/json' } }
+        fetch('/api/conversations', { ...base, body: JSON.stringify({ agentId, role: 'user', content: task }) }).catch(() => {})
+        fetch('/api/conversations', { ...base, body: JSON.stringify({ agentId, role: 'assistant', content: fullOutput }) }).catch(() => {})
         if (runId) fetch('/api/agents/runs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'complete', run_id: runId, result: fullOutput.slice(0, 200) }) }).catch(() => {})
         onResult?.(fullOutput)
         return
@@ -1217,7 +1532,8 @@ export default function AgentsPage() {
               setRuns(prev => ({ ...prev, [agentId]: { ...prev[agentId], output: fullOutput } }))
             }
             if (payload.done) {
-              setRuns(prev => ({ ...prev, [agentId]: { ...prev[agentId], status: 'done' } }))
+              const streamUsage = payload.usage ? { input: payload.usage.input, output: payload.usage.output } : undefined
+              setRuns(prev => ({ ...prev, [agentId]: { ...prev[agentId], status: 'done', usage: streamUsage } }))
               setConvHistories(prev => ({
                 ...prev,
                 [agentId]: [...(prev[agentId] || []),
@@ -1225,6 +1541,10 @@ export default function AgentsPage() {
                   { role: 'assistant', content: fullOutput },
                 ],
               }))
+              // Persist to Supabase
+              const base2 = { method: 'POST', headers: { 'Content-Type': 'application/json' } }
+              fetch('/api/conversations', { ...base2, body: JSON.stringify({ agentId, role: 'user', content: task }) }).catch(() => {})
+              fetch('/api/conversations', { ...base2, body: JSON.stringify({ agentId, role: 'assistant', content: fullOutput }) }).catch(() => {})
               if (runId) fetch('/api/agents/runs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'complete', run_id: runId, result: fullOutput.slice(0, 200) }) }).catch(() => {})
             }
             if (payload.error) throw new Error(payload.error)
@@ -1248,6 +1568,12 @@ export default function AgentsPage() {
     }
   }, [runs])
 
+  // ── Clear conversation history ────────────────────────────────────────────
+  const clearHistory = useCallback(async (agentId: string) => {
+    setConvHistories(prev => ({ ...prev, [agentId]: [] }))
+    try { await fetch(`/api/conversations?agentId=${agentId}`, { method: 'DELETE' }) } catch {}
+  }, [])
+
   // ── Save prompt ───────────────────────────────────────────────────────────
   const savePrompt = useCallback((agentId: string, prompt: string) => {
     setPrompts(prev => {
@@ -1255,6 +1581,12 @@ export default function AgentsPage() {
       try { localStorage.setItem('guinew-agent-prompts', JSON.stringify(next)) } catch {}
       return next
     })
+    // Persist to Supabase
+    fetch('/api/agents/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentId, systemPrompt: prompt }),
+    }).catch(() => {})
   }, [])
 
   // ── Chat send ─────────────────────────────────────────────────────────────
@@ -1342,6 +1674,13 @@ export default function AgentsPage() {
   // ── Voice mic ─────────────────────────────────────────────────────────────
   const handleMic = useCallback(() => {
     if (bekaPaused) return
+    const SR = typeof window !== 'undefined' && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+    if (!SR) {
+      setMicError('El teu navegador no suporta reconeixement de veu. Prova Chrome o Edge.')
+      setTimeout(() => setMicError(null), 5000)
+      return
+    }
+    setMicError(null)
     if (!v.open) v.openJarvis()
     else if (v.state === 'idle') v.startListening()
     else if (v.state === 'listening') v.send(v.transcript || '')
@@ -1405,11 +1744,21 @@ export default function AgentsPage() {
             </div>
           </div>
 
-          {/* Floating button group: X (when panel open) + PAUSAR — always side by side */}
+          {/* Floating button group: vista toggle + X + PAUSAR */}
           <div style={{
             position: 'absolute', top: 10, right: 10, zIndex: 25,
             display: 'flex', alignItems: 'center', gap: 6,
           }}>
+            <button onClick={() => setListView(v => !v)} title={listView ? 'Vista visual 3D' : 'Vista llista'} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 28, height: 28, borderRadius: 8, cursor: 'pointer',
+              background: listView ? 'rgba(0,212,255,0.10)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${listView ? 'rgba(0,212,255,0.35)' : 'rgba(255,255,255,0.1)'}`,
+              color: listView ? '#00D4FF' : 'rgba(255,255,255,0.35)',
+              transition: 'all 0.2s',
+            }}>
+              {listView ? <LayoutGrid size={11} /> : <LayoutList size={11} />}
+            </button>
             {selectedAgent && (
               <button onClick={() => setSelectedAgent(null)} title="Tancar panell" style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1446,7 +1795,56 @@ export default function AgentsPage() {
             </div>
           )}
 
+          {/* Vista llista (point 4) */}
+          {listView && (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 4, overflowY: 'auto', padding: '70px 24px 200px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, alignContent: 'start' }}>
+              {AGENTS.map(agent => {
+                const run = runs[agent.id]
+                const cfg = STATUS_CFG[run?.status ?? 'idle']
+                const isRunning = run?.status === 'running'
+                const isSelected = selectedAgent === agent.id
+                const rgb = hexToRgb(agent.color)
+                const Icon = agent.icon
+                const lastMsg = convHistories[agent.id]?.filter(m => m.role === 'assistant').at(-1)
+                return (
+                  <button key={agent.id} onClick={() => { setSelectedAgent(isSelected ? null : agent.id) }} style={{
+                    background: isSelected ? `rgba(${rgb},0.10)` : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${isSelected ? agent.color + '55' : 'rgba(255,255,255,0.07)'}`,
+                    borderRadius: 12, padding: '12px 14px', cursor: 'pointer', textAlign: 'left',
+                    transition: 'all 0.2s', position: 'relative', overflow: 'hidden',
+                  }}>
+                    {isRunning && <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(90deg,transparent,rgba(${rgb},0.07),transparent)`, animation: 'shimmer 1.8s linear infinite' }} />}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, background: `rgba(${rgb},0.13)`, border: `1px solid rgba(${rgb},0.25)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Icon size={14} color={agent.color} strokeWidth={1.8} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: isSelected ? agent.color : 'rgba(255,255,255,0.75)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{agent.name}</div>
+                        <div style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.25)', marginTop: 1 }}>{agent.desc}</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: cfg.color, boxShadow: isRunning ? `0 0 8px ${cfg.color}` : 'none' }} />
+                        <span style={{ fontSize: 8.5, color: cfg.color, fontWeight: 600 }}>{cfg.label}</span>
+                      </div>
+                    </div>
+                    {lastMsg && (
+                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any, borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 7 }}>
+                        {lastMsg.content.slice(0, 120)}{lastMsg.content.length > 120 ? '…' : ''}
+                      </div>
+                    )}
+                    {isSelected && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 7, fontSize: 9.5, color: agent.color }}>
+                        <ChevronRight size={10} /> Panell obert
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
           {/* 3D Radial canvas */}
+          <div style={{ display: listView ? 'none' : 'block', position: 'absolute', inset: 0 }}>
           <AgentRadial3D
             agents={AGENTS}
             runs={runs}
@@ -1456,6 +1854,7 @@ export default function AgentsPage() {
             bekaSizeRef={bekaSizeRef}
             targetCamRef={cam3DTargetRef}
           />
+          </div>
 
           {/* BEKA Core centered — size driven by bekaSizeRef via AgentRadial3D */}
           <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', zIndex: 3 }}>
@@ -1478,9 +1877,22 @@ export default function AgentsPage() {
               "{v.transcript}"
             </div>
           )}
-          {v.error && (
-            <div style={{ position: 'absolute', bottom: 86, left: '50%', transform: 'translateX(-50%)', zIndex: 9,
-              fontSize: 10, color: '#EF4444', maxWidth: 240, textAlign: 'center' }}>{v.error}</div>
+          {(v.error || micError) && (
+            <div style={{
+              position: 'absolute', bottom: 88, left: '50%', transform: 'translateX(-50%)', zIndex: 9,
+              maxWidth: 320, width: 'calc(100% - 40px)',
+              background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.3)',
+              borderRadius: 10, padding: '8px 12px',
+              display: 'flex', alignItems: 'flex-start', gap: 8, animation: 'fadeUp .2s ease',
+            }}>
+              <AlertCircle size={13} color="#EF4444" style={{ flexShrink: 0, marginTop: 1 }} />
+              <span style={{ fontSize: 11, color: 'rgba(255,160,160,0.9)', lineHeight: 1.4, flex: 1 }}>
+                {micError || v.error}
+              </span>
+              <button onClick={() => setMicError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(239,68,68,0.5)', padding: 0, flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+                <X size={11} />
+              </button>
+            </div>
           )}
 
           {/* B E K A status watermark */}
@@ -1523,6 +1935,13 @@ export default function AgentsPage() {
                 onStop={() => stopAgent(selectedAgent)}
                 onRun={task => runAgent(selectedAgent, task)}
                 onSavePrompt={p => savePrompt(selectedAgent, p)}
+                onClearHistory={() => clearHistory(selectedAgent)}
+                schedules={schedules}
+                onAddSchedule={addSchedule}
+                onDeleteSchedule={deleteSchedule}
+                onToggleSchedule={toggleSchedule}
+                memory={memories[selectedAgent] || ''}
+                onClearMemory={() => clearMemory(selectedAgent)}
               />
             </div>
           )}

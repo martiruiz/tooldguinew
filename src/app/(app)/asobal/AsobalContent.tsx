@@ -455,22 +455,35 @@ export function AsobalContent() {
     })
   }
 
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
   const addAction = useCallback(async (key: string) => {
     if (!form.jugador.trim()) return
-    if (editingId) {
-      await supabase.from('asobal_actions').update({
-        type: form.type, equip: form.equip,
-        jugador: form.jugador.trim(), minut: form.minut, top5: form.top5,
-      }).eq('id', editingId)
-    } else {
-      await supabase.from('asobal_actions').insert({
-        match_key: key, type: form.type, equip: form.equip,
-        jugador: form.jugador.trim(), minut: form.minut, top5: form.top5,
-      })
+    setSaving(true)
+    setSaveError(null)
+    try {
+      let error
+      if (editingId) {
+        const res = await supabase.from('asobal_actions').update({
+          type: form.type, equip: form.equip,
+          jugador: form.jugador.trim(), minut: form.minut, top5: form.top5,
+        }).eq('id', editingId)
+        error = res.error
+      } else {
+        const res = await supabase.from('asobal_actions').insert({
+          match_key: key, type: form.type, equip: form.equip,
+          jugador: form.jugador.trim(), minut: form.minut, top5: form.top5,
+        })
+        error = res.error
+      }
+      if (error) { setSaveError(error.message); return }
+      setForm({ type: 'gol', equip: '', jugador: '', minut: '', top5: false })
+      setEditingId(null)
+      setAddingFor(null)
+    } finally {
+      setSaving(false)
     }
-    setForm({ type: 'gol', equip: '', jugador: '', minut: '', top5: false })
-    setEditingId(null)
-    setAddingFor(null)
   }, [form, editingId, supabase])
 
   const deleteAction = useCallback(async (_key: string, id: string) => {
@@ -755,18 +768,24 @@ export function AsobalContent() {
                             <Star size={12} color={form.top5 ? '#16a34a' : '#9aa5b4'} fill={form.top5 ? '#16a34a' : 'none'} />
                             Candidat Top 5 {form.type === 'aturada' ? 'Aturades' : 'Gols'}
                           </label>
+                          {saveError && (
+                            <div style={{ color: '#e53e3e', fontSize: 12, marginBottom: 4, padding: '4px 8px', background: '#fff5f5', borderRadius: 4, border: '1px solid #fed7d7' }}>
+                              Error: {saveError}
+                            </div>
+                          )}
                           <div style={{ display: 'flex', gap: 6 }}>
                             <button
                               className="asb-btn"
-                              style={{ background: 'linear-gradient(135deg,#1b3bda 0%,#131ea6 100%)', color: '#fff', border: 'none' }}
+                              style={{ background: 'linear-gradient(135deg,#1b3bda 0%,#131ea6 100%)', color: '#fff', border: 'none', opacity: saving ? 0.7 : 1 }}
                               onClick={() => addAction(key)}
+                              disabled={saving}
                             >
-                              {editingId ? 'Actualitzar' : 'Guardar'}
+                              {saving ? 'Guardant...' : (editingId ? 'Actualitzar' : 'Guardar')}
                             </button>
                             <button
                               className="asb-btn"
                               style={{ background: '#f0f0f0', color: '#718096' }}
-                              onClick={() => { setAddingFor(null); setEditingId(null); setForm(f => ({ ...f, type: 'gol', equip: '', jugador: '', minut: '', top5: false })) }}
+                              onClick={() => { setAddingFor(null); setEditingId(null); setSaveError(null); setForm(f => ({ ...f, type: 'gol', equip: '', jugador: '', minut: '', top5: false })) }}
                             >
                               Cancel·lar
                             </button>

@@ -566,6 +566,34 @@ export const ORCHESTRATOR_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'trigger_local_agent',
+    description:
+      "Llança un agent local a l'ordinador de Martí per a tasques que requereixen processament de vídeo, Adobe Creative, o scripts Python locals. Crea una tasca a Supabase que el worker local recollirà i executarà. Usar per: jornada ASOBAL, tallar clips, reencuadrar vídeos, processar imatges amb YOLO, scripts Premiere/AE/Photoshop.",
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        script: {
+          type: 'string',
+          enum: ['jornada_runner', 'cut_clips', 'vertical_reframe', 'brand_overlay', 'yolo_extract_frames', 'dropbox_upload', 'apply_prompts', 'cut_plays'],
+          description: 'Script local a executar',
+        },
+        title: {
+          type: 'string',
+          description: 'Descripció breu de la tasca (ex: "Processar jornada J03 ASOBAL")',
+        },
+        params: {
+          type: 'object',
+          description: 'Paràmetres específics del script (ex: config JSON per jornada_runner, paths per cut_clips...)',
+        },
+        client_slug: {
+          type: 'string',
+          description: 'Client relacionat (ex: asobal)',
+        },
+      },
+      required: ['script', 'title'],
+    },
+  },
+  {
     name: 'update_client_memory',
     description:
       "Agent MEM: actualitza la memòria d'un client a Supabase (standings, estadístiques, jugadors, novetats). Crida'l sempre que hi hagi dades noves d'una jornada o fitxatge per mantenir el context fresc.",
@@ -1772,6 +1800,34 @@ async function search_dropbox({ query, path = '', file_type = 'any', limit = 10 
   return { count: files.length, query, files }
 }
 
+// ─── TOOL: trigger_local_agent ────────────────────────────────────────────────
+
+async function trigger_local_agent({ script, title, params = {}, client_slug }: ToolInput) {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('agent_runs')
+    .insert({
+      agent_id: script,
+      dept_id: 'local',
+      title,
+      client_slug: client_slug ?? null,
+      status: 'pending',
+      current_step: `Esperant worker local: ${script}`,
+      draft_content: { script, params },
+    })
+    .select()
+    .single()
+
+  if (error) return { error: error.message }
+
+  return {
+    ok: true,
+    run_id: data.id,
+    message: `✓ Tasca local creada: "${title}". El worker a l'ordinador de Martí l'executarà en el proper cicle de polling (cada 30s). Script: ${script}`,
+    params_summary: Object.keys(params).length ? Object.keys(params).join(', ') : 'cap',
+  }
+}
+
 // ─── DISPATCHER ──────────────────────────────────────────────────────────────
 
 const EXECUTORS: Record<string, (input: ToolInput) => Promise<any>> = {
@@ -1800,6 +1856,7 @@ const EXECUTORS: Record<string, (input: ToolInput) => Promise<any>> = {
   generate_aftereffects_script,
   detect_and_split_video,
   generate_photoshop_psd_script,
+  trigger_local_agent,
   update_client_memory,
 }
 

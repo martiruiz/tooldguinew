@@ -827,6 +827,40 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
     if (typeof window === 'undefined') return {}
     try { return JSON.parse(localStorage.getItem('kanban-col-orders') || '{}') } catch { return {} }
   })
+
+  // Column widths (resizable)
+  const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
+    if (typeof window === 'undefined') return {}
+    try { return JSON.parse(localStorage.getItem('kanban-col-widths') || '{}') } catch { return {} }
+  })
+  const colWidthsRef = useRef(colWidths)
+  colWidthsRef.current = colWidths
+  const resizeRef = useRef<{ status: string; startX: number; startW: number } | null>(null)
+
+  const onResizeMouseDown = (e: React.MouseEvent, status: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const el = document.querySelector(`[data-col="${status}"]`) as HTMLElement
+    if (!el) return
+    resizeRef.current = { status, startX: e.clientX, startW: el.offsetWidth }
+    const onMove = (ev: MouseEvent) => {
+      if (!resizeRef.current) return
+      const delta = ev.clientX - resizeRef.current.startX
+      const newW = Math.max(160, Math.min(600, resizeRef.current.startW + delta))
+      setColWidths(prev => ({ ...prev, [resizeRef.current!.status]: newW }))
+    }
+    const onUp = () => {
+      if (resizeRef.current) {
+        const next = { ...colWidthsRef.current }
+        localStorage.setItem('kanban-col-widths', JSON.stringify(next))
+      }
+      resizeRef.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
   const [editingCol, setEditingCol] = useState<string | null>(null)
   const [editingLabelStatus, setEditingLabelStatus] = useState<string | null>(null)
   const [colCustom, setColCustom] = useState<Record<string, { color: string; icon: string; label?: string }>>({})
@@ -976,7 +1010,9 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
         return (
           <div
             key={col.status}
+            data-col={col.status}
             className={`kanban-col${isOver ? ' kanban-col--over' : ''}`}
+            style={colWidths[col.status] ? { flex: 'none', width: colWidths[col.status] } : undefined}
             onDragOver={(e) => onDragOver(e, col.status)}
             onDragLeave={(e) => {
               if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverCol(null)
@@ -1077,6 +1113,12 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
                 ))
               )}
             </div>
+            {/* Resize handle */}
+            <div
+              className="kcol-resize-handle"
+              onMouseDown={(e) => onResizeMouseDown(e, col.status)}
+              title="Arrossega per redimensionar"
+            />
           </div>
         )
       })}
@@ -1103,8 +1145,8 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
 
         .kanban-col {
           flex: 1 1 0;
-          min-width: 200px;
-          max-width: 340px;
+          min-width: 160px;
+          max-width: 600px;
           display: flex;
           flex-direction: column;
           background: #F4F4F4;
@@ -1112,6 +1154,28 @@ function KanbanView({ tasks, allLabels, onStatusChange, onTaskClick, onDelete, o
           overflow: visible;
           transition: background 0.15s, outline 0.15s;
           max-height: 100%;
+          position: relative;
+        }
+
+        /* Resize handle */
+        .kcol-resize-handle {
+          position: absolute;
+          top: 0; right: -6px;
+          width: 12px; height: 100%;
+          cursor: col-resize;
+          z-index: 10;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .kcol-resize-handle::after {
+          content: '';
+          width: 3px; height: 40px;
+          border-radius: 3px;
+          background: transparent;
+          transition: background 0.15s;
+        }
+        .kcol-resize-handle:hover::after,
+        .kcol-resize-handle:active::after {
+          background: rgba(27,43,75,0.35);
         }
         .kanban-col--over {
           background: #EEF4FF;

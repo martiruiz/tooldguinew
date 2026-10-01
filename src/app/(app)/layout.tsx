@@ -58,7 +58,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <GlobalActivityPanel currentUserId={user.id} profiles={allProfiles || []} />
         <TeamChat currentUserId={user.id} currentUserName={profile.full_name} profiles={allProfiles || []} />
         <ChatFab currentUserId={user.id} profiles={allProfiles || []} />
-        <JarvisOrb />
+        {profile.role === 'superadmin' && <JarvisOrb />}
       </div>
     </NavigationProvider>
     </LanguageProvider>
