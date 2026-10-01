@@ -708,14 +708,40 @@ export function Sidebar({ user }: Props) {
           font-weight: 600;
         }
         :global(.sb-item--crm-active) {
-          background: linear-gradient(135deg, #1B2B4B 0%, #2D4B8E 60%, #1e3a7a 100%) !important;
+          background: linear-gradient(135deg, #1A0505 0%, #3B0A0A 50%, #5C1010 100%) !important;
           color: #FFFFFF !important;
           font-weight: 700;
-          box-shadow: 0 2px 10px rgba(27,43,75,0.35), inset 0 1px 0 rgba(255,255,255,0.12) !important;
-          border: none !important;
-          letter-spacing: 0.01em;
+          border: 1px solid rgba(255,80,80,0.22) !important;
+          box-shadow: 0 2px 14px rgba(180,0,0,0.18), inset 0 0 18px rgba(255,60,60,0.04) !important;
+          letter-spacing: 0.02em;
+          position: relative;
+          overflow: hidden;
         }
-        :global(.sb-item--crm-active svg) { filter: drop-shadow(0 0 4px rgba(255,255,255,0.3)); }
+        :global(.sb-item--crm-active::before) {
+          content: '';
+          position: absolute;
+          top: -40%;
+          left: -50%;
+          width: 25%;
+          height: 180%;
+          background: linear-gradient(90deg, transparent, rgba(255,80,80,0.18), transparent);
+          animation: crmScan 3.5s ease-in-out infinite;
+          pointer-events: none;
+        }
+        @keyframes crmScan {
+          0%   { transform: translateX(0) skewX(-15deg); opacity: 0; }
+          15%  { opacity: 1; }
+          85%  { opacity: 1; }
+          100% { transform: translateX(700%) skewX(-15deg); opacity: 0; }
+        }
+        :global(.sb-item--crm-active:hover) {
+          background: linear-gradient(135deg, #200808 0%, #4A0F0F 50%, #6B1515 100%) !important;
+          box-shadow: 0 4px 20px rgba(220,0,0,0.28), inset 0 0 22px rgba(255,60,60,0.07) !important;
+          border-color: rgba(255,80,80,0.38) !important;
+          transform: translateY(-1px);
+          color: #FFFFFF !important;
+        }
+        :global(.sb-item--crm-active svg) { filter: drop-shadow(0 0 5px rgba(255,100,100,0.55)); }
         :global(.sb-item--scp-active) {
           background: linear-gradient(135deg, #0f3460 0%, #1a6bb5 50%, #c9a84c 100%) !important;
           color: #FFFFFF !important;
