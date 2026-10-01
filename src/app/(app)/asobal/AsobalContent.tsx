@@ -541,18 +541,27 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                           )}
                           <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
                             <span onClick={() => cycleStatus(entry)} style={{ width: 7, height: 7, borderRadius: 1, background: cfg.dot, cursor: 'pointer', flexShrink: 0, display: 'inline-block' }} title={`${cfg.label} — clica per canviar`} />
-                            {entry.content_type && (
-                              <span style={{ fontSize: 8, fontWeight: 800, color: CONTENT_TYPES.find(t => t.key === entry.content_type)?.color ?? '#9ca3af', letterSpacing: '.02em' }}>
-                                {CONTENT_TYPES.find(t => t.key === entry.content_type)?.abbr}
-                              </span>
-                            )}
+                            <span
+                              onClick={e => { e.stopPropagation(); setTypeModal({ day, slot, actionData: '' }) }}
+                              title="Canviar tipus de contingut"
+                              style={{ fontSize: 8, fontWeight: 800, cursor: 'pointer', letterSpacing: '.02em', color: entry.content_type ? (CONTENT_TYPES.find(t => t.key === entry.content_type)?.color ?? '#9ca3af') : '#d1d5db' }}
+                            >
+                              {entry.content_type ? CONTENT_TYPES.find(t => t.key === entry.content_type)?.abbr : '+'}
+                            </span>
                             <button onClick={() => onDelete(entry.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#fca5a5', padding: 0, display: 'flex', lineHeight: 1, flexShrink: 0 }}>
                               <X size={8} />
                             </button>
                           </div>
                         </div>
                       ) : (
-                        <div style={{ height: '100%', minHeight: 52 }} />
+                        <div
+                          onClick={async () => {
+                            await onSave({ jornada, day, time_slot: slot, label: '', status: 'pendent' })
+                            setEditing({ day, slot })
+                            setEditText('')
+                          }}
+                          style={{ height: '100%', minHeight: 52, cursor: 'cell' }}
+                        />
                       )}
                     </td>
                   )
@@ -576,6 +585,7 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
             <div style={{ fontSize: 11, color: '#9aa5b4', marginBottom: 16 }}>
               {(() => {
                 try {
+                  if (!typeModal.actionData) return 'Selecciona el tipus de contingut'
                   const a = JSON.parse(typeModal.actionData)
                   return `${a.type === 'gol' ? '🏐 Gol' : '🖐🏻 Aturada'} · ${a.jugador}${a.minut ? ` · ${a.minut}'` : ''}`
                 } catch { return '' }
@@ -586,14 +596,22 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                 key={ct.key}
                 onClick={async () => {
                   try {
-                    const action = JSON.parse(typeModal.actionData)
-                    const actionLabel = action.type === 'gol' ? '🏐 Gol' : '🖐🏻 Aturada'
-                    const label = `${actionLabel} · ${action.jugador}${action.minut ? ` (${action.minut}')` : ''}`
                     const existing = getEntry(typeModal.day, typeModal.slot)
-                    if (existing) {
-                      await onUpdate(existing.id, { label, content_type: ct.key, action_ref: typeModal.actionData })
+                    if (typeModal.actionData) {
+                      const action = JSON.parse(typeModal.actionData)
+                      const actionLabel = action.type === 'gol' ? '🏐 Gol' : '🖐🏻 Aturada'
+                      const label = `${actionLabel} · ${action.jugador}${action.minut ? ` (${action.minut}')` : ''}`
+                      if (existing) {
+                        await onUpdate(existing.id, { label, content_type: ct.key, action_ref: typeModal.actionData })
+                      } else {
+                        await onSave({ jornada, day: typeModal.day, time_slot: typeModal.slot, label, status: 'pendent', content_type: ct.key, action_ref: typeModal.actionData })
+                      }
                     } else {
-                      await onSave({ jornada, day: typeModal.day, time_slot: typeModal.slot, label, status: 'pendent', content_type: ct.key, action_ref: typeModal.actionData })
+                      if (existing) {
+                        await onUpdate(existing.id, { content_type: ct.key })
+                      } else {
+                        await onSave({ jornada, day: typeModal.day, time_slot: typeModal.slot, label: '', status: 'pendent', content_type: ct.key })
+                      }
                     }
                   } catch (_e) {}
                   setTypeModal(null)
