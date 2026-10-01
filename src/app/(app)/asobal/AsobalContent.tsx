@@ -558,9 +558,15 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                       onDrop={async e => {
                         e.preventDefault()
                         setDragOver(null)
+                        const orgEntryId = e.dataTransfer.getData('asobal-org-entry')
                         const actionData = e.dataTransfer.getData('asobal-action')
-                        if (actionData) { setTypeModal({ day, slot, actionData }) }
-                        else { await doCreate(day, slot) }
+                        if (orgEntryId) {
+                          await doUpdate(orgEntryId, { day, time_slot: slot })
+                        } else if (actionData) {
+                          setTypeModal({ day, slot, actionData })
+                        } else {
+                          await doCreate(day, slot)
+                        }
                       }}
                       className="asb-org-td"
                       style={{ border: `1px solid ${isOver ? '#4f6ef7' : '#eef0f3'}`, background: isOver ? 'rgba(79,110,247,0.06)' : '#fff', padding: 0, verticalAlign: 'top', position: 'relative', transition: 'background .12s, border-color .12s' }}
@@ -584,9 +590,11 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                           return (
                             <div
                               key={entry.id}
+                              draggable
+                              onDragStart={e => { e.dataTransfer.setData('asobal-org-entry', entry.id); e.dataTransfer.effectAllowed = 'move' }}
                               className="asb-org-cell-filled"
                               onClick={() => { setCellModal(entry); setModalLabel(entry.label); setModalCopy(entry.copy ?? '') }}
-                              style={{ padding: '6px 8px 5px', display: 'flex', flexDirection: 'column', gap: 3, cursor: 'pointer', position: 'relative', borderLeft: `3px solid ${cfg.dot}`, borderBottom: cellEntries.length > 1 ? '1px solid #eef0f3' : 'none' }}
+                              style={{ padding: '6px 8px 5px', display: 'flex', flexDirection: 'column', gap: 3, cursor: 'grab', position: 'relative', borderLeft: `3px solid ${cfg.dot}`, borderBottom: cellEntries.length > 1 ? '1px solid #eef0f3' : 'none' }}
                             >
                               <button
                                 onClick={e => { e.stopPropagation(); doDelete(entry.id) }}
