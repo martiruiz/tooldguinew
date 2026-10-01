@@ -1415,18 +1415,9 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
               </div>
 
               {/* Close date + Responsible */}
-              <div className="form-row-2">
-                <div className="form-field">
-                  <label>Data de tancament</label>
-                  <DateInput value={form.close_date} onChange={f('close_date')} />
-                </div>
-                <div className="form-field">
-                  <label>Responsable</label>
-                  <select className="form-select" value={form.responsible_id} onChange={f('responsible_id')}>
-                    <option value="">Sense assignar</option>
-                    {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
-                  </select>
-                </div>
+              <div className="form-field">
+                <label>Data de tancament</label>
+                <DateInput value={form.close_date} onChange={f('close_date')} />
               </div>
 
               {/* Next step + date */}
