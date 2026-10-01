@@ -527,21 +527,21 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
       <div style={{ overflow: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', tableLayout: 'fixed', width: '100%', minWidth: 380 }}>
           <colgroup>
-            <col style={{ width: 44 }} />
+            <col style={{ width: 48 }} />
             {ORG_DAYS.map(d => <col key={d} />)}
           </colgroup>
           <thead>
             <tr>
-              <th style={{ position: 'sticky', top: 0, left: 0, zIndex: 10, background: '#f5f5f7', padding: '7px 4px', fontSize: 9, fontWeight: 600, color: '#b0b0b8', border: '1px solid #ebebeb', textAlign: 'center', whiteSpace: 'nowrap', letterSpacing: '.06em' }}>HORA</th>
+              <th style={{ position: 'sticky', top: 0, left: 0, zIndex: 10, background: '#f7f8fa', padding: '9px 4px', fontSize: 9, fontWeight: 700, color: '#c0c4cc', border: '1px solid #eef0f3', textAlign: 'center', whiteSpace: 'nowrap', letterSpacing: '.08em' }}>HORA</th>
               {ORG_DAYS.map((d, i) => (
-                <th key={d} style={{ position: 'sticky', top: 0, zIndex: 9, background: '#f5f5f7', padding: '7px 4px', fontSize: 10, fontWeight: 700, color: '#3a3a4a', border: '1px solid #ebebeb', textAlign: 'center', letterSpacing: '.04em' }} title={ORG_DAY_LABELS[i]}>{d}</th>
+                <th key={d} style={{ position: 'sticky', top: 0, zIndex: 9, background: '#f7f8fa', padding: '9px 4px', fontSize: 11, fontWeight: 700, color: '#4a5568', border: '1px solid #eef0f3', textAlign: 'center', letterSpacing: '.05em' }} title={ORG_DAY_LABELS[i]}>{d}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {ORG_TIMES.map(slot => (
               <tr key={slot}>
-                <td style={{ position: 'sticky', left: 0, zIndex: 5, background: '#f5f5f7', padding: '4px 6px', fontSize: 9, fontWeight: 600, color: '#a0a0a8', border: '1px solid #ebebeb', textAlign: 'center', whiteSpace: 'nowrap', letterSpacing: '.02em' }}>{slot}</td>
+                <td style={{ position: 'sticky', left: 0, zIndex: 5, background: '#f7f8fa', padding: '0 6px', fontSize: 9, fontWeight: 700, color: '#c0c4cc', border: '1px solid #eef0f3', textAlign: 'center', whiteSpace: 'nowrap', letterSpacing: '.03em' }}>{slot}</td>
                 {ORG_DAYS.map(day => {
                   const entry = getEntry(day, slot)
                   const cellId = `${day}__${slot}`
@@ -563,25 +563,26 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                           if (!existing) await doCreate(day, slot)
                         }
                       }}
-                      style={{ border: `1px solid ${isOver ? '#4f6ef7' : '#f0f0f0'}`, background: isOver ? 'rgba(79,110,247,0.07)' : (entry ? cfg.bg : '#fafafa'), padding: 0, verticalAlign: 'top', height: 64, transition: 'background .12s, border-color .12s' }}
+                      style={{ border: `1px solid ${isOver ? '#4f6ef7' : '#eef0f3'}`, background: isOver ? 'rgba(79,110,247,0.06)' : (entry ? cfg.bg : '#fff'), padding: 0, verticalAlign: 'top', height: 80, transition: 'background .12s, border-color .12s' }}
                     >
                       {entry ? (
                         <div
                           className="asb-org-cell-filled"
                           onClick={() => { setCellModal(entry); setModalLabel(entry.label); setModalCopy(entry.copy ?? '') }}
-                          style={{ height: '100%', padding: '4px 5px', display: 'flex', flexDirection: 'column', gap: 3, overflow: 'hidden', cursor: 'pointer', position: 'relative' }}
+                          style={{ height: '100%', padding: '7px 8px 6px', display: 'flex', flexDirection: 'column', gap: 4, overflow: 'hidden', cursor: 'pointer', position: 'relative', borderLeft: `3px solid ${cfg.dot}` }}
                         >
                           <button
                             onClick={e => { e.stopPropagation(); doDelete(entry.id) }}
                             className="asb-org-delete-btn"
-                            style={{ position: 'absolute', top: 2, right: 2, width: 16, height: 16, borderRadius: 4, border: 'none', background: 'rgba(239,68,68,0.12)', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, opacity: 0, transition: 'opacity .15s', flexShrink: 0 }}
+                            style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: 5, border: 'none', background: 'rgba(239,68,68,0.1)', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, opacity: 0, transition: 'opacity .15s', flexShrink: 0 }}
                           >
-                            <Trash2 size={9} />
+                            <Trash2 size={10} />
                           </button>
                           {(() => {
                             let actionIcon: string | null = null
                             let isTop5 = false
                             let minut: string | null = null
+                            const ct = CONTENT_TYPES.find(t => t.key === entry.content_type)
                             if (entry.action_ref) {
                               try {
                                 const a = JSON.parse(entry.action_ref)
@@ -592,26 +593,26 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                             }
                             return (
                               <>
-                                <div style={{ flex: 1, overflow: 'hidden', lineHeight: 1.3 }}>
+                                <div style={{ flex: 1, overflow: 'hidden' }}>
                                   {actionIcon && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginBottom: 1 }}>
-                                      <span style={{ fontSize: 9 }}>{actionIcon}</span>
-                                      {isTop5 && <Star size={7} color="#f59e0b" fill="#f59e0b" />}
-                                      {minut && <span style={{ fontSize: 8, color: '#9ca3af', fontWeight: 600 }}>{minut}&apos;</span>}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginBottom: 3 }}>
+                                      <span style={{ fontSize: 10, lineHeight: 1 }}>{actionIcon}</span>
+                                      {isTop5 && <Star size={8} color="#f59e0b" fill="#f59e0b" />}
+                                      {minut && <span style={{ fontSize: 9, color: '#a0aec0', fontWeight: 600 }}>{minut}&apos;</span>}
                                     </div>
                                   )}
-                                  <div style={{ fontSize: 10, fontWeight: 600, color: cfg.text, overflow: 'hidden', wordBreak: 'break-word' }}>
-                                    {entry.label || <span style={{ color: '#d1d5db', fontSize: 9 }}>Clic per editar</span>}
+                                  <div style={{ fontSize: 11, fontWeight: 700, color: cfg.text, overflow: 'hidden', lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                    {entry.label || <span style={{ color: '#d1d5db', fontSize: 10, fontWeight: 400 }}>Sense títol</span>}
                                   </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
-                                  <span style={{ width: 7, height: 7, borderRadius: 2, background: cfg.dot, flexShrink: 0, display: 'inline-block' }} />
-                                  {entry.content_type && (
-                                    <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: '.04em', color: CONTENT_TYPES.find(t => t.key === entry.content_type)?.color ?? '#9ca3af' }}>
-                                      {CONTENT_TYPES.find(t => t.key === entry.content_type)?.abbr}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                                  {ct && (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 800, letterSpacing: '.04em', color: ct.color, background: `${ct.color}15`, borderRadius: 4, padding: '2px 5px' }}>
+                                      <ct.Icon size={8} />
+                                      {ct.abbr}
                                     </span>
                                   )}
-                                  {entry.copy && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#a78bfa', flexShrink: 0, display: 'inline-block', marginLeft: 1 }} title="Té copy" />}
+                                  {entry.copy && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#a78bfa', flexShrink: 0, display: 'inline-block' }} title="Té copy" />}
                                 </div>
                               </>
                             )
@@ -620,9 +621,10 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                       ) : (
                         <div
                           onClick={() => { doCreate(day, slot) }}
-                          style={{ height: '100%', minHeight: 58, cursor: 'cell', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          className="asb-org-cell-empty"
+                          style={{ height: '100%', minHeight: 78, cursor: 'cell', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         >
-                          <span style={{ fontSize: 14, color: '#e5e7eb', fontWeight: 300, lineHeight: 1 }}>+</span>
+                          <Plus size={13} color="#d1d5db" strokeWidth={1.5} className="asb-org-plus" />
                         </div>
                       )}
                     </td>
@@ -919,6 +921,8 @@ export function AsobalContent() {
         .asb-action-row { display:flex; align-items:center; gap:8px; padding:6px 14px; border-top:1px solid rgba(0,0,0,0.05); flex-wrap:wrap; }
         .asb-action-row:hover { background:rgba(0,0,0,0.02); }
         .asb-org-cell-filled:hover .asb-org-delete-btn { opacity: 1 !important; }
+        .asb-org-cell-empty .asb-org-plus { opacity: 0; transition: opacity .15s; }
+        .asb-org-cell-empty:hover .asb-org-plus { opacity: 1; }
         .asb-badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:20px; letter-spacing:.04em; }
         .asb-aturada { background:rgba(27,59,218,0.1); color:#1b3bda; }
         .asb-gol { background:rgba(245,166,35,0.15); color:#d48a00; }
