@@ -20,12 +20,18 @@ export function JarvisOrb() {
     }
   }, [])
 
-  // ── Double-clap detection (background mic) ──────────────────────────────
+  // ── Double-clap detection (only if mic already granted, no new prompt) ──
   useEffect(() => {
     let ctx: AudioContext | null = null
     let frameId = 0
-    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+    if (!navigator.permissions) return
+    navigator.permissions.query({ name: 'microphone' as PermissionName })
+      .then(status => {
+        if (status.state !== 'granted') return
+        return navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      })
       .then(stream => {
+        if (!stream) return
         ctx = new AudioContext()
         const analyser = ctx.createAnalyser()
         analyser.fftSize = 256
@@ -55,44 +61,33 @@ export function JarvisOrb() {
     return () => { cancelAnimationFrame(frameId); ctx?.close() }
   }, [])
 
-  // ── Wake-word recognition (paused while conversation is active) ────────────
+  // ── Wake-word recognition (only if mic already granted, no new prompt) ────
   useEffect(() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SR) return
-    let paused = openRef.current
-    const recog = new SR()
-    recog.lang = 'ca-ES'
-    recog.continuous = true
-    recog.interimResults = false
-    recog.onresult = (e: any) => {
-      const txt = (e.results[e.results.length - 1][0].transcript ?? '').toLowerCase()
-      if (txt.includes('jarvis') && !openRef.current) {
-        window.dispatchEvent(new Event('openJarvis'))
-      }
-    }
-    recog.onend = () => {
-      if (!paused) { try { recog.start() } catch {} }
-    }
-
-    const pause = () => {
-      paused = true
-      try { recog.abort() } catch {}
-    }
-    const resume = () => {
-      paused = false
-      try { recog.start() } catch {}
-    }
-
-    window.addEventListener('openJarvis', pause)
-    window.addEventListener('closeJarvis', resume)
-
-    if (!paused) { try { recog.start() } catch {} }
-    wakeRecogRef.current = recog
-    return () => {
-      window.removeEventListener('openJarvis', pause)
-      window.removeEventListener('closeJarvis', resume)
-      try { recog.abort() } catch {}
-    }
+    if (!SR || !navigator.permissions) return
+    navigator.permissions.query({ name: 'microphone' as PermissionName })
+      .then(status => {
+        if (status.state !== 'granted') return
+        let paused = openRef.current
+        const recog = new SR()
+        recog.lang = 'ca-ES'
+        recog.continuous = true
+        recog.interimResults = false
+        recog.onresult = (e: any) => {
+          const txt = (e.results[e.results.length - 1][0].transcript ?? '').toLowerCase()
+          if (txt.includes('jarvis') && !openRef.current) {
+            window.dispatchEvent(new Event('openJarvis'))
+          }
+        }
+        recog.onend = () => { if (!paused) { try { recog.start() } catch {} } }
+        const pause = () => { paused = true; try { recog.abort() } catch {} }
+        const resume = () => { paused = false; try { recog.start() } catch {} }
+        window.addEventListener('openJarvis', pause)
+        window.addEventListener('closeJarvis', resume)
+        if (!paused) { try { recog.start() } catch {} }
+        wakeRecogRef.current = recog
+      })
+      .catch(() => {})
   }, [])
 
   return null
