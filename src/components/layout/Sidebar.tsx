@@ -307,11 +307,13 @@ export function Sidebar({ user }: Props) {
               const label = t(item.labelKey)
               const active = pathname === item.href || pathname.startsWith(item.href + '/')
               const isAsobal = item.href === '/asobal'
+              const isCalendari = item.href === '/calendari'
+              const itemClass = isAsobal ? 'sb-item--asobal' : isCalendari ? (active ? 'sb-item--calendari' : '') : active ? 'sb-item--active' : ''
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={cn('sb-item', isAsobal ? 'sb-item--asobal' : active && 'sb-item--active', c && 'sb-item--icon')}
+                  className={cn('sb-item', itemClass, c && 'sb-item--icon')}
                   title={c ? label : undefined}
                 >
                   {isAsobal
@@ -709,11 +711,11 @@ export function Sidebar({ user }: Props) {
           font-weight: 600;
         }
         :global(.sb-item--crm-active) {
-          background: linear-gradient(135deg, #3D0A0A 0%, #6B1212 50%, #8B1A1A 100%) !important;
+          background: linear-gradient(135deg, #7F1D1D 0%, #991B1B 50%, #B91C1C 100%) !important;
           color: #FFFFFF !important;
           font-weight: 700;
-          border: 1px solid rgba(255,80,80,0.22) !important;
-          box-shadow: 0 2px 14px rgba(180,0,0,0.18), inset 0 0 18px rgba(255,60,60,0.04) !important;
+          border: 1px solid rgba(255,120,120,0.28) !important;
+          box-shadow: 0 2px 14px rgba(185,28,28,0.22), inset 0 0 18px rgba(255,80,80,0.05) !important;
           letter-spacing: 0.02em;
           position: relative;
           overflow: hidden;
@@ -725,7 +727,7 @@ export function Sidebar({ user }: Props) {
           left: -50%;
           width: 25%;
           height: 180%;
-          background: linear-gradient(90deg, transparent, rgba(255,80,80,0.18), transparent);
+          background: linear-gradient(90deg, transparent, rgba(255,100,100,0.22), transparent);
           animation: crmScan 3.5s ease-in-out infinite;
           pointer-events: none;
         }
@@ -736,13 +738,49 @@ export function Sidebar({ user }: Props) {
           100% { transform: translateX(700%) skewX(-15deg); opacity: 0; }
         }
         :global(.sb-item--crm-active:hover) {
-          background: linear-gradient(135deg, #4A0F0F 0%, #7A1818 50%, #9C2020 100%) !important;
-          box-shadow: 0 4px 20px rgba(220,0,0,0.28), inset 0 0 22px rgba(255,60,60,0.07) !important;
-          border-color: rgba(255,80,80,0.38) !important;
+          background: linear-gradient(135deg, #991B1B 0%, #B91C1C 50%, #DC2626 100%) !important;
+          box-shadow: 0 4px 20px rgba(220,38,38,0.32), inset 0 0 22px rgba(255,80,80,0.08) !important;
+          border-color: rgba(255,120,120,0.42) !important;
           transform: translateY(-1px);
           color: #FFFFFF !important;
         }
-        :global(.sb-item--crm-active svg) { filter: drop-shadow(0 0 5px rgba(255,100,100,0.55)); }
+        :global(.sb-item--crm-active svg) { filter: drop-shadow(0 0 5px rgba(255,120,120,0.6)); }
+
+        :global(.sb-item--calendari) {
+          background: linear-gradient(135deg, #14532D 0%, #166534 50%, #15803D 100%) !important;
+          color: #FFFFFF !important;
+          font-weight: 700;
+          border: 1px solid rgba(74,222,128,0.22) !important;
+          box-shadow: 0 2px 14px rgba(21,128,61,0.20), inset 0 0 18px rgba(74,222,128,0.04) !important;
+          letter-spacing: 0.02em;
+          position: relative;
+          overflow: hidden;
+        }
+        :global(.sb-item--calendari::before) {
+          content: '';
+          position: absolute;
+          top: -40%;
+          left: -50%;
+          width: 25%;
+          height: 180%;
+          background: linear-gradient(90deg, transparent, rgba(74,222,128,0.20), transparent);
+          animation: calScan 3.5s ease-in-out infinite;
+          pointer-events: none;
+        }
+        @keyframes calScan {
+          0%   { transform: translateX(0) skewX(-15deg); opacity: 0; }
+          15%  { opacity: 1; }
+          85%  { opacity: 1; }
+          100% { transform: translateX(700%) skewX(-15deg); opacity: 0; }
+        }
+        :global(.sb-item--calendari:hover) {
+          background: linear-gradient(135deg, #166534 0%, #15803D 50%, #16A34A 100%) !important;
+          box-shadow: 0 4px 20px rgba(22,163,74,0.30), inset 0 0 22px rgba(74,222,128,0.07) !important;
+          border-color: rgba(74,222,128,0.38) !important;
+          transform: translateY(-1px);
+          color: #FFFFFF !important;
+        }
+        :global(.sb-item--calendari svg) { filter: drop-shadow(0 0 5px rgba(74,222,128,0.55)); }
         :global(.sb-item--scp-active) {
           background: linear-gradient(135deg, #0f3460 0%, #1a6bb5 50%, #c9a84c 100%) !important;
           color: #FFFFFF !important;
