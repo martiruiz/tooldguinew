@@ -474,11 +474,11 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
     setLocalEntries(prev => [...prev, temp])
     // Obrir popup immediatament amb l'entry temporal
     setCellModal(temp)
-    setModalLabel('')
-    setModalCopy('')
+    setModalLabel(temp.label ?? '')
+    setModalCopy(temp.copy ?? '')
     // Desar a Supabase en segon pla
     try {
-      const real = await onSave({ jornada, day, time_slot: slot, label: '', status: 'pendent', content_type: extra?.content_type, action_ref: extra?.action_ref })
+      const real = await onSave({ jornada, day, time_slot: slot, label: temp.label ?? '', status: 'pendent', content_type: extra?.content_type, action_ref: extra?.action_ref })
       if (real) {
         setLocalEntries(prev => prev.map(e => e.id === tempId ? real : e))
         setCellModal(prev => prev?.id === tempId ? real : prev)
