@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import {
   Search, Plus, Building2, Globe, TrendingUp, X, Loader2,
   Star, Trash2, Calendar, Phone, Video,
+  FileText, RotateCcw, Users, Receipt, Clock, RefreshCw, PenLine, Minus, ChevronDown, Check,
+  HelpCircle, Briefcase, Camera, UserCheck, Network, Send, User, ArrowDownToLine, Flag,
 } from 'lucide-react'
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -61,29 +63,38 @@ const STAGES = [
 ]
 
 const NEXT_STEP_OPTIONS = [
-  { value: '', label: 'Sense next step' },
-  { value: 'trucada', label: '📞 Fer trucada' },
-  { value: 'proposta', label: '📄 Enviar proposta' },
-  { value: 'follow_up', label: '↩️ Fer follow-up' },
-  { value: 'reunio', label: '🤝 Reunió' },
-  { value: 'pressupost', label: '💰 Enviar pressupost' },
-  { value: 'esperar', label: '⏳ Esperar resposta' },
-  { value: 'renovacio', label: '🔄 Renovació' },
-  { value: 'altres', label: '✏️ Altres' },
+  { value: '', label: 'Sense next step', icon: Minus, color: '#9CA3AF' },
+  { value: 'trucada', label: 'Fer trucada', icon: Phone, color: '#3B82F6' },
+  { value: 'proposta', label: 'Enviar proposta', icon: FileText, color: '#8B5CF6' },
+  { value: 'follow_up', label: 'Fer follow-up', icon: RotateCcw, color: '#06B6D4' },
+  { value: 'reunio', label: 'Reunió', icon: Users, color: '#10B981' },
+  { value: 'pressupost', label: 'Enviar pressupost', icon: Receipt, color: '#F59E0B' },
+  { value: 'esperar', label: 'Esperar resposta', icon: Clock, color: '#EF4444' },
+  { value: 'renovacio', label: 'Renovació', icon: RefreshCw, color: '#1B2B4B' },
+  { value: 'altres', label: 'Altres', icon: PenLine, color: '#6B7280' },
 ]
 
 const LEAD_SOURCE_OPTIONS = [
-  { value: '', label: 'Desconegut' },
-  { value: 'linkedin', label: 'LinkedIn' },
-  { value: 'instagram', label: 'Instagram' },
-  { value: 'web', label: 'Web' },
-  { value: 'referencia', label: 'Referència' },
-  { value: 'networking', label: 'Networking' },
-  { value: 'outbound', label: 'Outbound' },
-  { value: 'client_actual', label: 'Client actual' },
-  { value: 'esdeveniment', label: 'Esdeveniment' },
-  { value: 'marca_personal', label: 'Marca personal Martí' },
-  { value: 'inbound', label: 'Inbound' },
+  { value: '', label: 'Desconegut', icon: HelpCircle, color: '#9CA3AF' },
+  { value: 'linkedin', label: 'LinkedIn', icon: Briefcase, color: '#0077B5' },
+  { value: 'instagram', label: 'Instagram', icon: Camera, color: '#E1306C' },
+  { value: 'web', label: 'Web', icon: Globe, color: '#3B82F6' },
+  { value: 'referencia', label: 'Referència', icon: UserCheck, color: '#10B981' },
+  { value: 'networking', label: 'Networking', icon: Network, color: '#8B5CF6' },
+  { value: 'outbound', label: 'Outbound', icon: Send, color: '#F59E0B' },
+  { value: 'client_actual', label: 'Client actual', icon: Building2, color: '#1B2B4B' },
+  { value: 'esdeveniment', label: 'Esdeveniment', icon: Calendar, color: '#EF4444' },
+  { value: 'marca_personal', label: 'Marca personal Martí', icon: User, color: '#06B6D4' },
+  { value: 'inbound', label: 'Inbound', icon: ArrowDownToLine, color: '#34D399' },
+]
+
+const SCP_CLIENT_TYPE_OPTIONS = [
+  { value: '', label: 'Sense especificar', icon: HelpCircle, color: '#9CA3AF' },
+  { value: 'agencia', label: 'Agència', icon: Briefcase, color: '#3B82F6' },
+  { value: 'creador_contingut', label: 'Creador de contingut', icon: Camera, color: '#E1306C' },
+  { value: 'federacio', label: 'Federació', icon: Flag, color: '#F59E0B' },
+  { value: 'empresa_marca', label: 'Empresa / Marca', icon: Building2, color: '#1B2B4B' },
+  { value: 'club', label: 'Club', icon: Users, color: '#10B981' },
 ]
 
 const LOST_REASON_OPTIONS = [
@@ -365,6 +376,90 @@ function ServicesSelector({ value, onChange }: { value: string; onChange: (v: st
   )
 }
 
+function CustomSelect({ value, onChange, options }: {
+  value: string
+  onChange: (v: string) => void
+  options: { value: string; label: string; icon: React.ComponentType<{ size?: number }>; color: string }[]
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [open])
+  const sel = options.find(o => o.value === value) ?? options[0]
+  const SelIcon = sel.icon
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button type="button" className="csel-btn" onClick={() => setOpen(v => !v)}>
+        <span className="csel-icon-wrap" style={{ background: sel.color + '18', color: sel.color }}>
+          <SelIcon size={13} />
+        </span>
+        <span className="csel-label">{sel.label}</span>
+        <ChevronDown size={12} className={`csel-chevron${open ? ' csel-chevron--open' : ''}`} />
+      </button>
+      {open && (
+        <div className="csel-menu">
+          {options.map(opt => {
+            const OptIcon = opt.icon
+            const active = opt.value === value
+            return (
+              <button key={opt.value} type="button"
+                className={`csel-opt${active ? ' csel-opt--active' : ''}`}
+                onClick={() => { onChange(opt.value); setOpen(false) }}
+              >
+                <span className="csel-icon-wrap" style={{ background: opt.color + '18', color: opt.color }}>
+                  <OptIcon size={13} />
+                </span>
+                <span className="csel-opt-label">{opt.label}</span>
+                {active && <Check size={12} style={{ marginLeft: 'auto', color: opt.color, flexShrink: 0 }} />}
+              </button>
+            )
+          })}
+        </div>
+      )}
+      <style jsx>{`
+        .csel-btn {
+          width: 100%; height: 38px; padding: 0 10px;
+          border: 1.5px solid #E8E8E8; border-radius: 7px;
+          background: #FAFAFA; cursor: pointer;
+          display: flex; align-items: center; gap: 8px;
+          font-size: 13.5px; color: #0a0a0a; font-family: inherit;
+          transition: border-color 0.15s, background 0.15s;
+          text-align: left;
+        }
+        .csel-btn:hover, .csel-btn:focus-visible { border-color: #1B2B4B; background: white; outline: none; }
+        .csel-icon-wrap {
+          width: 24px; height: 24px; border-radius: 6px;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
+        .csel-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .csel-chevron { color: #9CA3AF; flex-shrink: 0; transition: transform 0.15s; }
+        .csel-chevron--open { transform: rotate(180deg); }
+        .csel-menu {
+          position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 200;
+          background: white; border: 1.5px solid #E8E8E8; border-radius: 10px;
+          box-shadow: 0 8px 28px rgba(0,0,0,0.13);
+          overflow: hidden; max-height: 280px; overflow-y: auto;
+        }
+        .csel-opt {
+          width: 100%; padding: 8px 10px;
+          border: none; background: transparent; cursor: pointer;
+          display: flex; align-items: center; gap: 9px;
+          font-size: 13px; color: #111827; font-family: inherit; text-align: left;
+          transition: background 0.1s;
+        }
+        .csel-opt:hover { background: #F5F7FF; }
+        .csel-opt--active { background: #F0F4FF; }
+        .csel-opt-label { flex: 1; }
+      `}</style>
+    </div>
+  )
+}
+
 export function CRMContent({ clients, opportunities: initialOps, profiles, currentUserId, crmSource = 'guinew', stages: stagesOverride }: Props) {
   const BASE_STAGES = stagesOverride ?? STAGES
   // tab state removed — all sections now visible on one page
@@ -491,7 +586,10 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
 
     const pipeline = active.reduce((s, o) => s + (Number(o.value) || 0), 0)
     const pipelineWeighted = active.reduce((s, o) =>
-      s + (Number(o.value) || 0) * ((Number(o.probability) || 0) / 100), 0)
+      s + (Number(o.value) || 0) * (Number(o.probability) / 100), 0)
+    const avgProb = active.length > 0
+      ? Math.round(active.reduce((s, o) => s + Number(o.probability), 0) / active.length)
+      : 0
 
     const forecastThisMonth = active
       .filter(o => {
@@ -516,7 +614,7 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
 
     const coverage = monthlyTarget > 0 ? (pipeline / monthlyTarget) : 0
 
-    return { pipeline, pipelineWeighted, forecastThisMonth, winRate, avgTicket, avgCycleDays, coverage }
+    return { pipeline, pipelineWeighted, avgProb, forecastThisMonth, winRate, avgTicket, avgCycleDays, coverage }
   }, [opportunities, monthlyTarget])
 
   // ─── Client detail modal ─────────────────────
@@ -825,7 +923,7 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
         <div className="kpi-card kpi-card--accent">
           <div className="kpi-lbl">Pipeline ponderat<InfoIcon id="pipeline_ponderat" /></div>
           <div className="kpi-val" style={{ color: '#1B2B4B' }}>{fmtEur(Math.round(kpis.pipelineWeighted))}</div>
-          <div className="kpi-sub">Valor × probabilitat</div>
+          <div className="kpi-sub">Prob. mitjana: {kpis.avgProb}%</div>
         </div>
         <div className="kpi-card">
           <div className="kpi-lbl">Forecast aquest mes<InfoIcon id="forecast" /></div>
@@ -1424,9 +1522,11 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
               <div className="form-row-2">
                 <div className="form-field">
                   <label>Next step</label>
-                  <select className="form-select" value={form.next_step} onChange={f('next_step')}>
-                    {NEXT_STEP_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
+                  <CustomSelect
+                    value={form.next_step}
+                    onChange={v => setForm(p => ({ ...p, next_step: v }))}
+                    options={NEXT_STEP_OPTIONS}
+                  />
                 </div>
                 <div className="form-field">
                   <label>Data next step</label>
@@ -1438,17 +1538,11 @@ export function CRMContent({ clients, opportunities: initialOps, profiles, curre
               <div className="form-row-2">
                 <div className="form-field">
                   <label>{crmSource === 'scp' ? 'Tipus de client' : 'Origen del lead'}</label>
-                  <select className="form-select" value={form.lead_source} onChange={f('lead_source')}>
-                    {crmSource === 'scp' ? [
-                      { value: '',                  label: 'Sense especificar' },
-                      { value: 'agencia',            label: 'Agència' },
-                      { value: 'creador_contingut',  label: 'Creador de contingut' },
-                      { value: 'federacio',          label: 'Federació' },
-                      { value: 'empresa_marca',      label: 'Empresa / Marca' },
-                      { value: 'club',               label: 'Club' },
-                    ].map(o => <option key={o.value} value={o.value}>{o.label}</option>)
-                    : LEAD_SOURCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
+                  <CustomSelect
+                    value={form.lead_source}
+                    onChange={v => setForm(p => ({ ...p, lead_source: v }))}
+                    options={crmSource === 'scp' ? SCP_CLIENT_TYPE_OPTIONS : LEAD_SOURCE_OPTIONS}
+                  />
                 </div>
                 {form.stage === 'tancat_perdut' && (
                   <div className="form-field">
