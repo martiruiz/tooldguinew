@@ -458,11 +458,12 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
   }
 
   return (
-    <div className="asb-org-panel" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', borderLeft: '1px solid rgba(0,0,0,0.08)', background: '#fafafa', overflow: 'hidden', position: 'relative' }}>
+    <div className="asb-org-panel" style={{ width: '100%', display: 'flex', flexDirection: 'column', background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
       {/* Header */}
-      <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, background: '#fff' }}>
-        <LayoutGrid size={14} color="#1b3bda" />
-        <span style={{ fontWeight: 700, fontSize: 12, color: '#1a202c' }}>Organigrama · J{jornada + 1}</span>
+      <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, background: '#fff' }}>
+        <LayoutGrid size={15} color="#1b3bda" />
+        <span style={{ fontWeight: 700, fontSize: 14, color: '#1a202c' }}>Organigrama setmanal</span>
+        <span style={{ fontSize: 12, color: '#9aa5b4' }}>Jornada {jornada + 1}</span>
         <div style={{ display: 'flex', gap: 8, marginLeft: 8, flexWrap: 'wrap' }}>
           {(Object.entries(STATUS_CFG) as Array<[string, { bg: string; border: string; text: string; dot: string; label: string }]>).map(([k, v]) => (
             <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, color: v.text }}>
@@ -471,12 +472,9 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
             </div>
           ))}
         </div>
-        <button onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#9aa5b4', padding: 4, display: 'flex', flexShrink: 0 }}>
-          <X size={14} />
-        </button>
       </div>
       {/* Grid */}
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div style={{ overflow: 'auto', maxHeight: 420 }}>
         <table style={{ borderCollapse: 'collapse', tableLayout: 'fixed', width: '100%', minWidth: 380 }}>
           <colgroup>
             <col style={{ width: 44 }} />
@@ -768,9 +766,8 @@ export function AsobalContent() {
         .asb-top5-cb { accent-color:#16a34a; width:14px; height:14px; cursor:pointer; }
         .asb-mobile-actions { display: none; }
         .asb-desktop-actions { display: block; }
-        @media (max-width: 900px) {
-          .asb-content-row { flex-direction: column !important; }
-          .asb-org-panel { width: 100% !important; height: 420px !important; border-left: none !important; border-top: 1px solid rgba(0,0,0,0.08) !important; }
+        @media (max-width: 640px) {
+          .asb-org-panel table { min-width: 560px !important; }
         }
         @media (max-width: 640px) {
           .asb-match-header { flex-wrap:wrap; gap:6px; }
@@ -816,10 +813,10 @@ export function AsobalContent() {
       </div>
 
       {/* Content */}
-      <div className="asb-content-row" style={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden', minWidth: 0 }}>
+      <div className="asb-content-row" style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
 
         {/* Jornada detail */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 0 }}>
+        <div style={{ padding: '10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div className="asb-jornada-header" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, width: '100%', maxWidth: 900, justifyContent: 'center' }}>
             <Trophy size={16} color="#1b3bda" />
             <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#1a202c' }}>Jornada {selectedJ + 1}</h2>
@@ -1047,14 +1044,16 @@ export function AsobalContent() {
             })}
           </div>
         </div>
-        <OrganigramPanel
-          jornada={selectedJ}
-          entries={orgEntries}
-          onSave={saveOrgEntry}
-          onUpdate={updateOrgEntry}
-          onDelete={deleteOrgEntry}
-          onClose={() => {}}
-        />
+        <div style={{ padding: '0 8px 20px', width: '100%', maxWidth: 900, margin: '0 auto', boxSizing: 'border-box' }}>
+          <OrganigramPanel
+            jornada={selectedJ}
+            entries={orgEntries}
+            onSave={saveOrgEntry}
+            onUpdate={updateOrgEntry}
+            onDelete={deleteOrgEntry}
+            onClose={() => {}}
+          />
+        </div>
       </div>
     </div>
   )
