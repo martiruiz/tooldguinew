@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X, Image as ImageIcon, Layers, Film, Zap } from 'lucide-react'
+import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X, Image as ImageIcon, Layers, Film, Zap, Copy } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const TEAMS: Record<string, string> = {
@@ -603,6 +603,13 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                               >
                                 <Trash2 size={9} />
                               </button>
+                              <button
+                                onClick={e => { e.stopPropagation(); doCreate(day, slot, { label: entry.label, status: entry.status, content_type: entry.content_type, action_ref: entry.action_ref, copy: entry.copy }) }}
+                                className="asb-org-dup-btn"
+                                style={{ position: 'absolute', top: 3, right: 22, width: 16, height: 16, borderRadius: 4, border: 'none', background: 'rgba(79,110,247,0.1)', color: '#4f6ef7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, opacity: 0, transition: 'opacity .15s' }}
+                              >
+                                <Copy size={9} />
+                              </button>
                               <div style={{ paddingRight: 14 }}>
                                 {actionIcon && (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginBottom: 2 }}>
@@ -929,6 +936,7 @@ export function AsobalContent() {
         .asb-action-row { display:flex; align-items:center; gap:8px; padding:6px 14px; border-top:1px solid rgba(0,0,0,0.05); flex-wrap:wrap; }
         .asb-action-row:hover { background:rgba(0,0,0,0.02); }
         .asb-org-cell-filled:hover .asb-org-delete-btn { opacity: 1 !important; }
+        .asb-org-cell-filled:hover .asb-org-dup-btn { opacity: 1 !important; }
         .asb-org-td:hover .asb-org-cell-add-btn { opacity: 1 !important; }
         .asb-badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:20px; letter-spacing:.04em; }
         .asb-aturada { background:rgba(27,59,218,0.1); color:#1b3bda; }
