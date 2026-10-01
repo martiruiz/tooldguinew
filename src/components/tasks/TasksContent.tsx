@@ -576,8 +576,8 @@ export function TasksContent({ tasks, clients, projects, profiles, currentUserId
 
       <style jsx>{`
         .tasks-page { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-        .tasks-body { flex: 1; display: flex; min-height: 0; overflow: hidden; }
-        .tasks-main { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+        .tasks-body { flex: 1; display: flex; min-height: 0; overflow: auto; }
+        .tasks-main { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: visible; }
 
         .tasks-toolbar {
           display: flex; align-items: center; gap: 10px;
@@ -1130,7 +1130,7 @@ function KanbanView({ tasks, allLabels, profiles, onStatusChange, onTaskClick, o
           gap: 12px;
           padding: 4px 16px 32px;
           overflow-x: auto;
-          overflow-y: hidden;
+          overflow-y: visible;
           flex: 1;
           min-height: 0;
           align-items: flex-start;
@@ -1154,7 +1154,6 @@ function KanbanView({ tasks, allLabels, profiles, onStatusChange, onTaskClick, o
           border-radius: 12px;
           overflow: visible;
           transition: background 0.15s, outline 0.15s;
-          max-height: 100%;
           position: relative;
         }
 
@@ -1250,19 +1249,15 @@ function KanbanView({ tasks, allLabels, profiles, onStatusChange, onTaskClick, o
           display: flex;
           flex-direction: column;
           gap: 8px;
-          overflow-y: auto;
+          overflow-y: visible;
           flex: 1;
           min-height: 48px;
-          max-height: calc(100vh - 160px);
           border-radius: 0 0 12px 12px;
-          scrollbar-width: thin;
         }
         @media (max-width: 1023px) {
           .tasks-body { overflow: visible; min-height: 0; }
           .tasks-main { overflow: visible; }
           .kanban { overflow-x: auto; overflow-y: visible; flex: none; min-height: 0; }
-          .kanban-col { max-height: none; }
-          .kanban-col-body { max-height: none; overflow-y: visible; }
         }
 
         .kanban-empty {
