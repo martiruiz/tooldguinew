@@ -474,7 +474,7 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
         </div>
       </div>
       {/* Grid */}
-      <div style={{ overflow: 'auto', maxHeight: 420 }}>
+      <div style={{ overflow: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', tableLayout: 'fixed', width: '100%', minWidth: 380 }}>
           <colgroup>
             <col style={{ width: 44 }} />
@@ -713,17 +713,25 @@ export function AsobalContent() {
     return () => { supabase.removeChannel(ch) }
   }, [supabase])
 
+  const refreshOrg = useCallback(async () => {
+    const { data } = await supabase.from('asobal_organigram').select('*').order('created_at')
+    if (data) setOrgEntries(data as OrgEntry[])
+  }, [supabase])
+
   const saveOrgEntry = useCallback(async (entry: Omit<OrgEntry, 'id'>) => {
     await supabase.from('asobal_organigram').insert(entry)
-  }, [supabase])
+    await refreshOrg()
+  }, [supabase, refreshOrg])
 
   const updateOrgEntry = useCallback(async (id: string, changes: Partial<OrgEntry>) => {
     await supabase.from('asobal_organigram').update(changes).eq('id', id)
-  }, [supabase])
+    await refreshOrg()
+  }, [supabase, refreshOrg])
 
   const deleteOrgEntry = useCallback(async (id: string) => {
     await supabase.from('asobal_organigram').delete().eq('id', id)
-  }, [supabase])
+    await refreshOrg()
+  }, [supabase, refreshOrg])
 
   const jornada = CALENDAR[selectedJ]
 
@@ -1044,7 +1052,7 @@ export function AsobalContent() {
             })}
           </div>
         </div>
-        <div style={{ padding: '0 8px 20px', width: '100%', maxWidth: 900, margin: '0 auto', boxSizing: 'border-box' }}>
+        <div style={{ padding: '0 8px 20px', width: '100%', boxSizing: 'border-box' }}>
           <OrganigramPanel
             jornada={selectedJ}
             entries={orgEntries}
