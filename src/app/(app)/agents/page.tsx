@@ -49,7 +49,7 @@ interface AgentSchedule {
 }
 
 interface ConvMessage { role: 'user' | 'assistant'; content: string; created_at?: string }
-interface ChatMsg { role: 'user' | 'agent'; text: string; agentId?: string; ts: string }
+interface ChatMsg { role: 'user' | 'agent'; text: string; agentId?: string; ts: string; typing?: boolean }
 
 // ── Agent definitions ──────────────────────────────────────────────────────────
 
@@ -202,6 +202,23 @@ function AgentNode({ agent, run, isActive, labelSide, onClick }: {
   )
 }
 
+// ── Typing text animation ──────────────────────────────────────────────────────
+
+function TypingText({ text }: { text: string }) {
+  const [visible, setVisible] = useState(0)
+  useEffect(() => {
+    setVisible(0)
+    let i = 0
+    const id = setInterval(() => {
+      i += 5
+      if (i >= text.length) { setVisible(text.length); clearInterval(id) }
+      else setVisible(i)
+    }, 14)
+    return () => clearInterval(id)
+  }, [text])
+  return <>{text.slice(0, visible)}</>
+}
+
 // ── Floating Chat ──────────────────────────────────────────────────────────────
 
 function FloatingChat({ msgs, input, onInput, onSend, onMic, voiceState, selectedAgent, agents, bekaEnabled, onToggleBeka, onVoiceSettings }: {
@@ -296,7 +313,7 @@ function FloatingChat({ msgs, input, onInput, onSend, onMic, voiceState, selecte
                   {msg.role === 'agent' && agDef && agDef.id !== 'orchestrator' && (
                     <div style={{ fontSize: 8, color: agDef.color, fontWeight: 700, marginBottom: 2, opacity: 0.7 }}>{agDef.name.toUpperCase()}</div>
                   )}
-                  {msg.text}
+                  {msg.typing ? <TypingText text={msg.text} /> : msg.text}
                 </div>
               </div>
             )
@@ -922,7 +939,7 @@ function AgentPanel({ agent, run, prompt, onClose, onStop, onRun, onSavePrompt, 
   const WEEKDAYS = ['Diu','Dll','Dim','Dmc','Dij','Div','Dis']
 
   return (
-    <div style={{ width: 340, flexShrink: 0, background: '#080C18', borderLeft: `1px solid rgba(${hexToRgb(agent.color)},0.2)`, display: 'flex', flexDirection: 'column', animation: 'slideIn .2s ease' }}>
+    <div style={{ width: 340, height: '100%', flexShrink: 0, background: '#080C18', borderLeft: `1px solid rgba(${hexToRgb(agent.color)},0.2)`, display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideIn .2s ease' }}>
       {/* Header */}
       <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 9, background: `rgba(${hexToRgb(agent.color)},0.05)` }}>
         <div style={{ width: 30, height: 30, borderRadius: 8, background: `rgba(${hexToRgb(agent.color)},0.14)`, border: `1px solid rgba(${hexToRgb(agent.color)},0.3)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1610,12 +1627,12 @@ export default function AgentsPage() {
         // BEKA: show thinking placeholder, then speak the reply when it arrives
         setChatMsgs(prev => [...prev, { role: 'agent', text: '⚙️ Processant amb eines...', agentId: targetId, ts: replyTs }])
         runAgent(targetId, text, (fullReply) => {
-          // Replace placeholder with real reply in chat
+          // Replace placeholder with real reply in chat (with typing animation)
           setChatMsgs(prev => {
             const idx = [...prev].reverse().findIndex(m => m.role === 'agent' && m.agentId === targetId && m.ts === replyTs)
-            if (idx === -1) return [...prev, { role: 'agent', text: fullReply, agentId: targetId, ts: replyTs }]
+            if (idx === -1) return [...prev, { role: 'agent', text: fullReply, agentId: targetId, ts: replyTs, typing: true }]
             const realIdx = prev.length - 1 - idx
-            return [...prev.slice(0, realIdx), { ...prev[realIdx], text: fullReply }, ...prev.slice(realIdx + 1)]
+            return [...prev.slice(0, realIdx), { ...prev[realIdx], text: fullReply, typing: true }, ...prev.slice(realIdx + 1)]
           })
           // Speak first 2-3 sentences (max ~400 chars)
           const shortReply = fullReply
@@ -1925,7 +1942,7 @@ export default function AgentsPage() {
 
           {/* Detail Panel overlay */}
           {selectedAgent && selectedDef && (
-            <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, zIndex: 10, animation: 'slideIn .2s ease' }}>
+            <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 340, zIndex: 10, overflow: 'hidden', animation: 'slideIn .2s ease' }}>
               <AgentPanel
                 agent={selectedDef}
                 run={runs[selectedAgent]}
