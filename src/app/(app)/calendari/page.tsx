@@ -17,11 +17,12 @@ export default async function CalendariPage() {
 
   if (!profile) redirect('/login')
 
-  const [{ data: importantDates }, { data: albums }, { data: tournaments }, { data: staff }] = await Promise.all([
+  const [{ data: importantDates }, { data: albums }, { data: tournaments }, { data: staff }, { data: clients }] = await Promise.all([
     supabase.from('cal_important_dates').select('*').order('date', { ascending: true }),
     supabase.from('cal_albums').select('*').order('date_start', { ascending: true }),
     supabase.from('cal_tournaments').select('*').order('date_start', { ascending: true }),
     supabase.from('cal_tournament_staff').select('*').order('created_at', { ascending: true }),
+    supabase.from('clients').select('id, name, logo_url').eq('status', 'active').order('name', { ascending: true }),
   ])
 
   return (
@@ -32,6 +33,7 @@ export default async function CalendariPage() {
         initialAlbums={albums ?? []}
         initialTournaments={tournaments ?? []}
         initialStaff={staff ?? []}
+        clients={clients ?? []}
         currentUserId={user.id}
       />
     </>
