@@ -458,7 +458,7 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
   }
 
   return (
-    <div className="asb-org-panel" style={{ width: 480, flexShrink: 0, display: 'flex', flexDirection: 'column', borderLeft: '1px solid rgba(0,0,0,0.08)', background: '#fafafa', overflow: 'hidden', position: 'relative' }}>
+    <div className="asb-org-panel" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', borderLeft: '1px solid rgba(0,0,0,0.08)', background: '#fafafa', overflow: 'hidden', position: 'relative' }}>
       {/* Header */}
       <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, background: '#fff' }}>
         <LayoutGrid size={14} color="#1b3bda" />
@@ -701,7 +701,7 @@ export function AsobalContent() {
   }, [supabase])
 
   const [orgEntries, setOrgEntries] = useState<OrgEntry[]>([])
-  const [showOrg, setShowOrg] = useState(false)
+
 
   useEffect(() => {
     const load = async () => {
@@ -768,10 +768,9 @@ export function AsobalContent() {
         .asb-top5-cb { accent-color:#16a34a; width:14px; height:14px; cursor:pointer; }
         .asb-mobile-actions { display: none; }
         .asb-desktop-actions { display: block; }
-        .asb-org-toggle { flex-shrink: 0; }
-        @media (max-width: 768px) {
-          .asb-org-panel { display: none !important; }
-          .asb-org-toggle { display: none !important; }
+        @media (max-width: 900px) {
+          .asb-content-row { flex-direction: column !important; }
+          .asb-org-panel { width: 100% !important; height: 420px !important; border-left: none !important; border-top: 1px solid rgba(0,0,0,0.08) !important; }
         }
         @media (max-width: 640px) {
           .asb-match-header { flex-wrap:wrap; gap:6px; }
@@ -817,7 +816,7 @@ export function AsobalContent() {
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden', minWidth: 0 }}>
+      <div className="asb-content-row" style={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden', minWidth: 0 }}>
 
         {/* Jornada detail */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 0 }}>
@@ -836,15 +835,6 @@ export function AsobalContent() {
                   </div>
                 ) : null
               })()}
-              <button
-                className="asb-org-toggle"
-                onClick={() => setShowOrg(o => !o)}
-                title={showOrg ? 'Tancar organigrama' : 'Obrir organigrama'}
-                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, border: showOrg ? '1.5px solid #1b3bda' : '1px solid rgba(0,0,0,0.12)', background: showOrg ? 'rgba(27,59,218,0.07)' : '#fff', color: showOrg ? '#1b3bda' : '#6b7280', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', flexShrink: 0 }}
-              >
-                <LayoutGrid size={12} />
-                Organigrama
-              </button>
             </div>
           </div>
 
@@ -925,9 +915,9 @@ export function AsobalContent() {
                         const actionBtn = (action: Action) => (
                           <div
                             className="asb-action-cell"
-                            draggable={showOrg}
+                            draggable={true}
                             onDragStart={e => { e.dataTransfer.setData('asobal-action', JSON.stringify(action)); e.dataTransfer.effectAllowed = 'copy' }}
-                            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 12px', minHeight: 48, cursor: showOrg ? 'grab' : undefined }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 12px', minHeight: 48, cursor: 'grab' }}
                           >
                             <span style={{ fontSize: 18, flexShrink: 0 }}>{action.type === 'aturada' ? '🖐🏻' : '🏐'}</span>
                             <div style={{ flex: 1, minWidth: 0 }}>
@@ -1057,16 +1047,14 @@ export function AsobalContent() {
             })}
           </div>
         </div>
-        {showOrg && (
-          <OrganigramPanel
-            jornada={selectedJ}
-            entries={orgEntries}
-            onSave={saveOrgEntry}
-            onUpdate={updateOrgEntry}
-            onDelete={deleteOrgEntry}
-            onClose={() => setShowOrg(false)}
-          />
-        )}
+        <OrganigramPanel
+          jornada={selectedJ}
+          entries={orgEntries}
+          onSave={saveOrgEntry}
+          onUpdate={updateOrgEntry}
+          onDelete={deleteOrgEntry}
+          onClose={() => {}}
+        />
       </div>
     </div>
   )
