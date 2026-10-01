@@ -912,37 +912,31 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
                   <div className="meta-col">
                     <div className="meta-col-lbl">Assignat a</div>
                     <div className="rel-wrap">
-                      <button className="mc-resp-btn" onClick={() => setShowResponsiblePicker(v => !v)}>
+                      <button className="mc-resp-btn mc-resp-btn--multi" onClick={() => setShowResponsiblePicker(v => !v)}>
                         {assignedProfiles.length > 0 ? (
-                          <>
-                            <div className="mc-av-stack">
-                              {assignedProfiles.slice(0, 3).map((p, i) => (
-                                <div key={p.id} className="mc-av mc-av-stack-item" style={{ zIndex: 3 - i, marginLeft: i > 0 ? -8 : 0 }}>
+                          <div className="mc-assignees-list">
+                            {assignedProfiles.slice(0, 4).map((p, i) => (
+                              <div key={p.id} className="mc-assignee-row">
+                                <div className="mc-av mc-av--sm">
                                   {p.avatar_url ? <img src={p.avatar_url} alt="" /> : getInitials(p.full_name)}
                                 </div>
-                              ))}
-                              {assignedProfiles.length > 3 && (
-                                <div className="mc-av mc-av-stack-item mc-av--more" style={{ zIndex: 0, marginLeft: -8 }}>+{assignedProfiles.length - 3}</div>
-                              )}
-                            </div>
-                            <div className="mc-resp-info">
-                              <span className="mc-resp-name">
-                                {assignedProfiles.length === 1 ? assignedProfiles[0].full_name : `${assignedProfiles.length} persones`}
-                              </span>
-                              <span className="mc-resp-sub">
-                                {assignedProfiles.length === 1 ? 'Responsable' : assignedProfiles.map((p: any) => p.full_name.split(' ')[0]).join(', ')}
-                              </span>
-                            </div>
-                          </>
+                                <span className="mc-assignee-name">{p.full_name}</span>
+                                {i === 0 && assignedProfiles.length === 1 && <span className="mc-assignee-badge">Responsable</span>}
+                              </div>
+                            ))}
+                            {assignedProfiles.length > 4 && (
+                              <div className="mc-assignee-more">+{assignedProfiles.length - 4} més</div>
+                            )}
+                          </div>
                         ) : (
-                          <>
-                            <div className="mc-av mc-av--empty">
-                              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="4.5" r="2.5" stroke="currentColor" strokeWidth="1.6"/><path d="M1.5 13c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
+                          <div className="mc-assignee-row">
+                            <div className="mc-av mc-av--empty mc-av--sm">
+                              <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="4.5" r="2.5" stroke="currentColor" strokeWidth="1.6"/><path d="M1.5 13c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
                             </div>
                             <span className="mc-resp-name mc-resp-name--empty">Sense assignar</span>
-                          </>
+                          </div>
                         )}
-                        <svg className="mc-caret" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        <svg className="mc-caret mc-caret--top" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       </button>
                       {showResponsiblePicker && (
                         <div className="resp-picker" onClick={e => e.stopPropagation()}>
@@ -1586,6 +1580,9 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
           padding: 6px 10px 6px 6px; cursor: pointer; font-family: inherit;
           transition: all 0.15s; width: 100%; box-sizing: border-box;
         }
+        .mc-resp-btn--multi {
+          align-items: flex-start; padding: 8px 10px 8px 8px;
+        }
         .mc-resp-btn:hover { border-color: #1B2B4B; background: #F0F4FF; }
         .mc-av {
           width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
@@ -1593,13 +1590,19 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
           font-size: 11px; font-weight: 800; color: white; overflow: hidden;
           background: #1B2B4B;
         }
+        .mc-av--sm { width: 24px; height: 24px; font-size: 9px; font-weight: 800; flex-shrink: 0; }
         .mc-av img { width: 100%; height: 100%; object-fit: cover; }
         .mc-av--empty { background: #ECEEF4; color: #9CA3AF; }
-        .mc-resp-info { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; text-align: left; }
+        .mc-assignees-list { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 0; text-align: left; }
+        .mc-assignee-row { display: flex; align-items: center; gap: 7px; }
+        .mc-assignee-name { font-size: 12px; font-weight: 600; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+        .mc-assignee-badge { font-size: 9.5px; font-weight: 600; color: #9CA3AF; background: #F3F4F6; border-radius: 4px; padding: 1px 5px; flex-shrink: 0; }
+        .mc-assignee-more { font-size: 11px; color: #9CA3AF; font-weight: 500; padding-left: 31px; }
         .mc-resp-name { font-size: 12.5px; font-weight: 700; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .mc-resp-name--empty { font-size: 12.5px; font-weight: 500; color: #B0B4C0; flex: 1; text-align: left; }
         .mc-resp-sub { font-size: 10px; color: #9CA3AF; font-weight: 500; }
-        .mc-caret { color: #B0B4C0; flex-shrink: 0; }
+        .mc-caret { color: #B0B4C0; flex-shrink: 0; margin-top: 2px; }
+        .mc-caret--top { align-self: flex-start; margin-top: 4px; }
 
         /* Label zone inside meta-card */
         .mc-label-zone { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; min-height: 28px; }
@@ -1710,9 +1713,6 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         .tdm-ap-av--none { background: #E5E7EB; color: #9CA3AF; font-size: 14px; font-weight: 400; }
         .tdm-ap-name { font-size: 10.5px; font-weight: 600; color: #374151; white-space: nowrap; max-width: 56px; overflow: hidden; text-overflow: ellipsis; }
         .tdm-ap-check { position: absolute; top: 3px; right: 3px; width: 13px; height: 13px; border-radius: 50%; background: #1B2B4B; color: white; display: flex; align-items: center; justify-content: center; }
-        .mc-av-stack { display: flex; align-items: center; }
-        .mc-av-stack-item { border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
-        .mc-av--more { background: #E5E7EB; color: #6B7280; font-size: 10px; font-weight: 700; }
         /* Client picker dropdown */
         .tdm-cl-trigger { display: flex; align-items: center; gap: 8px; width: 100%; height: 36px; padding: 0 10px; border: 1.5px solid #E5E7EB; border-radius: 8px; background: white; cursor: pointer; font-family: inherit; transition: border-color 0.15s; }
         .tdm-cl-trigger:hover { border-color: #1B2B4B; }
