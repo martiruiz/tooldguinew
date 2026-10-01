@@ -33,7 +33,8 @@ const navDefs = [
   { href: '/contingut', icon: Layers,          labelKey: 'content'   as keyof typeof TRANSLATIONS },
   { href: '/projects',  icon: FolderKanban,    labelKey: 'campaigns' as keyof typeof TRANSLATIONS },
   { href: '/check',     icon: ClipboardList,   labelKey: 'sessions'  as keyof typeof TRANSLATIONS },
-  { href: '/inbox',     icon: Inbox,           labelKey: 'inbox'     as keyof typeof TRANSLATIONS },
+  { href: '/inbox',      icon: Inbox,           labelKey: 'inbox'     as keyof typeof TRANSLATIONS },
+  { href: '/calendari', icon: Calendar,        labelKey: 'calendar'  as keyof typeof TRANSLATIONS },
   { href: '/asobal',   icon: Trophy,          labelKey: 'asobal'   as keyof typeof TRANSLATIONS },
 ]
 
