@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X, Image as ImageIcon, Layers, Film, Zap, Copy, Youtube } from 'lucide-react'
+import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X, Image as ImageIcon, Layers, Film, Zap, Copy, PlaySquare } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const TEAMS: Record<string, string> = {
@@ -435,7 +435,7 @@ const CONTENT_TYPES = [
   { key: 'carrusel', label: 'Carrusel', color: '#16a34a', abbr: 'CAR', Icon: Layers },
   { key: 'reel', label: 'Reel', color: '#dc2626', abbr: 'REEL', Icon: Film },
   { key: 'story', label: 'Storie', color: '#d97706', abbr: 'STR', Icon: Zap },
-  { key: 'video_ytb', label: 'Video YTB', color: '#ff0000', abbr: 'YTB', Icon: Youtube },
+  { key: 'video_ytb', label: 'Video YTB', color: '#ff0000', abbr: 'YTB', Icon: PlaySquare },
 ]
 
 function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose }: {
