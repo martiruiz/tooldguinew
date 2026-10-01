@@ -570,18 +570,44 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                           onClick={() => { setCellModal(entry); setModalLabel(entry.label); setModalCopy(entry.copy ?? '') }}
                           style={{ height: '100%', padding: '4px 5px', display: 'flex', flexDirection: 'column', gap: 3, overflow: 'hidden', cursor: 'pointer' }}
                         >
-                          <div style={{ flex: 1, fontSize: 10, fontWeight: 600, color: cfg.text, overflow: 'hidden', lineHeight: 1.3, wordBreak: 'break-word' }}>
-                            {entry.label || <span style={{ color: '#d1d5db', fontSize: 9 }}>Clic per editar</span>}
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
-                            <span style={{ width: 7, height: 7, borderRadius: 2, background: cfg.dot, flexShrink: 0, display: 'inline-block' }} />
-                            {entry.content_type && (
-                              <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: '.04em', color: CONTENT_TYPES.find(t => t.key === entry.content_type)?.color ?? '#9ca3af' }}>
-                                {CONTENT_TYPES.find(t => t.key === entry.content_type)?.abbr}
-                              </span>
-                            )}
-                            {entry.copy && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#a78bfa', flexShrink: 0, display: 'inline-block', marginLeft: 1 }} title="Té copy" />}
-                          </div>
+                          {(() => {
+                            let actionIcon: string | null = null
+                            let isTop5 = false
+                            let minut: string | null = null
+                            if (entry.action_ref) {
+                              try {
+                                const a = JSON.parse(entry.action_ref)
+                                actionIcon = a.type === 'gol' ? '🏐' : '🖐🏻'
+                                isTop5 = !!a.top5
+                                minut = a.minut ?? null
+                              } catch { /* noop */ }
+                            }
+                            return (
+                              <>
+                                <div style={{ flex: 1, overflow: 'hidden', lineHeight: 1.3 }}>
+                                  {actionIcon && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginBottom: 1 }}>
+                                      <span style={{ fontSize: 9 }}>{actionIcon}</span>
+                                      {isTop5 && <Star size={7} color="#f59e0b" fill="#f59e0b" />}
+                                      {minut && <span style={{ fontSize: 8, color: '#9ca3af', fontWeight: 600 }}>{minut}&apos;</span>}
+                                    </div>
+                                  )}
+                                  <div style={{ fontSize: 10, fontWeight: 600, color: cfg.text, overflow: 'hidden', wordBreak: 'break-word' }}>
+                                    {entry.label || <span style={{ color: '#d1d5db', fontSize: 9 }}>Clic per editar</span>}
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                                  <span style={{ width: 7, height: 7, borderRadius: 2, background: cfg.dot, flexShrink: 0, display: 'inline-block' }} />
+                                  {entry.content_type && (
+                                    <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: '.04em', color: CONTENT_TYPES.find(t => t.key === entry.content_type)?.color ?? '#9ca3af' }}>
+                                      {CONTENT_TYPES.find(t => t.key === entry.content_type)?.abbr}
+                                    </span>
+                                  )}
+                                  {entry.copy && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#a78bfa', flexShrink: 0, display: 'inline-block', marginLeft: 1 }} title="Té copy" />}
+                                </div>
+                              </>
+                            )
+                          })()}
                         </div>
                       ) : (
                         <div
@@ -712,8 +738,7 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
                   if (actionData) {
                     try {
                       const action = JSON.parse(actionData)
-                      const actionLabel = action.type === 'gol' ? '🏐 Gol' : '🖐🏻 Aturada'
-                      const label = `${actionLabel} · ${action.jugador}${action.minut ? ` (${action.minut}')` : ''}`
+                      const label = action.jugador ?? ''
                       if (existing) { await doUpdate(existing.id, { label, content_type: ct.key, action_ref: actionData }) }
                       else { await doCreate(md, ms, { label, content_type: ct.key, action_ref: actionData }) }
                     } catch { /* noop */ }
