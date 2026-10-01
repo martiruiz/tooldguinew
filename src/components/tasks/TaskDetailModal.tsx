@@ -1569,7 +1569,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
           background: #F8F9FC; border: 1.5px solid #ECEEF4; border-radius: 14px;
           overflow: visible;
         }
-        .meta-col { display: flex; flex-direction: column; gap: 7px; padding: 12px 14px; flex: 1; min-width: 0; }
+        .meta-col { display: flex; flex-direction: column; gap: 7px; padding: 12px 14px; flex: 1; min-width: 0; justify-content: center; }
         .meta-col-lbl { font-size: 9.5px; font-weight: 800; color: #B0B4C0; letter-spacing: 0.08em; text-transform: uppercase; }
         .meta-sep { width: 1.5px; background: #ECEEF4; flex-shrink: 0; margin: 10px 0; }
 
@@ -1618,8 +1618,8 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         .mc-watcher-zone { display: flex; align-items: center; gap: 8px; min-height: 28px; }
         .mc-av-stack { display: flex; align-items: center; }
         .mc-stack-av {
-          width: 30px; height: 30px; border-radius: 50%; border: 2.5px solid #F8F9FC;
-          background: #1B2B4B; color: white; font-size: 9px; font-weight: 800;
+          width: 38px; height: 38px; border-radius: 50%; border: 2.5px solid #F8F9FC;
+          background: #1B2B4B; color: white; font-size: 11px; font-weight: 800;
           display: flex; align-items: center; justify-content: center;
           overflow: hidden; cursor: pointer; margin-left: -8px; flex-shrink: 0;
           transition: transform 0.15s; box-shadow: 0 1px 4px rgba(0,0,0,0.12);
