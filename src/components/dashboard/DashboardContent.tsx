@@ -48,7 +48,7 @@ interface Props {
   opportunities?: CRMOpportunity[]
   allProjectTasks?: Task[]
   pmProjects?: Project[]
-  importantDates?: { id: string; name: string; date: string; category?: string; priority?: string }[]
+  importantDates?: { id: string; title: string; date: string; category?: string; priority?: string }[]
 }
 
 function getGreetingKey(): 'greetMorning' | 'greetAfternoon' | 'greetEvening' {
@@ -96,6 +96,7 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
   const [showNewClient, setShowNewClient] = useState(false)
   const [showNewProject, setShowNewProject] = useState(false)
   const [calDatesOpen, setCalDatesOpen] = useState(false)
+  const [selectedCalDay, setSelectedCalDay] = useState<number | null>(null)
 
   // Dashboard widget reorder with up/down buttons
   const LEFT_WIDGETS = ['tasks-today', 'upcoming', 'active-projects', 'daily-checklist', 'chat-pending']
@@ -617,57 +618,66 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
                       if (!day) return <div key={i} />
                       const isToday = day === todayNum
                       const hasDot = dateSet.has(day)
+                      const isSelected = selectedCalDay === day
                       return (
-                        <div key={i} style={{ textAlign: 'center', padding: '4px 0', borderRadius: 6, background: isToday ? '#1B2B4B' : 'transparent', position: 'relative' }}>
-                          <span style={{ fontSize: 11, fontWeight: isToday ? 800 : hasDot ? 700 : 400, color: isToday ? '#fff' : hasDot ? '#1B2B4B' : '#6B7280' }}>{day}</span>
-                          {hasDot && !isToday && (
+                        <div
+                          key={i}
+                          onClick={() => hasDot ? setSelectedCalDay(isSelected ? null : day) : undefined}
+                          style={{
+                            textAlign: 'center', padding: '4px 0', borderRadius: 6, position: 'relative',
+                            background: isSelected ? '#3B6FD4' : isToday ? '#1B2B4B' : 'transparent',
+                            cursor: hasDot ? 'pointer' : 'default',
+                            transition: 'background 0.12s',
+                          }}
+                        >
+                          <span style={{ fontSize: 11, fontWeight: isToday || isSelected ? 800 : hasDot ? 700 : 400, color: isToday || isSelected ? '#fff' : hasDot ? '#1B2B4B' : '#6B7280' }}>{day}</span>
+                          {hasDot && !isToday && !isSelected && (
                             <div style={{ position: 'absolute', bottom: 2, left: '50%', transform: 'translateX(-50%)', width: 4, height: 4, borderRadius: '50%', background: '#EF4444' }} />
                           )}
-                          {hasDot && isToday && (
+                          {hasDot && (isToday || isSelected) && (
                             <div style={{ position: 'absolute', bottom: 2, left: '50%', transform: 'translateX(-50%)', width: 4, height: 4, borderRadius: '50%', background: '#fff' }} />
                           )}
                         </div>
                       )
                     })}
                   </div>
+
+                  {/* Esdeveniments del dia seleccionat */}
+                  {selectedCalDay !== null && (() => {
+                    const dayStr = `${monthStr}-${String(selectedCalDay).padStart(2, '0')}`
+                    const dayEvents = importantDates.filter(d => d.date === dayStr)
+                    if (dayEvents.length === 0) return null
+                    return (
+                      <div style={{ marginTop: 10, borderRadius: 8, border: '1px solid #BFDBFE', background: '#EFF6FF', overflow: 'hidden' }}>
+                        <div style={{ padding: '6px 10px', borderBottom: '1px solid #BFDBFE', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#1D4ED8' }}>
+                            {selectedCalDay} {monthNames[month]} · {dayEvents.length} {dayEvents.length === 1 ? 'esdeveniment' : 'esdeveniments'}
+                          </span>
+                          <button onClick={() => setSelectedCalDay(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#93C5FD', fontSize: 13, lineHeight: 1, padding: '0 2px' }}>✕</button>
+                        </div>
+                        {dayEvents.map((ev, idx) => (
+                          <div key={ev.id} style={{ padding: '7px 10px', borderBottom: idx < dayEvents.length - 1 ? '1px solid #DBEAFE' : 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: '#1E3A8A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.title}</div>
+                              {ev.category && <div style={{ fontSize: 10.5, color: '#60A5FA' }}>{ev.category}</div>}
+                            </div>
+                            {ev.priority === 'urgent' && <span style={{ fontSize: 9.5, fontWeight: 700, background: '#FEF2F2', color: '#DC2626', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>URGENT</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })()}
                 </div>
 
-                {/* Desplegable esdeveniments */}
-                <button
-                  onClick={() => setCalDatesOpen(o => !o)}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: '#F9FAFB', border: 'none', borderTop: '1px solid #F0F0F0', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>
-                    {importantDates.length === 0 ? 'Sense esdeveniments' : `${importantDates.length} data${importantDates.length !== 1 ? 's' : ''} importants`}
+                {/* Peu del widget: link al calendari */}
+                <div style={{ borderTop: '1px solid #F0F0F0', padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 11, color: '#9CA3AF' }}>
+                    {importantDates.length === 0 ? 'Sense esdeveniments' : `${importantDates.length} dates al calendari`}
                   </span>
-                  {calDatesOpen ? <ChevronUp size={14} color="#9CA3AF" /> : <ChevronDown size={14} color="#9CA3AF" />}
-                </button>
-
-                {calDatesOpen && importantDates.length > 0 && (
-                  <div style={{ borderTop: '1px solid #F0F0F0', maxHeight: 320, overflowY: 'auto' }}>
-                    {importantDates.map((ev, i) => {
-                      const d = new Date(ev.date + 'T00:00:00')
-                      const dayN = d.getDate()
-                      const evMonth = d.getMonth()
-                      const evYear = d.getFullYear()
-                      const isPast = d < now && d.toDateString() !== now.toDateString()
-                      const isThisMonth = evMonth === month && evYear === year
-                      return (
-                        <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', borderBottom: i < importantDates.length - 1 ? '1px solid #F7F7F7' : 'none', opacity: isPast ? 0.5 : 1 }}>
-                          <div style={{ minWidth: 32, height: 32, borderRadius: 8, background: isThisMonth ? '#EFF6FF' : '#F3F4F6', border: isThisMonth ? '1px solid #BFDBFE' : 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <span style={{ fontSize: 13, fontWeight: 800, color: isThisMonth ? '#1D4ED8' : '#111827', lineHeight: 1 }}>{dayN}</span>
-                            <span style={{ fontSize: 9, fontWeight: 600, color: isThisMonth ? '#3B82F6' : '#9CA3AF', textTransform: 'uppercase' }}>{monthNames[evMonth].slice(0, 3)}</span>
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12.5, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.name}</div>
-                            {ev.category && <div style={{ fontSize: 11, color: '#9CA3AF' }}>{ev.category}</div>}
-                          </div>
-                          {ev.priority === 'urgent' && <span style={{ fontSize: 10, fontWeight: 700, background: '#FEF2F2', color: '#DC2626', borderRadius: 5, padding: '2px 6px', flexShrink: 0 }}>URGENT</span>}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
+                  <Link href="/calendari" style={{ fontSize: 11, color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 3, textDecoration: 'none' }}>
+                    Veure tot <ArrowRight size={11} />
+                  </Link>
+                </div>
               </div>
             )
           })()}
