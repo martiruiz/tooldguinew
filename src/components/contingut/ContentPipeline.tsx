@@ -147,10 +147,9 @@ function DatePicker({ value, onChange }: { value: string; onChange: (v: string) 
   )
 }
 
-export type ContentStatus = 'idea' | 'produccio' | 'revisio' | 'publicat'
+export type ContentStatus = 'produccio' | 'revisio' | 'publicat'
 
 const COLUMNS: { key: ContentStatus; label: string; color: string; bg: string }[] = [
-  { key: 'idea',      label: 'Idea',        color: '#6B7280', bg: '#F9FAFB' },
   { key: 'produccio', label: 'En producció', color: '#D97706', bg: '#FFFBEB' },
   { key: 'revisio',   label: 'En revisió',  color: '#2563EB', bg: '#EFF6FF' },
   { key: 'publicat',  label: 'Publicat',    color: '#16A34A', bg: '#F0FDF4' },
@@ -241,6 +240,9 @@ export interface ContentItem {
   assigned_to?: string | null
   due_date?: string | null
   notes?: string | null
+  dropbox_url?: string | null
+  production_link?: string | null
+  task_id?: string | null
   created_at: string
   client?: { id: string; name: string; logo_url?: string | null } | null
   assignee?: { id: string; full_name: string; avatar_url?: string | null } | null
@@ -371,13 +373,15 @@ function ItemModal({
   const isNew = !item?.id
   const [form, setForm] = useState({
     title: item?.title || '',
-    status: item?.status || 'idea' as ContentStatus,
+    status: item?.status || 'produccio' as ContentStatus,
     format: item?.format || '',
     channel: item?.channel || '',
     client_id: item?.client_id || '',
     assigned_to: item?.assigned_to || '',
     due_date: item?.due_date || '',
     notes: item?.notes || '',
+    dropbox_url: (item as ContentItem)?.dropbox_url || '',
+    production_link: (item as ContentItem)?.production_link || '',
   })
 
   const set = (k: string) => (e: any) => setForm(f => ({ ...f, [k]: e.target.value }))
@@ -444,6 +448,21 @@ function ItemModal({
             <label>Notes</label>
             <textarea className="ci-textarea" rows={3} placeholder="Notes, idea, referència..." value={form.notes} onChange={set('notes')} />
           </div>
+          {form.status === 'produccio' && (
+            <>
+              <div className="ci-field">
+                <label>🔗 Contingut Dropbox</label>
+                <input className="ci-input" placeholder="Enganxa l'enllaç de Dropbox..." value={form.dropbox_url} onChange={set('dropbox_url')} />
+                {form.dropbox_url && (
+                  <a href={form.dropbox_url} target="_blank" rel="noopener" className="ci-ext-link">Obrir Dropbox →</a>
+                )}
+              </div>
+              <div className="ci-field">
+                <label>🔗 Altre enllaç</label>
+                <input className="ci-input" placeholder="Altre URL de referència..." value={form.production_link} onChange={set('production_link')} />
+              </div>
+            </>
+          )}
         </div>
 
         <div className="ci-modal-footer">
@@ -738,13 +757,15 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
     const isNew = !editItem || !(editItem as ContentItem).id
     const payload = {
       title: data.title ?? '',
-      status: data.status || 'idea',
+      status: data.status || 'produccio',
       format: data.format || null,
       channel: data.channel || null,
       client_id: data.client_id || null,
       assigned_to: data.assigned_to || null,
       due_date: data.due_date || null,
       notes: data.notes || null,
+      dropbox_url: (data as ContentItem).dropbox_url || null,
+      production_link: (data as ContentItem).production_link || null,
     }
     const clientObj = data.client_id ? clients.find(c => c.id === data.client_id) || null : null
     const assigneeObj = data.assigned_to ? profiles.find(p => p.id === data.assigned_to) || null : null
@@ -763,6 +784,8 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
           assigned_to: payload.assigned_to,
           due_date: payload.due_date,
           notes: payload.notes,
+          dropbox_url: payload.dropbox_url,
+          production_link: payload.production_link,
           client: clientObj,
           assignee: assigneeObj,
         }
@@ -773,6 +796,8 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
         setItems(prev => prev.map(it => it.id === id ? {
           ...it, ...payload,
           status: payload.status as ContentStatus,
+          dropbox_url: payload.dropbox_url,
+          production_link: payload.production_link,
           client: clientObj,
           assignee: assigneeObj,
         } : it))
@@ -991,6 +1016,8 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
         .ci-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .ci-input { height: 36px; padding: 0 12px; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 13.5px; font-family: inherit; color: #111827; outline: none; transition: border-color 0.15s; }
         .ci-input:focus { border-color: #1B2B4B; }
+        .ci-ext-link { font-size: 12px; color: #2563EB; text-decoration: none; padding: 2px 0; }
+        .ci-ext-link:hover { text-decoration: underline; }
         .ci-select { height: 36px; padding: 0 10px; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 13.5px; font-family: inherit; color: #111827; background: white; outline: none; cursor: pointer; }
         .ci-textarea { padding: 10px 12px; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 13px; font-family: inherit; color: #111827; outline: none; resize: vertical; transition: border-color 0.15s; }
         .ci-textarea:focus { border-color: #1B2B4B; }

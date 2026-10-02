@@ -2,10 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Plus, Check, Trash2, Tag, Settings2, Save, UserPlus, Link2, ExternalLink, Send, AtSign, Camera, Loader2, ZoomIn, ArrowRight, Calendar, Smile } from 'lucide-react'
+import { X, Plus, Check, Trash2, Tag, Settings2, Save, UserPlus, Link2, ExternalLink, Send, AtSign, Camera, Loader2, ZoomIn, ArrowRight, Calendar, Smile, Film, PackageCheck } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getInitials } from '@/lib/utils'
 import type { Task } from '@/types'
+import { createContentItem } from '@/app/(app)/contingut/actions'
 import { LabelsManagerModal, type Label } from './LabelsManagerModal'
 import { DrivePickerModal } from './DrivePickerModal'
 import { DateTimePicker } from '@/components/ui/DateTimePicker'
@@ -196,6 +197,9 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
   const [reactions, setReactions] = useState<Record<string, Record<string, string[]>>>({})
   const [showAllActivity, setShowAllActivity] = useState(false)
   const [openEmojiPickerId, setOpenEmojiPickerId] = useState<string | null>(null)
+  const [isProduction, setIsProduction] = useState<boolean>(!!(t as any).is_production)
+  const [contentItemId, setContentItemId] = useState<string | null>((t as any).content_item_id || null)
+  const [togglingProduction, setTogglingProduction] = useState(false)
 
   useEffect(() => {
     if (!mounted) return
@@ -210,9 +214,6 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
       Notification.requestPermission()
     }
-    // Log task opened
-    const supabase = createClient()
-    supabase.from('task_activity').insert({ task_id: task.id, user_id: currentUserId, action: 'task_opened', details: {} }).then(() => {})
   }, [])
 
   useEffect(() => {
@@ -721,6 +722,49 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
     setComments(prev => prev.filter(c => c.id !== id))
   }
 
+  const toggleProduction = async () => {
+    if (togglingProduction) return
+    setTogglingProduction(true)
+    const supabase = createClient()
+    const newVal = !isProduction
+    if (newVal) {
+      try {
+        const created = await createContentItem({
+          title: form.title || task.title,
+          status: 'produccio',
+          format: null,
+          channel: null,
+          client_id: form.client_id || null,
+          assigned_to: form.responsible_id || null,
+          due_date: form.deadline ? form.deadline.slice(0, 10) : null,
+          notes: null,
+          task_id: task.id,
+        })
+        const newId = created?.id || null
+        setIsProduction(true)
+        setContentItemId(newId)
+        await supabase.from('tasks').update({ is_production: true, content_item_id: newId }).eq('id', task.id)
+      } catch (err: any) {
+        console.error('[toggleProduction]', err)
+      }
+    } else {
+      setIsProduction(false)
+      setContentItemId(null)
+      await supabase.from('tasks').update({ is_production: false, content_item_id: null }).eq('id', task.id)
+    }
+    setTogglingProduction(false)
+  }
+
+  const replyToComment = (authorName: string) => {
+    const mention = `@${authorName.replace(/\s+/g, '')} `
+    setNewComment(prev => prev ? `${prev} ${mention}` : mention)
+    setTimeout(() => {
+      commentRef.current?.focus()
+      const len = (newComment ? newComment + ' ' + mention : mention).length
+      commentRef.current?.setSelectionRange(len, len)
+    }, 50)
+  }
+
   const renderComment = (text: string) =>
     text.split(/(@\w+)/g).map((part, i) =>
       part.startsWith('@')
@@ -1039,6 +1083,29 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
               )
             })()}
 
+            {/* Producció toggle */}
+            <button
+              className={`prod-banner${isProduction ? ' prod-banner--on' : ''}`}
+              onClick={toggleProduction}
+              disabled={togglingProduction}
+              type="button"
+            >
+              <div className="prod-banner-icon">{isProduction ? <Film size={22} strokeWidth={1.8} /> : <PackageCheck size={22} strokeWidth={1.8} />}</div>
+              <div className="prod-banner-text">
+                <span className="prod-banner-title">{isProduction ? 'Contingut de producció' : 'Marcar com a producció'}</span>
+                <span className="prod-banner-sub">
+                  {togglingProduction ? 'Desant...' : isProduction ? 'Visible a Contingut → En producció  ·  Clic per desmarcar' : 'Crea automàticament una targeta a la pàgina Contingut'}
+                </span>
+              </div>
+              <div className="prod-banner-check">{isProduction ? <Check size={13} strokeWidth={3} /> : ''}</div>
+            </button>
+            {isProduction && contentItemId && (
+              <div className="prod-info">
+                <span>Tasca vinculada a <strong>Contingut → En producció</strong></span>
+                <a href="/contingut" target="_blank" rel="noopener" className="prod-link">Obrir →</a>
+              </div>
+            )}
+
             {/* Fields grid */}
             <div className="grid6">
               <div className="field"><label>Estat</label>
@@ -1288,7 +1355,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
                 {(() => {
                   const items = [
                     ...comments.map(c => ({ type: 'comment' as const, ts: c.created_at, data: c })),
-                    ...activities.map(a => ({ type: 'activity' as const, ts: a.created_at, data: a })),
+                    ...activities.filter(a => a.action !== 'task_opened').map(a => ({ type: 'activity' as const, ts: a.created_at, data: a })),
                   ].sort((a, b) => a.ts.localeCompare(b.ts))
 
                   if (items.length === 0) return <div className="tl-empty">Sense activitat encara</div>
@@ -1319,6 +1386,7 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
                               <span className="tl-name">{p?.full_name || 'Usuari'}</span>
                               <span className="tl-verb">va dir</span>
                               <span className="tl-time">{fmtActivityDate(c.created_at)}</span>
+                              {!isOwn && <button className="tl-reply-btn" onClick={() => replyToComment(p?.full_name || '')} title="Respondre">↩ Respondre</button>}
                               {isOwn && <button className="tl-del" onClick={() => delComment(c.id)}><Trash2 size={10} /></button>}
                             </div>
                             <div className="tl-bubble">{renderComment(c.content)}</div>
@@ -1743,6 +1811,22 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         .section-hdr { display: flex; align-items: center; justify-content: space-between; }
         .sec-label { font-size: 10.5px; font-weight: 700; color: #9A9A9A; letter-spacing: 0.06em; text-transform: uppercase; }
         .sec-count { font-size: 11px; font-weight: 600; color: #9A9A9A; }
+        .prod-banner { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border: 2px dashed #E5E7EB; border-radius: 12px; background: #FAFAFA; cursor: pointer; font-family: inherit; text-align: left; transition: all 0.2s; margin-bottom: 4px; }
+        .prod-banner:hover { border-color: #D97706; background: #FFFBEB; }
+        .prod-banner--on { border-style: solid; border-color: #D97706; background: #FFFBEB; }
+        .prod-banner--on:hover { background: #FEF3C7; }
+        .prod-banner-icon { flex-shrink: 0; color: #9CA3AF; display: flex; align-items: center; }
+        .prod-banner--on .prod-banner-icon { color: #D97706; }
+        .prod-banner-text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+        .prod-banner-title { font-size: 13px; font-weight: 700; color: #111827; }
+        .prod-banner--on .prod-banner-title { color: #92400E; }
+        .prod-banner-sub { font-size: 11.5px; color: #9CA3AF; }
+        .prod-banner--on .prod-banner-sub { color: #B45309; }
+        .prod-banner-check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #E5E7EB; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; background: transparent; flex-shrink: 0; transition: all 0.2s; }
+        .prod-banner--on .prod-banner-check { background: #D97706; border-color: #D97706; }
+        .prod-info { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding: 8px 12px; background: #FEF3C7; border-radius: 8px; font-size: 12px; color: #92400E; border: 1px solid #FDE68A; }
+        .prod-link { color: #D97706; font-weight: 700; text-decoration: none; font-size: 12px; margin-left: auto; }
+        .prod-link:hover { text-decoration: underline; }
         .progress-bar { height: 3px; background: #F0F0F0; border-radius: 2px; }
         .progress-fill { height: 100%; background: #16A34A; border-radius: 2px; transition: width 0.3s; }
 
@@ -1877,6 +1961,9 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         .tl-del { border: none; background: none; cursor: pointer; color: #D0D0D0; padding: 0 2px; display: flex; opacity: 0; transition: opacity 0.15s, color 0.15s; margin-left: auto; }
         .tl-comment:hover .tl-del { opacity: 1; }
         .tl-del:hover { color: #DC2626; }
+        .tl-reply-btn { border: none; background: none; cursor: pointer; color: #9CA3AF; font-size: 11px; padding: 0 4px; opacity: 0; transition: opacity 0.15s, color 0.15s; font-family: inherit; }
+        .tl-comment:hover .tl-reply-btn { opacity: 1; }
+        .tl-reply-btn:hover { color: #1B2B4B; }
         .tl-bubble {
           background: #F7F7F7; border-radius: 0 10px 10px 10px;
           padding: 9px 12px; font-size: 13px; color: #1a1a1a;

@@ -3,7 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/serverAdmin'
 import { createClient } from '@/lib/supabase/server'
 
-type ItemPayload = {
+export type ItemPayload = {
   title: string
   status: string
   format: string | null
@@ -12,6 +12,9 @@ type ItemPayload = {
   assigned_to: string | null
   due_date: string | null
   notes: string | null
+  dropbox_url?: string | null
+  production_link?: string | null
+  task_id?: string | null
 }
 
 export async function createContentItem(payload: ItemPayload) {
@@ -30,7 +33,7 @@ export async function createContentItem(payload: ItemPayload) {
   return data
 }
 
-export async function updateContentItem(id: string, payload: ItemPayload) {
+export async function updateContentItem(id: string, payload: Partial<ItemPayload>) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')

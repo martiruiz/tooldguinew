@@ -85,6 +85,8 @@ export interface Task {
   status: TaskStatus
   priority: TaskPriority
   deadline?: string
+  is_production?: boolean
+  content_item_id?: string | null
   created_at: string
   updated_at: string
   completed_at?: string
