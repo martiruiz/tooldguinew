@@ -25,7 +25,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Search, X, Plus, Pencil, Trash2, ExternalLink, Copy, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
-const NAVY = '#0B1F4A'
+const NAVY = '#0006FF'
 
 interface Creator {
   id: string
@@ -47,7 +47,7 @@ type Form = Omit<Creator, 'id'>
 
 const TIPUS_CFG: Record<string, { color: string; bg: string }> = {
   CREADOR:    { color: '#CC0000',  bg: 'rgba(204,0,0,0.1)' },
-  MITJÀ:      { color: '#0B1F4A', bg: 'rgba(11,31,74,0.1)' },
+  MITJÀ:      { color: '#0006FF', bg: 'rgba(0,6,255,0.1)' },
   PERIODISTA: { color: '#7C3AED', bg: 'rgba(124,58,237,0.1)' },
   INFLUENCER: { color: '#D97706', bg: 'rgba(217,119,6,0.1)' },
   CLUB:       { color: '#059669', bg: 'rgba(5,150,105,0.1)' },
@@ -372,11 +372,12 @@ export function AsobalCreadores() {
   const [filterEstat, setFilterEstat] = useState('ALL')
   const [modal, setModal] = useState<{ isNew: boolean; form: Form; id?: string } | null>(null)
   const [sqlCopied, setSqlCopied] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.from('asobal_creadores').select('*').order('created_at')
     if (error) {
-      if (error.message?.includes('does not exist') || error.code === '42P01') setTableError(true)
+      setTableError(true)
       return
     }
     setCreators((data ?? []) as Creator[])
@@ -391,18 +392,26 @@ export function AsobalCreadores() {
   }, [supabase, load])
 
   const handleSave = useCallback(async (form: Form) => {
+    setSaveError(null)
+    let error
     if (modal?.id) {
-      await supabase.from('asobal_creadores').update(form).eq('id', modal.id)
+      ;({ error } = await supabase.from('asobal_creadores').update(form).eq('id', modal.id))
     } else {
-      await supabase.from('asobal_creadores').insert(form)
+      ;({ error } = await supabase.from('asobal_creadores').insert(form))
+    }
+    if (error) {
+      setSaveError(error.message ?? 'Error desconegut')
+      return
     }
     await load()
     setModal(null)
   }, [modal, supabase, load])
 
   const handleDelete = useCallback(async () => {
-    if (modal?.id) await supabase.from('asobal_creadores').delete().eq('id', modal.id)
+    if (!modal?.id) return
+    await supabase.from('asobal_creadores').delete().eq('id', modal.id)
     await load()
+    setModal(null)
   }, [modal, supabase, load])
 
   const handleSeedImport = useCallback(async () => {
@@ -502,6 +511,12 @@ export function AsobalCreadores() {
               style={{ padding: '9px 18px', background: NAVY, border: 'none', borderRadius: 9, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
               Importar creadors inicials
             </button>
+          </div>
+        )}
+        {saveError && (
+          <div style={{ marginBottom: 12, padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, fontSize: 12, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontWeight: 700 }}>Error en guardar:</span> {saveError}
+            <button onClick={() => setSaveError(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 0, display: 'flex' }}><X size={12} /></button>
           </div>
         )}
         {filtered.length === 0 && creators.length > 0 && (
