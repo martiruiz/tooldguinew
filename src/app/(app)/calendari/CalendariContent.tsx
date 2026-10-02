@@ -24,6 +24,7 @@ interface Tournament {
   id: string; name: string; date_start: string; date_end?: string; location?: string; notes?: string; logo_url?: string
   album_type?: string; album_price?: number; sale_start?: string; sale_end?: string
   comm_sent?: boolean; graphics_done?: boolean; album_notes?: string
+  album_min?: number; album_sold?: number
 }
 interface TournamentStaff {
   id: string; tournament_id: string; person_name: string; role: string
@@ -228,7 +229,7 @@ export function CalendariContent({
   }
   const saveAlbumData = async (t: Partial<Tournament>) => {
     if (!t.id) return
-    const payload = { album_type: t.album_type??'both', album_price: t.album_price??null, sale_start: t.sale_start||null, sale_end: t.sale_end||null, album_notes: t.album_notes||null }
+    const payload = { album_type: t.album_type??'both', album_price: t.album_price??null, sale_start: t.sale_start||null, sale_end: t.sale_end||null, album_notes: t.album_notes||null, album_min: t.album_min??null, album_sold: t.album_sold??0 }
     await supabase.from('cal_tournaments').update(payload).eq('id', t.id)
     setAlbumModal(null); await refresh('tournaments')
   }
@@ -662,6 +663,31 @@ export function CalendariContent({
                       ))}
                     </div>
 
+                    {/* Sales counter */}
+                    {(t.album_min != null || (t.album_sold ?? 0) > 0) && (() => {
+                      const sold = t.album_sold ?? 0
+                      const min = t.album_min ?? 0
+                      const salesPct = min > 0 ? Math.min(100, Math.round((sold / min) * 100)) : 100
+                      const ok = min === 0 || sold >= min
+                      const barColor = ok ? '#22c55e' : sold >= min * 0.7 ? '#f59e0b' : '#ef4444'
+                      return (
+                        <div style={{ marginTop:10, background: ok ? '#f0fdf4' : '#fef9ec', border:`1px solid ${ok ? '#bbf7d0' : '#fde68a'}`, borderRadius:10, padding:'10px 12px' }}>
+                          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+                            <span style={{ fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'.05em' }}>Àlbums venuts</span>
+                            <span style={{ fontSize:13, fontWeight:800, color: barColor }}>
+                              {sold}{min > 0 ? ` / ${min} mínim` : ' venuts'}
+                              {min > 0 && <span style={{ fontSize:11, fontWeight:600, color:'#9ca3af', marginLeft:6 }}>{ok ? '✓ Cobert' : `${min - sold} per cobrir`}</span>}
+                            </span>
+                          </div>
+                          {min > 0 && (
+                            <div style={{ height:6, borderRadius:99, background:'#e5e7eb', overflow:'hidden' }}>
+                              <div style={{ height:'100%', width:`${salesPct}%`, background:barColor, borderRadius:99, transition:'width .3s ease' }}/>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
+
                     {/* Quick toggles */}
                     <div style={{ display:'flex', gap:8, marginTop:10 }}>
                       <button onClick={() => toggleAlbumField(t.id, 'graphics_done', !t.graphics_done)}
@@ -903,12 +929,19 @@ function AlbumModal({ initial, onSave, onClose }: { initial:Tournament; onSave:(
     sale_start: initial.sale_start??'',
     sale_end: initial.sale_end??'',
     album_notes: initial.album_notes??'',
+    album_min: initial.album_min??'' as number|'',
+    album_sold: initial.album_sold??'' as number|'',
     id: initial.id,
   })
   const [saving, setSaving] = useState(false)
   const handleSave = async () => {
     setSaving(true)
-    await onSave({ ...form, album_price: form.album_price !== '' ? Number(form.album_price) : undefined })
+    await onSave({
+      ...form,
+      album_price: form.album_price !== '' ? Number(form.album_price) : undefined,
+      album_min: form.album_min !== '' ? Number(form.album_min) : undefined,
+      album_sold: form.album_sold !== '' ? Number(form.album_sold) : 0,
+    })
     setSaving(false)
   }
   return (
@@ -932,7 +965,14 @@ function AlbumModal({ initial, onSave, onClose }: { initial:Tournament; onSave:(
             <div><label style={labelStyle}>Tancament venda</label><input type="date" style={fieldStyle} value={form.sale_end} onChange={e => setForm(p=>({...p,sale_end:e.target.value}))}/></div>
           </div>
         </div>
-        <div><label style={labelStyle}>Preu (€, opcional)</label><input type="number" style={fieldStyle} value={form.album_price} onChange={e => setForm(p=>({...p,album_price:e.target.value===''?'':parseFloat(e.target.value)}))} placeholder="0.00" min="0" step="0.01"/></div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          <div><label style={labelStyle}>Preu (€, opcional)</label><input type="number" style={fieldStyle} value={form.album_price} onChange={e => setForm(p=>({...p,album_price:e.target.value===''?'':parseFloat(e.target.value)}))} placeholder="0.00" min="0" step="0.01"/></div>
+          <div><label style={labelStyle}>Mínim per ser rentable</label><input type="number" style={fieldStyle} value={form.album_min} onChange={e => setForm(p=>({...p,album_min:e.target.value===''?'':parseInt(e.target.value)}))} placeholder="Ex: 50" min="0" step="1"/></div>
+        </div>
+        <div>
+          <label style={labelStyle}>Àlbums venuts fins avui</label>
+          <input type="number" style={fieldStyle} value={form.album_sold} onChange={e => setForm(p=>({...p,album_sold:e.target.value===''?'':parseInt(e.target.value)}))} placeholder="0" min="0" step="1"/>
+        </div>
         <div><label style={labelStyle}>Notes (opcional)</label><textarea style={{ ...fieldStyle, resize:'vertical', minHeight:64 }} value={form.album_notes} onChange={e => setForm(p=>({...p,album_notes:e.target.value}))} placeholder="Observacions..."/></div>
         <ModalFooter onClose={onClose} onSave={handleSave} saving={saving}/>
       </div>
