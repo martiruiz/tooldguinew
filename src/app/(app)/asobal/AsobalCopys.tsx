@@ -277,20 +277,20 @@ export function AsobalCopys() {
       <style>{`
         .asb-copys-sidebar { width:260px; flex-shrink:0; border-right:1px solid rgba(0,0,0,0.08); overflow-y:auto; background:#FAFAFA; }
         .asb-copys-toggle { display:none; }
-        @media(max-width:640px) {
-          .asb-copys-sidebar { position:absolute; top:0; left:0; bottom:0; z-index:20; width:80vw; max-width:280px; box-shadow:4px 0 16px rgba(0,0,0,0.15); transform:translateX(-100%); transition:transform .22s ease; }
+        @media(max-width:700px) {
+          .asb-copys-sidebar { position:absolute; top:0; left:0; bottom:0; z-index:20; width:82vw; max-width:290px; box-shadow:4px 0 18px rgba(0,0,0,0.18); transform:translateX(-100%); transition:transform .22s ease; }
           .asb-copys-sidebar.open { transform:translateX(0); }
-          .asb-copys-toggle { display:flex; align-items:center; gap:6px; position:sticky; top:0; left:0; z-index:10; margin:-16px -16px 12px -16px; padding:10px 14px; border-radius:0; border:none; border-bottom:1px solid rgba(0,0,0,0.08); background:#fff; font-size:13px; font-weight:600; color:#374151; cursor:pointer; font-family:inherit; width:calc(100% + 32px); justify-content:flex-start; }
-          .asb-copys-overlay { display:none; position:absolute; inset:0; background:rgba(0,0,0,0.25); z-index:19; }
+          .asb-copys-toggle { display:flex; align-items:center; gap:6px; padding:9px 14px; border:none; border-bottom:1px solid rgba(0,0,0,0.08); background:#fff; font-size:13px; font-weight:600; color:#374151; cursor:pointer; font-family:inherit; width:100%; justify-content:flex-start; flex-shrink:0; }
+          .asb-copys-overlay { display:none; position:absolute; inset:0; background:rgba(0,0,0,0.28); z-index:19; }
           .asb-copys-overlay.open { display:block; }
+          .asb-copys-main { padding:0 !important; }
+          .asb-copys-inner { padding:12px !important; }
         }
       `}</style>
-      {/* Mobile toggle button */}
-      <button className="asb-copys-toggle" onClick={() => setSidebarOpen(o => !o)}>
-        ☰ Categories
-      </button>
+
       {/* Overlay (mobile only) */}
       <div className={`asb-copys-overlay${sidebarOpen ? ' open' : ''}`} onClick={() => setSidebarOpen(false)} />
+
       {/* Left: template list */}
       <div className={`asb-copys-sidebar${sidebarOpen ? ' open' : ''}`}>
         {/* Filters */}
@@ -310,7 +310,7 @@ export function AsobalCopys() {
 
         {/* Category list */}
         <div style={{ padding: '8px 0' }}>
-          <button onClick={() => setSelectedCat(null)}
+          <button onClick={() => { setSelectedCat(null); setSidebarOpen(false) }}
             style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: selectedCat === null ? 'rgba(27,59,218,0.08)' : 'none',
               border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: selectedCat === null ? 700 : 500,
               color: selectedCat === null ? '#1b3bda' : '#374151', borderLeft: selectedCat === null ? '2px solid #1b3bda' : '2px solid transparent' }}>
@@ -320,7 +320,7 @@ export function AsobalCopys() {
           {CATEGORIES.map(cat => {
             const count = TEMPLATES.filter(t => t.category === cat && (selectedPlatform === 'all' || t.platform === selectedPlatform || t.platform === 'ambdues')).length
             return (
-              <button key={cat} onClick={() => setSelectedCat(cat === selectedCat ? null : cat)}
+              <button key={cat} onClick={() => { setSelectedCat(cat === selectedCat ? null : cat); setSidebarOpen(false) }}
                 style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: selectedCat === cat ? 'rgba(27,59,218,0.08)' : 'none',
                   border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: selectedCat === cat ? 700 : 500,
                   color: selectedCat === cat ? '#1b3bda' : '#374151', borderLeft: selectedCat === cat ? '2px solid #1b3bda' : '2px solid transparent',
@@ -338,7 +338,7 @@ export function AsobalCopys() {
             {filtered.map(t => {
               const plStyle = PLATFORM_COLORS[t.platform]
               return (
-                <button key={t.id} onClick={() => handleSelectTemplate(t)}
+                <button key={t.id} onClick={() => { handleSelectTemplate(t); setSidebarOpen(false) }}
                   style={{ width: '100%', textAlign: 'left', padding: '8px 14px', background: activeTemplate?.id === t.id ? 'rgba(27,59,218,0.06)' : 'none',
                     border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'background .1s',
                     borderLeft: activeTemplate?.id === t.id ? '2px solid #1b3bda' : '2px solid transparent' }}>
@@ -353,8 +353,14 @@ export function AsobalCopys() {
         )}
       </div>
 
-      {/* Right: template cards or generator */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: 16, minWidth: 0, paddingTop: 'max(16px, env(safe-area-inset-top, 0px))' }} className="asb-copys-main">
+      {/* Right: toggle + content */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }} className="asb-copys-main">
+        {/* Mobile toggle — only visible on small screens via CSS */}
+        <button className="asb-copys-toggle" onClick={() => setSidebarOpen(o => !o)}>
+          ☰ {selectedCat ?? 'Categories'}
+        </button>
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: 16 }} className="asb-copys-inner">
         {!selectedCat && !activeTemplate ? (
           /* Grid of all categories */
           <div>
@@ -542,6 +548,7 @@ export function AsobalCopys() {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   )
