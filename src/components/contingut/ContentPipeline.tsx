@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Plus, X, Calendar, Search, MoreHorizontal, Edit2, Trash2, ChevronLeft, ChevronRight, FileText, Film, Zap, Layers, Video, PenLine, Mail, Mic, BarChart2, Globe } from 'lucide-react'
+import { Plus, X, Calendar, Search, MoreHorizontal, Edit2, Trash2, ChevronLeft, ChevronRight, FileText, Film, Zap, Layers, Video, PenLine, Mail, Mic, BarChart2, Globe, Box, Link2 } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 import { ClientSearchSelect } from '@/components/ui/ClientSearchSelect'
 import { createContentItem, updateContentItem, deleteContentItem, moveContentItem } from '@/app/(app)/contingut/actions'
@@ -451,15 +451,15 @@ function ItemModal({
           {form.status === 'produccio' && (
             <>
               <div className="ci-field">
-                <label>🔗 Contingut Dropbox</label>
+                <label className="ci-label-icon"><Box size={13} strokeWidth={2} /> Contingut Dropbox</label>
                 <input className="ci-input" placeholder="Enganxa l'enllaç de Dropbox..." value={form.dropbox_url} onChange={set('dropbox_url')} />
                 {form.dropbox_url && (
                   <a href={form.dropbox_url} target="_blank" rel="noopener" className="ci-ext-link">Obrir Dropbox →</a>
                 )}
               </div>
               <div className="ci-field">
-                <label>🔗 Altre enllaç</label>
-                <input className="ci-input" placeholder="Altre URL de referència..." value={form.production_link} onChange={set('production_link')} />
+                <label className="ci-label-icon"><Link2 size={13} strokeWidth={2} /> Afegir enllaç</label>
+                <input className="ci-input" placeholder="URL de referència..." value={form.production_link} onChange={set('production_link')} />
               </div>
             </>
           )}
@@ -1013,6 +1013,7 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
         .ci-modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid #F3F4F6; }
         .ci-field { display: flex; flex-direction: column; gap: 6px; }
         .ci-field label { font-size: 12.5px; font-weight: 600; color: #374151; }
+        .ci-label-icon { display: flex; align-items: center; gap: 5px; }
         .ci-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .ci-input { height: 36px; padding: 0 12px; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 13.5px; font-family: inherit; color: #111827; outline: none; transition: border-color 0.15s; }
         .ci-input:focus { border-color: #1B2B4B; }
