@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X, Image as ImageIcon, Layers, Film, Zap, Copy, PlaySquare, BookOpen, Users2, Award, CalendarDays, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { AsobalCopys } from './AsobalCopys'
@@ -833,6 +833,8 @@ export function AsobalContent() {
     return best
   })
   const [mobileJView, setMobileJView] = useState<'partits' | 'organigrama'>('partits')
+  const [top5Order, setTop5Order] = useState<{ aturades: string[]; gols: string[] }>({ aturades: [], gols: [] })
+  const [top5DragOver, setTop5DragOver] = useState<'aturada' | 'gol' | null>(null)
   const [openMatches, setOpenMatches] = useState<Set<string>>(new Set())
   const [store, setStore] = useState<StoreData>({})
   const [addingFor, setAddingFor] = useState<string | null>(null)
@@ -900,6 +902,60 @@ export function AsobalContent() {
   const deleteAction = useCallback(async (_key: string, id: string) => {
     await supabase.from('asobal_actions').delete().eq('id', id)
   }, [supabase])
+
+  const jornadaActions = useMemo(() => {
+    const all: Action[] = []
+    for (let m = 0; m < 8; m++) all.push(...(store[`j${selectedJ}_m${m}`] ?? []))
+    return all
+  }, [selectedJ, store])
+
+  useEffect(() => {
+    const top5Atur = jornadaActions.filter(a => a.top5 && a.type === 'aturada').map(a => a.id)
+    const top5Gols = jornadaActions.filter(a => a.top5 && a.type === 'gol').map(a => a.id)
+    setTop5Order(prev => {
+      const merge = (prevIds: string[], validIds: string[]) => {
+        const valid = new Set(validIds)
+        const kept = prevIds.filter(id => valid.has(id))
+        const added = validIds.filter(id => !kept.includes(id))
+        return [...kept, ...added].slice(0, 5)
+      }
+      return { aturades: merge(prev.aturades, top5Atur), gols: merge(prev.gols, top5Gols) }
+    })
+  }, [selectedJ, jornadaActions])
+
+  const updateTop5Flag = useCallback(async (id: string, val: boolean) => {
+    await supabase.from('asobal_actions').update({ top5: val }).eq('id', id)
+  }, [supabase])
+
+  const handleTop5Drop = useCallback(async (action: Action, type: 'aturada' | 'gol', atPos?: number) => {
+    if (!action.top5) await updateTop5Flag(action.id, true)
+    setTop5Order(prev => {
+      const key = type === 'aturada' ? 'aturades' : 'gols'
+      const ids = prev[key].filter(id => id !== action.id)
+      atPos !== undefined ? ids.splice(atPos, 0, action.id) : ids.push(action.id)
+      return { ...prev, [key]: ids.slice(0, 5) }
+    })
+  }, [updateTop5Flag])
+
+  const handleTop5Remove = useCallback(async (id: string, type: 'aturada' | 'gol') => {
+    await updateTop5Flag(id, false)
+    setTop5Order(prev => {
+      const key = type === 'aturada' ? 'aturades' : 'gols'
+      return { ...prev, [key]: prev[key].filter(i => i !== id) }
+    })
+  }, [updateTop5Flag])
+
+  const handleTop5Reorder = useCallback((type: 'aturada' | 'gol', fromId: string, toId: string) => {
+    setTop5Order(prev => {
+      const key = type === 'aturada' ? 'aturades' : 'gols'
+      const ids = [...prev[key]]
+      const fi = ids.indexOf(fromId), ti = ids.indexOf(toId)
+      if (fi === -1 || ti === -1) return prev
+      ids.splice(fi, 1)
+      ids.splice(ti, 0, fromId)
+      return { ...prev, [key]: ids }
+    })
+  }, [])
 
   const [orgEntries, setOrgEntries] = useState<OrgEntry[]>([])
 
@@ -1074,6 +1130,12 @@ export function AsobalContent() {
         .asb-org-jnav-btn:disabled { opacity:0.3; cursor:default; }
         .asb-org-jnav-label { font-size:13px; font-weight:700; color:#1a202c; flex:1; text-align:center; }
         .asb-mobile-view-toggle { display:none; }
+        .asb-top5-zone { display:flex; flex-direction:column; gap:4px; min-height:44px; border-radius:9px; padding:6px; transition:background .15s, border-color .15s; }
+        .asb-top5-zone.drag-over { border-style:solid !important; background-opacity:.14 !important; }
+        .asb-top5-slot { display:flex; align-items:center; gap:8px; padding:5px 8px; background:#fff; border-radius:7px; border:1px solid rgba(0,0,0,0.08); cursor:grab; box-shadow:0 1px 2px rgba(0,0,0,0.04); transition:box-shadow .12s; }
+        .asb-top5-slot:hover { box-shadow:0 2px 6px rgba(0,0,0,0.09); }
+        .asb-top5-slot:active { cursor:grabbing; }
+        .asb-top5-pos { width:20px; height:20px; border-radius:50%; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
         @media(max-width:768px) {
           .asb-split-layout { position:relative; overflow:hidden; }
           .asb-matches-panel { flex:0 0 100%; min-width:0; width:100%; border-right:none; position:absolute; inset:0; transition:transform .25s ease; }
@@ -1365,6 +1427,85 @@ export function AsobalContent() {
                       ) : null}
                     </div>
                   )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Top 5 zones */}
+          <div style={{ width: '100%', maxWidth: 900, marginTop: 8 }}>
+            {(['aturada', 'gol'] as const).map(type => {
+              const isAtur = type === 'aturada'
+              const label = isAtur ? '🖐🏻 Top 5 Aturades' : '🏐 Top 5 Gols'
+              const color = isAtur ? '#1b3bda' : '#d48a00'
+              const bgZone = isAtur ? 'rgba(27,59,218,0.05)' : 'rgba(245,166,35,0.07)'
+              const border = isAtur ? 'rgba(27,59,218,0.22)' : 'rgba(245,166,35,0.4)'
+              const ids = isAtur ? top5Order.aturades : top5Order.gols
+              const isDragTarget = top5DragOver === type
+
+              return (
+                <div key={type} style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color, textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 5 }}>
+                    {label}
+                    <span style={{ marginLeft: 8, fontWeight: 400, color: '#9aa5b4', textTransform: 'none', letterSpacing: 0 }}>
+                      {ids.length}/5
+                    </span>
+                  </div>
+                  <div
+                    className={`asb-top5-zone${isDragTarget ? ' drag-over' : ''}`}
+                    style={{ border: `2px dashed ${isDragTarget ? color : border}`, background: isDragTarget ? `${bgZone}` : bgZone }}
+                    onDragOver={e => { e.preventDefault(); setTop5DragOver(type) }}
+                    onDragLeave={() => setTop5DragOver(null)}
+                    onDrop={e => {
+                      e.preventDefault()
+                      setTop5DragOver(null)
+                      const data = e.dataTransfer.getData('asobal-action')
+                      if (!data) return
+                      const action = JSON.parse(data) as Action
+                      if (action.type !== type) return
+                      handleTop5Drop(action, type)
+                    }}
+                  >
+                    {ids.length === 0 && (
+                      <div style={{ padding: '10px 0', textAlign: 'center', fontSize: 11, color: `${color}60` }}>
+                        Arrossega aquí les accions del partit
+                      </div>
+                    )}
+                    {ids.slice(0, 5).map((id, pos) => {
+                      const action = jornadaActions.find(a => a.id === id)
+                      if (!action) return null
+                      return (
+                        <div
+                          key={id}
+                          className="asb-top5-slot"
+                          draggable
+                          onDragStart={e => { e.dataTransfer.setData('asb-top5-item', JSON.stringify({ id, type })); e.stopPropagation() }}
+                          onDragOver={e => e.preventDefault()}
+                          onDrop={e => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            const itemData = e.dataTransfer.getData('asb-top5-item')
+                            if (itemData) {
+                              const { id: fromId, type: fromType } = JSON.parse(itemData)
+                              if (fromType === type) handleTop5Reorder(type, fromId, id)
+                            }
+                          }}
+                        >
+                          <span className="asb-top5-pos" style={{ background: color, color: '#fff' }}>{pos + 1}</span>
+                          <span style={{ fontSize: 11, fontWeight: 800, color, flexShrink: 0 }}>{action.equip}</span>
+                          <span style={{ fontSize: 12, color: '#1a202c', flex: 1, fontWeight: 600 }}>{action.jugador}</span>
+                          {action.minut && <span style={{ fontSize: 10, color: '#9aa5b4' }}>{action.minut}&apos;</span>}
+                          <button
+                            onClick={() => handleTop5Remove(id, type)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9aa5b4', padding: 2, display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                            title="Treure del top 5"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               )
             })}
