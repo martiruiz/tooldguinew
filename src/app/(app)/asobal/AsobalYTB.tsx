@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, X, Copy, Check } from 'lucide-react'
+import { Search, X, Copy, Check, ChevronDown, ChevronRight } from 'lucide-react'
 
 export interface YTBEntry {
   titulo: string
@@ -1152,6 +1152,14 @@ function getJornada(entry: YTBEntry): string {
 
 export function AsobalYTB() {
   const [q, setQ] = useState('')
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+
+  const toggle = (label: string) =>
+    setCollapsed(prev => {
+      const next = new Set(prev)
+      next.has(label) ? next.delete(label) : next.add(label)
+      return next
+    })
 
   const filtered = useMemo(() => {
     if (!q.trim()) return DATA
@@ -1209,20 +1217,26 @@ export function AsobalYTB() {
         )}
         {groups.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {groups.map(group => (
+            {groups.map(group => {
+              const isCollapsed = collapsed.has(group.label)
+              return (
               <div key={group.label} style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 {/* Jornada header */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', background: NAVY }}>
-                  <div style={{ gridColumn: '1 / -1', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
+                  <div
+                    onClick={() => toggle(group.label)}
+                    style={{ gridColumn: '1 / -1', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: isCollapsed ? 'none' : '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', userSelect: 'none' }}
+                  >
+                    {isCollapsed ? <ChevronRight size={14} color="rgba(255,255,255,0.75)" /> : <ChevronDown size={14} color="rgba(255,255,255,0.75)" />}
                     <span style={{ fontSize: 12, fontWeight: 900, color: '#fff', textTransform: 'uppercase', letterSpacing: '.1em' }}>{group.label}</span>
                     <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: 600 }}>{group.entries.length} {group.entries.length === 1 ? 'entrada' : 'entrades'}</span>
                   </div>
-                  {(['Títol', 'Descripció SEO', 'Paraules clau'] as const).map(label => (
+                  {!isCollapsed && (['Títol', 'Descripció SEO', 'Paraules clau'] as const).map(label => (
                     <div key={label} style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: '.1em', padding: '5px 14px' }}>{label}</div>
                   ))}
                 </div>
                 {/* Rows */}
-                {group.entries.map(({ entry, globalIdx }) => {
+                {!isCollapsed && group.entries.map(({ entry, globalIdx }) => {
                   const kwCount = entry.keywords.length
                   const isTemplate = !entry.titulo.includes('|')
                   return (
@@ -1253,7 +1267,7 @@ export function AsobalYTB() {
                   )
                 })}
               </div>
-            ))}
+            )})}
           </div>
         )}
       </div>
