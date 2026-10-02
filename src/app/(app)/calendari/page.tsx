@@ -35,6 +35,7 @@ export default async function CalendariPage() {
         initialStaff={staff ?? []}
         clients={clients ?? []}
         currentUserId={user.id}
+        userRole={(profile as Profile).role}
       />
     </>
   )

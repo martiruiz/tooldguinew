@@ -126,7 +126,7 @@ const labelStyle: React.CSSProperties = { fontSize:11, fontWeight:700, color:'#6
 
 /* ══════════════════════════════════════════════════════════════════════ */
 export function CalendariContent({
-  initialImportantDates, initialAlbums, initialTournaments, initialStaff, clients, currentUserId: _uid,
+  initialImportantDates, initialAlbums, initialTournaments, initialStaff, clients, currentUserId: _uid, userRole,
 }: {
   initialImportantDates: ImportantDate[]
   initialAlbums: Album[]
@@ -134,6 +134,7 @@ export function CalendariContent({
   initialStaff: TournamentStaff[]
   clients: ClientEntry[]
   currentUserId: string
+  userRole: string
 }) {
   const supabase = useSupabase()
   const [tab, setTab] = useState<'dates'|'albums'|'tournaments'>('dates')
@@ -281,12 +282,14 @@ export function CalendariContent({
   const todayStr = today()
   const nextDate = filteredDates.find(d => d.date >= todayStr)
 
+  const isSuperadmin = userRole === 'superadmin'
+
   /* Tabs */
   const tabs = [
     { key:'dates',       label:'Dates importants', Icon:Flag,     count:dates.length },
-    { key:'albums',      label:'Àlbums',           Icon:Disc3,    count:tournaments.length },
+    ...(isSuperadmin ? [{ key:'albums' as const, label:'Àlbums', Icon:Disc3, count:tournaments.length }] : []),
     { key:'tournaments', label:'Tornejos',         Icon:Trophy,   count:tournaments.length },
-  ] as const
+  ] as { key:'dates'|'albums'|'tournaments'; label:string; Icon:React.ElementType; count:number }[]
 
   return (
     <div style={{ padding:'32px 36px', maxWidth:1200, margin:'0 auto', fontFamily:'inherit' }}>
@@ -585,7 +588,7 @@ export function CalendariContent({
       )}
 
       {/* ═══════════════ TAB: Àlbums ══════════════════════════════════════ */}
-      {tab === 'albums' && (
+      {tab === 'albums' && isSuperadmin && (
         <section>
           <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:24 }}>
             <div>
