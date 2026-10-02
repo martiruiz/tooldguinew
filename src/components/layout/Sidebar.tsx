@@ -565,23 +565,51 @@ export function Sidebar({ user }: Props) {
             </nav>
           </>
         )}
-      </div>
+        <div className="sb-divider" />
 
-      {/* New task card */}
-      <div className={cn('sb-newtask-wrap', c && 'sb-newtask-wrap--icon')}>
-        {c ? (
-          <button className="sb-newtask-icon-btn" onClick={openTaskModal} title="Nova tasca">
-            <Plus size={18} strokeWidth={2.5} />
-          </button>
-        ) : (
-          <button className="sb-newtask-card" onClick={openTaskModal}>
-            <div className="sb-newtask-circle">
-              <Plus size={22} strokeWidth={2.5} />
+        {/* New task card */}
+        <div className={cn('sb-newtask-wrap', c && 'sb-newtask-wrap--icon')}>
+          {c ? (
+            <button className="sb-newtask-icon-btn" onClick={openTaskModal} title="Nova tasca">
+              <Plus size={18} strokeWidth={2.5} />
+            </button>
+          ) : (
+            <button className="sb-newtask-card" onClick={openTaskModal}>
+              <div className="sb-newtask-circle">
+                <Plus size={22} strokeWidth={2.5} />
+              </div>
+              <div className="sb-newtask-label">Nova tasca</div>
+              <div className="sb-newtask-sub">Crea una tasca ràpidament</div>
+            </button>
+          )}
+        </div>
+
+        {/* Logout */}
+        <div className={cn('sb-footer', c && 'sb-footer--icon')}>
+          {confirmLogout ? (
+            <div className={cn('sb-logout-confirm', c && 'sb-logout-confirm--icon')}>
+              {!c && <span className="sb-logout-q">Tancar sessió?</span>}
+              <button className="sb-logout-yes" onClick={handleLogout}>
+                <LogOut size={13}/>{!c && <span>Sí</span>}
+              </button>
+              <button className="sb-logout-no" onClick={() => setConfirmLogout(false)}>
+                {c ? '✕' : 'No'}
+              </button>
             </div>
-            <div className="sb-newtask-label">Nova tasca</div>
-            <div className="sb-newtask-sub">Crea una tasca ràpidament</div>
-          </button>
-        )}
+          ) : (
+            <button
+              className={cn('sb-logout-btn', c && 'sb-logout-btn--icon')}
+              onClick={() => setConfirmLogout(true)}
+              title="Tancar sessió"
+            >
+              <LogOut size={c ? 18 : 15} strokeWidth={1.8}/>
+              {!c && <span>Tancar sessió</span>}
+            </button>
+          )}
+        </div>
+
+        {/* Spacer perquè el menú sembli infinit */}
+        <div style={{ minHeight: 120, flexShrink: 0 }} />
       </div>
 
       {/* Task modal */}
@@ -595,30 +623,6 @@ export function Sidebar({ user }: Props) {
           onCreated={(_task: Task) => setShowTaskModal(false)}
         />
       )}
-
-      {/* Footer: logout */}
-      <div className={cn('sb-footer', c && 'sb-footer--icon')}>
-        {confirmLogout ? (
-          <div className={cn('sb-logout-confirm', c && 'sb-logout-confirm--icon')}>
-            {!c && <span className="sb-logout-q">Tancar sessió?</span>}
-            <button className="sb-logout-yes" onClick={handleLogout}>
-              <LogOut size={13}/>{!c && <span>Sí</span>}
-            </button>
-            <button className="sb-logout-no" onClick={() => setConfirmLogout(false)}>
-              {c ? '✕' : 'No'}
-            </button>
-          </div>
-        ) : (
-          <button
-            className={cn('sb-logout-btn', c && 'sb-logout-btn--icon')}
-            onClick={() => setConfirmLogout(true)}
-            title="Tancar sessió"
-          >
-            <LogOut size={c ? 18 : 15} strokeWidth={1.8}/>
-            {!c && <span>Tancar sessió</span>}
-          </button>
-        )}
-      </div>
 
       <style jsx>{`
         .sb {
@@ -1015,7 +1019,7 @@ export function Sidebar({ user }: Props) {
 
 
         /* ── Footer ── */
-        .sb-footer { border-top: 1px solid #F0F0F0; padding: 8px; flex-shrink: 0; }
+        .sb-footer { padding: 8px; }
         .sb-footer--icon { padding: 8px; }
         .sb-logout-btn {
           display: flex; align-items: center; gap: 8px; width: 100%;
