@@ -1144,6 +1144,12 @@ function CopyBtn({ text, label }: { text: string; label: string }) {
   )
 }
 
+function getJornada(entry: YTBEntry): string {
+  const m = entry.keywords.match(/Jornada (\d+)/)
+  if (m) return `Jornada ${m[1]}`
+  return 'Plantilles'
+}
+
 export function AsobalYTB() {
   const [q, setQ] = useState('')
 
@@ -1156,6 +1162,21 @@ export function AsobalYTB() {
       e.keywords.toLowerCase().includes(query)
     )
   }, [q])
+
+  // Group by jornada preserving order
+  const groups = useMemo(() => {
+    const map: { label: string; entries: { entry: YTBEntry; globalIdx: number }[] }[] = []
+    const seen = new Map<string, number>()
+    filtered.forEach((entry, i) => {
+      const label = getJornada(entry)
+      if (!seen.has(label)) {
+        seen.set(label, map.length)
+        map.push({ label, entries: [] })
+      }
+      map[seen.get(label)!].entries.push({ entry, globalIdx: i })
+    })
+    return map
+  }, [filtered])
 
   return (
     <div style={{ display: 'flex', flex: 1, flexDirection: 'column', overflow: 'hidden', background: '#F8F9FB' }}>
@@ -1186,45 +1207,53 @@ export function AsobalYTB() {
             Cap resultat per &ldquo;{q}&rdquo;
           </div>
         )}
-        {filtered.length > 0 && (
-          <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-            {/* Header */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', background: NAVY, padding: '8px 12px', gap: 1 }}>
-              {(['Títol', 'Descripció SEO', 'Paraules clau'] as const).map(label => (
-                <div key={label} style={{ fontSize: 10, fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '.08em', padding: '0 6px' }}>{label}</div>
-              ))}
-            </div>
-            {/* Rows */}
-            {filtered.map((entry, i) => {
-              const kwCount = entry.keywords.length
-              const isTemplate = !entry.titulo.includes('|')
-              return (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderTop: '1px solid rgba(0,0,0,0.06)', background: isTemplate ? 'rgba(11,31,74,0.025)' : i % 2 === 0 ? '#fff' : '#F8F9FB' }}>
-                  {/* Col 1 – Títol */}
-                  <div style={{ padding: '10px 12px', borderRight: '1px solid rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <div style={{ fontSize: 11.5, fontWeight: 700, color: '#111827', lineHeight: 1.4 }}>{entry.titulo}</div>
-                    <CopyBtn text={entry.titulo} label="Títol" />
+        {groups.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {groups.map(group => (
+              <div key={group.label} style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                {/* Jornada header */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', background: NAVY }}>
+                  <div style={{ gridColumn: '1 / -1', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
+                    <span style={{ fontSize: 12, fontWeight: 900, color: '#fff', textTransform: 'uppercase', letterSpacing: '.1em' }}>{group.label}</span>
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: 600 }}>{group.entries.length} {group.entries.length === 1 ? 'entrada' : 'entrades'}</span>
                   </div>
-                  {/* Col 2 – Descripció */}
-                  <div style={{ padding: '10px 12px', borderRight: '1px solid rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <div style={{ fontSize: 11, color: '#374151', lineHeight: 1.55 }}>{entry.descripcion}</div>
-                    <CopyBtn text={entry.descripcion} label="Descripció" />
-                  </div>
-                  {/* Col 3 – Keywords */}
-                  <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <div style={{ fontSize: 10.5, color: '#374151', lineHeight: 1.6 }}>
-                      {entry.keywords.split(', ').map((kw, ki) => (
-                        <span key={ki} style={{ display: 'inline-block', background: 'rgba(11,31,74,0.06)', color: NAVY, borderRadius: 4, padding: '1px 5px', margin: '2px 2px 2px 0', fontSize: 10, fontWeight: 600 }}>{kw}</span>
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <CopyBtn text={entry.keywords} label="Keywords" />
-                      <span style={{ fontSize: 10, color: kwCount > 480 ? '#DC2626' : kwCount > 420 ? '#D97706' : '#16a34a', fontWeight: 700 }}>{kwCount}/500</span>
-                    </div>
-                  </div>
+                  {(['Títol', 'Descripció SEO', 'Paraules clau'] as const).map(label => (
+                    <div key={label} style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: '.1em', padding: '5px 14px' }}>{label}</div>
+                  ))}
                 </div>
-              )
-            })}
+                {/* Rows */}
+                {group.entries.map(({ entry, globalIdx }) => {
+                  const kwCount = entry.keywords.length
+                  const isTemplate = !entry.titulo.includes('|')
+                  return (
+                    <div key={globalIdx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderTop: '1px solid rgba(0,0,0,0.06)', background: isTemplate ? 'rgba(11,31,74,0.025)' : globalIdx % 2 === 0 ? '#fff' : '#F8F9FB' }}>
+                      {/* Col 1 – Títol */}
+                      <div style={{ padding: '10px 12px', borderRight: '1px solid rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ fontSize: 11.5, fontWeight: 700, color: '#111827', lineHeight: 1.4 }}>{entry.titulo}</div>
+                        <CopyBtn text={entry.titulo} label="Títol" />
+                      </div>
+                      {/* Col 2 – Descripció */}
+                      <div style={{ padding: '10px 12px', borderRight: '1px solid rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ fontSize: 11, color: '#374151', lineHeight: 1.55 }}>{entry.descripcion}</div>
+                        <CopyBtn text={entry.descripcion} label="Descripció" />
+                      </div>
+                      {/* Col 3 – Keywords */}
+                      <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ fontSize: 10.5, color: '#374151', lineHeight: 1.6 }}>
+                          {entry.keywords.split(', ').map((kw, ki) => (
+                            <span key={ki} style={{ display: 'inline-block', background: 'rgba(11,31,74,0.06)', color: NAVY, borderRadius: 4, padding: '1px 5px', margin: '2px 2px 2px 0', fontSize: 10, fontWeight: 600 }}>{kw}</span>
+                          ))}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <CopyBtn text={entry.keywords} label="Keywords" />
+                          <span style={{ fontSize: 10, color: kwCount > 480 ? '#DC2626' : kwCount > 420 ? '#D97706' : '#16a34a', fontWeight: 700 }}>{kwCount}/500</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
           </div>
         )}
       </div>
