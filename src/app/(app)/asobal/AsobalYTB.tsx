@@ -1180,19 +1180,20 @@ export function AsobalYTB() {
         <div style={{ fontSize: 11, color: '#9CA3AF', flexShrink: 0 }}>{filtered.length} entrades</div>
       </div>
 
-      {/* List */}
+      {/* Grid */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '10px 14px' }}>
         {filtered.length === 0 && (
           <div style={{ padding: '40px 0', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>
             Cap resultat per &ldquo;{q}&rdquo;
           </div>
         )}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, alignItems: 'start' }}>
         {filtered.map((entry, i) => {
           const isExpanded = expanded === i
           const kwCount = entry.keywords.length
           const isTemplate = !entry.titulo.includes('|')
           return (
-            <div key={i} style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 10, marginBottom: 6, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div key={i} style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
               {/* Row header */}
               <div
                 onClick={() => setExpanded(isExpanded ? null : i)}
@@ -1259,6 +1260,7 @@ export function AsobalYTB() {
             </div>
           )
         })}
+        </div>
       </div>
     </div>
   )
