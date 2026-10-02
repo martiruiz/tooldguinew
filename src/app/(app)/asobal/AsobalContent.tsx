@@ -821,6 +821,18 @@ export function AsobalContent() {
     })
     return best
   })
+  const [orgJ, setOrgJ] = useState(() => {
+    const today = new Date()
+    let best = 0, bestDiff = Infinity
+    CALENDAR.forEach((j, i) => {
+      const [d, m, y] = j.date.split('/')
+      const jDate = new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
+      const diff = Math.abs(jDate.getTime() - today.getTime())
+      if (diff < bestDiff) { best = i; bestDiff = diff }
+    })
+    return best
+  })
+  const [mobileJView, setMobileJView] = useState<'partits' | 'organigrama'>('partits')
   const [openMatches, setOpenMatches] = useState<Set<string>>(new Set())
   const [store, setStore] = useState<StoreData>({})
   const [addingFor, setAddingFor] = useState<string | null>(null)
@@ -1052,6 +1064,26 @@ export function AsobalContent() {
         @media (max-width: 640px) {
           .asb-org-panel table { min-width: 560px !important; }
         }
+        .asb-split-layout { display:flex; flex:1; overflow:hidden; min-width:0; }
+        .asb-matches-panel { flex:0 0 42%; min-width:280px; border-right:1px solid rgba(0,0,0,0.09); overflow-y:auto; background:#F8F9FB; }
+        .asb-org-panel-col { flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden; background:#F8F9FB; }
+        .asb-org-inner { flex:1; overflow-y:auto; padding:0 8px 20px; }
+        .asb-org-jnav { display:flex; align-items:center; gap:8px; padding:7px 12px; background:#fff; border-bottom:1px solid rgba(0,0,0,0.07); flex-shrink:0; }
+        .asb-org-jnav-btn { background:none; border:1px solid rgba(0,0,0,0.12); border-radius:5px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:700; padding:3px 10px; color:#374151; transition:background .12s; }
+        .asb-org-jnav-btn:hover:not(:disabled) { background:rgba(0,6,255,0.05); border-color:rgba(0,6,255,0.3); }
+        .asb-org-jnav-btn:disabled { opacity:0.3; cursor:default; }
+        .asb-org-jnav-label { font-size:13px; font-weight:700; color:#1a202c; flex:1; text-align:center; }
+        .asb-mobile-view-toggle { display:none; }
+        @media(max-width:768px) {
+          .asb-split-layout { position:relative; overflow:hidden; }
+          .asb-matches-panel { flex:0 0 100%; min-width:0; width:100%; border-right:none; position:absolute; inset:0; transition:transform .25s ease; }
+          .asb-matches-panel.panel-hidden { transform:translateX(-100%); pointer-events:none; }
+          .asb-org-panel-col { position:absolute; inset:0; transform:translateX(100%); transition:transform .25s ease; }
+          .asb-org-panel-col.panel-show { transform:translateX(0); }
+          .asb-mobile-view-toggle { display:flex; background:#fff; border-bottom:1px solid rgba(0,0,0,0.08); flex-shrink:0; }
+          .asb-mvt-btn { flex:1; padding:9px; border:none; cursor:pointer; font-family:inherit; font-size:12px; font-weight:600; color:#6B7280; background:none; border-bottom:2px solid transparent; transition:all .15s; }
+          .asb-mvt-btn.active { color:#0006FF; border-bottom-color:#0006FF; }
+        }
         @media (max-width: 640px) {
           .asb-match-header { flex-wrap:wrap; gap:6px; }
           .asb-link { min-width:0; padding:10px 14px; flex:none; width:100%; box-sizing:border-box; font-size:13px !important; }
@@ -1086,7 +1118,7 @@ export function AsobalContent() {
           const { aturades, gols } = jornadaStats(ji)
           const hasData = aturades + gols > 0
           return (
-            <button key={ji} onClick={() => { setSelectedJ(ji); setAddingFor(null) }}
+            <button key={ji} onClick={() => { setSelectedJ(ji); setOrgJ(ji); setAddingFor(null) }}
               style={{ flexShrink: 0, padding: '3px 8px', borderRadius: 5, border: selectedJ === ji ? '1.5px solid #131ea6' : '1px solid rgba(0,0,0,0.1)', background: selectedJ === ji ? 'linear-gradient(135deg,#1b3bda 0%,#131ea6 100%)' : hasData ? 'rgba(245,166,35,0.07)' : '#fff', color: selectedJ === ji ? '#fff' : '#4a5568', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', position: 'relative' }}>
               J{ji + 1}
               {hasData && <span style={{ position: 'absolute', top: -3, right: -3, width: 6, height: 6, borderRadius: '50%', background: '#f5a623', border: '1px solid #fff' }} />}
@@ -1095,10 +1127,21 @@ export function AsobalContent() {
         })}
       </div>
 
-      {/* Content */}
-      <div className="asb-content-row" style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
+      {/* Mobile panel toggle */}
+      <div className="asb-mobile-view-toggle">
+        <button className={`asb-mvt-btn${mobileJView === 'partits' ? ' active' : ''}`} onClick={() => setMobileJView('partits')}>
+          🏐 Partits · J{selectedJ + 1}
+        </button>
+        <button className={`asb-mvt-btn${mobileJView === 'organigrama' ? ' active' : ''}`} onClick={() => setMobileJView('organigrama')}>
+          📋 Organigrama · J{orgJ + 1}
+        </button>
+      </div>
 
-        {/* Jornada detail */}
+      {/* Content - split layout */}
+      <div className="asb-split-layout">
+
+        {/* Left panel: matches */}
+        <div className={`asb-matches-panel${mobileJView !== 'partits' ? ' panel-hidden' : ''}`}>
         <div style={{ padding: '10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div className="asb-jornada-header" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, width: '100%', maxWidth: 900, justifyContent: 'center' }}>
             <Trophy size={16} color="#1b3bda" />
@@ -1327,17 +1370,28 @@ export function AsobalContent() {
             })}
           </div>
         </div>
-        <div style={{ padding: '0 8px 20px', width: '100%', maxWidth: 1400, margin: '0 auto', boxSizing: 'border-box' }}>
-          <OrganigramPanel
-            jornada={selectedJ}
-            entries={orgEntries}
-            onSave={saveOrgEntry}
-            onUpdate={updateOrgEntry}
-            onDelete={deleteOrgEntry}
-            onClose={() => {}}
-          />
+        </div>{/* closes asb-matches-panel */}
+
+        {/* Right panel: organigrama */}
+        <div className={`asb-org-panel-col${mobileJView === 'organigrama' ? ' panel-show' : ''}`}>
+          <div className="asb-org-jnav">
+            <button className="asb-org-jnav-btn" disabled={orgJ === 0} onClick={() => setOrgJ(j => Math.max(0, j - 1))}>←</button>
+            <span className="asb-org-jnav-label">Organigrama · J{orgJ + 1}</span>
+            <button className="asb-org-jnav-btn" disabled={orgJ >= CALENDAR.length - 1} onClick={() => setOrgJ(j => Math.min(CALENDAR.length - 1, j + 1))}>→</button>
+          </div>
+          <div className="asb-org-inner">
+            <OrganigramPanel
+              jornada={orgJ}
+              entries={orgEntries}
+              onSave={saveOrgEntry}
+              onUpdate={updateOrgEntry}
+              onDelete={deleteOrgEntry}
+              onClose={() => {}}
+            />
+          </div>
         </div>
-      </div>
+
+      </div>{/* closes asb-split-layout */}
 
       </>}
     </div>
