@@ -172,10 +172,11 @@ export default async function DashboardPage() {
     .limit(20)
 
   // Important dates — same as calendari page (all dates, sorted)
-  const { data: importantDates } = await supabase
+  const { data: importantDates, error: importantDatesError } = await supabase
     .from('cal_important_dates')
-    .select('id, name, date, category, priority')
+    .select('*')
     .order('date', { ascending: true })
+  if (importantDatesError) console.error('[dashboard] importantDates error:', importantDatesError.message)
 
   // AI Insights (superadmin + manager only)
   // Stats
