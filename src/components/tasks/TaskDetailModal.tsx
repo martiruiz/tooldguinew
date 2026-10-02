@@ -174,6 +174,8 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
   const [mentionPos, setMentionPos] = useState(0)
   const [newCheck, setNewCheck] = useState('')
   const [newSubtask, setNewSubtask] = useState('')
+  const [editingCheckId, setEditingCheckId] = useState<string | null>(null)
+  const [editingCheckText, setEditingCheckText] = useState('')
   const [newDrive, setNewDrive] = useState('')
   const [showDriveInput, setShowDriveInput] = useState(false)
   const [showDrivePicker, setShowDrivePicker] = useState(false)
@@ -462,6 +464,17 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
     const item = checklist.find(c => c.id === id)
     const items = checklist.filter(c => c.id !== id); setChecklist(items); persist({ checklist: items })
     if (item) logActivity('checklist_removed', { text: item.text })
+  }
+  const startEditCheck = (id: string, text: string) => {
+    setEditingCheckId(id)
+    setEditingCheckText(text)
+  }
+  const saveCheckEdit = (id: string) => {
+    const trimmed = editingCheckText.trim()
+    if (!trimmed) { setEditingCheckId(null); return }
+    const items = checklist.map(c => c.id === id ? { ...c, text: trimmed } : c)
+    setChecklist(items); persist({ checklist: items })
+    setEditingCheckId(null)
   }
 
   // Subtasks
@@ -1201,7 +1214,25 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
                   <button className={`cbox${item.done ? ' cbox--on' : ''}`} onClick={() => toggleCheck(item.id)}>
                     {item.done && <Check size={9} strokeWidth={3} />}
                   </button>
-                  <span className={`ctext${item.done ? ' ctext--done' : ''}`}>{item.text}</span>
+                  {editingCheckId === item.id ? (
+                    <input
+                      className="check-edit-inp"
+                      value={editingCheckText}
+                      autoFocus
+                      onChange={e => setEditingCheckText(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') saveCheckEdit(item.id)
+                        if (e.key === 'Escape') setEditingCheckId(null)
+                      }}
+                      onBlur={() => saveCheckEdit(item.id)}
+                    />
+                  ) : (
+                    <span
+                      className={`ctext${item.done ? ' ctext--done' : ''}`}
+                      onDoubleClick={() => !item.done && startEditCheck(item.id, item.text)}
+                      title={item.done ? '' : 'Doble clic per editar'}
+                    >{item.text}</span>
+                  )}
                   <button className="row-del" onClick={() => delCheck(item.id)}><Trash2 size={11} /></button>
                 </div>
               ))}
@@ -1849,8 +1880,10 @@ export function TaskDetailModal({ task, profiles, clients, projects, currentUser
         }
         .cbox--sq { border-radius: 4px; }
         .cbox--on { background: #16A34A; border-color: #16A34A; }
-        .ctext { font-size: 13px; color: #0a0a0a; flex: 1; }
+        .ctext { font-size: 13px; color: #0a0a0a; flex: 1; cursor: default; }
+        .ctext:not(.ctext--done) { cursor: text; }
         .ctext--done { text-decoration: line-through; color: #9A9A9A; }
+        .check-edit-inp { flex: 1; font-size: 13px; font-family: inherit; color: #0a0a0a; border: none; border-bottom: 1.5px solid #1B2B4B; outline: none; background: transparent; padding: 1px 0; }
         .row-del {
           border: none; background: transparent; cursor: pointer; color: #D0D0D0;
           padding: 2px; display: flex; opacity: 0; transition: opacity 0.15s, color 0.15s;
