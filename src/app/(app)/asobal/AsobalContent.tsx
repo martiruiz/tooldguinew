@@ -803,6 +803,12 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
 export function AsobalContent() {
   const supabase = useRef(createClient()).current
   const [asobalTab, setAsobalTab] = useState<'jornades' | 'copys' | 'equip' | 'franquicia' | 'calendari' | 'ytb' | 'ctas' | 'creadors'>('jornades')
+  const [tabOrder, setTabOrder] = useState([
+    'jornades', 'copys', 'equip', 'franquicia', 'calendari', 'ytb', 'ctas', 'creadors',
+  ])
+  const dragTabIdx = useRef<number | null>(null)
+  const dragOverTabIdx = useRef<number | null>(null)
+  const [dragTarget, setDragTarget] = useState<number | null>(null)
 
   const [selectedJ, setSelectedJ] = useState(() => {
     const today = new Date()
@@ -940,29 +946,61 @@ export function AsobalContent() {
       <style>{`
         .asb-tabbar { display:flex; align-items:center; gap:2px; padding:8px 14px 0; background:#fff; border-bottom:1px solid rgba(0,0,0,0.08); flex-shrink:0; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
         .asb-tabbar::-webkit-scrollbar { display:none; }
-        .asb-tab-btn { display:flex; align-items:center; gap:6px; padding:7px 14px; border:none; cursor:pointer; font-family:inherit; font-size:13px; font-weight:500; color:#6B7280; background:none; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .15s; flex-shrink:0; white-space:nowrap; }
+        .asb-tab-btn { display:flex; align-items:center; gap:6px; padding:7px 14px; border:none; cursor:grab; font-family:inherit; font-size:13px; font-weight:500; color:#6B7280; background:none; border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .15s, border-color .15s, opacity .15s, background .15s; flex-shrink:0; white-space:nowrap; border-radius:6px 6px 0 0; user-select:none; }
+        .asb-tab-btn:active { cursor:grabbing; }
         .asb-tab-btn.active { font-weight:700; color:#0006FF; border-bottom-color:#0006FF; }
+        .asb-tab-btn.dragging { opacity:0.35; }
+        .asb-tab-btn.drag-over { background:rgba(0,6,255,0.06); border-bottom-color:rgba(0,6,255,0.3); }
         @media(max-width:640px) {
           .asb-tab-btn { padding:6px 10px; font-size:11px; gap:4px; }
         }
       `}</style>
       <div className="asb-tabbar">
-        {([
-          { key: 'jornades',   label: 'Jornades',          icon: Trophy },
-          { key: 'copys',    label: 'Copys',             icon: BookOpen },
-          { key: 'equip',    label: 'Equip comunicació', icon: Users2 },
-          { key: 'franquicia', label: 'Franquícia',      icon: Award },
-          { key: 'calendari',  label: 'Planificación Jornada', icon: CalendarDays },
-          { key: 'ytb',        label: 'Posicionamiento YTB',   icon: PlaySquare },
-          { key: 'ctas',       label: 'CTAs',                  icon: Zap },
-          { key: 'creadors',   label: 'Creadors',              icon: Users },
-        ] as { key: 'jornades'|'copys'|'equip'|'franquicia'|'calendari'|'ytb'|'ctas'|'creadors'; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
-          <button key={key} onClick={() => setAsobalTab(key)}
-            className={`asb-tab-btn${asobalTab === key ? ' active' : ''}`}>
-            <Icon size={14} />
-            {label}
-          </button>
-        ))}
+        {tabOrder.map((key, idx) => {
+          const TAB_META: Record<string, { label: string; icon: React.ElementType }> = {
+            jornades:   { label: 'Jornades',             icon: Trophy },
+            copys:      { label: 'Copys',                icon: BookOpen },
+            equip:      { label: 'Equip comunicació',    icon: Users2 },
+            franquicia: { label: 'Franquícia',           icon: Award },
+            calendari:  { label: 'Planificación Jornada',icon: CalendarDays },
+            ytb:        { label: 'Posicionamiento YTB',  icon: PlaySquare },
+            ctas:       { label: 'CTAs',                 icon: Zap },
+            creadors:   { label: 'Creadors',             icon: Users },
+          }
+          const { label, icon: Icon } = TAB_META[key]
+          const isDragging = dragTabIdx.current === idx
+          const isOver = dragTarget === idx
+          return (
+            <button
+              key={key}
+              draggable
+              onDragStart={e => { dragTabIdx.current = idx; e.dataTransfer.effectAllowed = 'move' }}
+              onDragOver={e => { e.preventDefault(); if (dragTabIdx.current !== idx) setDragTarget(idx) }}
+              onDrop={e => {
+                e.preventDefault()
+                const from = dragTabIdx.current
+                if (from === null || from === idx) return
+                const next = [...tabOrder]
+                const [moved] = next.splice(from, 1)
+                next.splice(idx, 0, moved)
+                setTabOrder(next)
+                dragTabIdx.current = null
+                setDragTarget(null)
+              }}
+              onDragEnd={() => { dragTabIdx.current = null; setDragTarget(null) }}
+              onClick={() => setAsobalTab(key as typeof asobalTab)}
+              className={[
+                'asb-tab-btn',
+                asobalTab === key ? 'active' : '',
+                isDragging ? 'dragging' : '',
+                isOver && !isDragging ? 'drag-over' : '',
+              ].filter(Boolean).join(' ')}
+            >
+              <Icon size={14} />
+              {label}
+            </button>
+          )
+        })}
       </div>
 
       {/* Copys tab */}

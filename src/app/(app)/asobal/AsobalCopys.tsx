@@ -171,6 +171,9 @@ export function AsobalCopys() {
   const [showAiPanel, setShowAiPanel] = useState(false)
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null)
 
+  // Mobile sidebar toggle
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
   // Metricool scheduling
   const [scheduleDate, setScheduleDate] = useState(defaultScheduleDate())
   const [scheduleNetworks, setScheduleNetworks] = useState<string[]>(['instagram'])
@@ -270,9 +273,26 @@ export function AsobalCopys() {
   const pl = activeTemplate ? PLATFORM_COLORS[activeTemplate.platform] : null
 
   return (
-    <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+    <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0, position: 'relative' }}>
+      <style>{`
+        .asb-copys-sidebar { width:260px; flex-shrink:0; border-right:1px solid rgba(0,0,0,0.08); overflow-y:auto; background:#FAFAFA; }
+        .asb-copys-toggle { display:none; }
+        @media(max-width:640px) {
+          .asb-copys-sidebar { position:absolute; top:0; left:0; bottom:0; z-index:20; width:80vw; max-width:280px; box-shadow:4px 0 16px rgba(0,0,0,0.15); transform:translateX(-100%); transition:transform .22s ease; }
+          .asb-copys-sidebar.open { transform:translateX(0); }
+          .asb-copys-toggle { display:flex; align-items:center; gap:6px; position:sticky; top:0; left:0; z-index:10; margin:-16px -16px 12px -16px; padding:10px 14px; border-radius:0; border:none; border-bottom:1px solid rgba(0,0,0,0.08); background:#fff; font-size:13px; font-weight:600; color:#374151; cursor:pointer; font-family:inherit; width:calc(100% + 32px); justify-content:flex-start; }
+          .asb-copys-overlay { display:none; position:absolute; inset:0; background:rgba(0,0,0,0.25); z-index:19; }
+          .asb-copys-overlay.open { display:block; }
+        }
+      `}</style>
+      {/* Mobile toggle button */}
+      <button className="asb-copys-toggle" onClick={() => setSidebarOpen(o => !o)}>
+        ☰ Categories
+      </button>
+      {/* Overlay (mobile only) */}
+      <div className={`asb-copys-overlay${sidebarOpen ? ' open' : ''}`} onClick={() => setSidebarOpen(false)} />
       {/* Left: template list */}
-      <div style={{ width: 260, flexShrink: 0, borderRight: '1px solid rgba(0,0,0,0.08)', overflowY: 'auto', background: '#FAFAFA' }}>
+      <div className={`asb-copys-sidebar${sidebarOpen ? ' open' : ''}`}>
         {/* Filters */}
         <div style={{ padding: '10px 10px 6px', borderBottom: '1px solid rgba(0,0,0,0.07)', position: 'sticky', top: 0, background: '#FAFAFA', zIndex: 1 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#9AA5B4', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 6 }}>Plataforma</div>
@@ -334,7 +354,7 @@ export function AsobalCopys() {
       </div>
 
       {/* Right: template cards or generator */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: 16, minWidth: 0 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 16, minWidth: 0, paddingTop: 'max(16px, env(safe-area-inset-top, 0px))' }} className="asb-copys-main">
         {!selectedCat && !activeTemplate ? (
           /* Grid of all categories */
           <div>
