@@ -15,24 +15,44 @@ interface Contact {
   is_local?: boolean // hardcoded contacts
 }
 
-// Color + abbreviation per club
+// Club logo mapping → /asobal/clubs/<file>
+const CLUB_LOGO: Record<string, string> = {
+  'Barça':                          '/asobal/clubs/BARÇA.svg',
+  'Fraikin BM. Granollers':         '/asobal/clubs/BM GRANOLLERS.svg',
+  'Abanca Ademar León':             '/asobal/clubs/ADEMAR.svg',
+  'Irudek Bidasoa Irún':            '/asobal/clubs/BIDASOA IRUN.svg',
+  'Bathco BM. Torrelavega':         '/asobal/clubs/BM TORRELAVEGA.svg',
+  'Horneo BM. Alicante':            '/asobal/clubs/EON ALICANTE.svg',
+  'Cajasol Sevilla BM. Proin':      '/asobal/clubs/BM PROIN SEVILLA.svg',
+  'Fertiberia Puerto Sagunto':      '/asobal/clubs/PUERTO SAGUNTO.svg',
+  'Recoletas Salud At. Valladolid': '/asobal/clubs/ATLÉTICO VALLADOLID.svg',
+  'Frigoríficos del Morrazo':       '/asobal/clubs/CANGAS.svg',
+  'Dicorpedal Logroño La Rioja':    '/asobal/clubs/LOGROÑO.svg',
+  'Rebi Balonmano Cuenca':          '/asobal/clubs/CUENCA.svg',
+  'BM Caserio Ciudad Real':         '/asobal/clubs/CIUDAD REAL.svg',
+  'Viveron Herol BM. Nava':         '/asobal/clubs/BM NAVA.svg',
+  'Cajasol Ángel Ximénez P. Genil': '/asobal/clubs/PUENTE GENIL.svg',
+  'Tubos Aranda Villa de Aranda':   '/asobal/clubs/ARANDA.PNG',
+}
+
+// Fallback color per club (quan no hi ha logo)
 const CLUB_META: Record<string, { abbr: string; color: string; bg: string }> = {
-  'Barça':                          { abbr: 'FCB', color: '#fff',    bg: '#A50044' },
-  'Fraikin BM. Granollers':         { abbr: 'GRA', color: '#fff',    bg: '#0D3B8E' },
-  'Abanca Ademar León':             { abbr: 'ADE', color: '#fff',    bg: '#1A1A1A' },
-  'Irudek Bidasoa Irún':            { abbr: 'BID', color: '#fff',    bg: '#003DA5' },
-  'Bathco BM. Torrelavega':         { abbr: 'TLV', color: '#fff',    bg: '#E63329' },
-  'Horneo BM. Alicante':            { abbr: 'ALI', color: '#fff',    bg: '#0066CC' },
-  'Cajasol Sevilla BM. Proin':      { abbr: 'SEV', color: '#fff',    bg: '#009246' },
-  'Fertiberia Puerto Sagunto':      { abbr: 'PSG', color: '#fff',    bg: '#CC0000' },
-  'Recoletas Salud At. Valladolid': { abbr: 'VAL', color: '#fff',    bg: '#5B2D8E' },
-  'Frigoríficos del Morrazo':       { abbr: 'MOR', color: '#fff',    bg: '#004E98' },
-  'Dicorpedal Logroño La Rioja':    { abbr: 'LOG', color: '#fff',    bg: '#C8102E' },
-  'Rebi Balonmano Cuenca':          { abbr: 'CUE', color: '#fff',    bg: '#FF6B00' },
-  'BM Caserio Ciudad Real':         { abbr: 'CRE', color: '#fff',    bg: '#006341' },
-  'Viveron Herol BM. Nava':         { abbr: 'NAV', color: '#fff',    bg: '#1B4F72' },
-  'Cajasol Ángel Ximénez P. Genil': { abbr: 'PGE', color: '#fff',    bg: '#8B0000' },
-  'Tubos Aranda Villa de Aranda':   { abbr: 'VDA', color: '#fff',    bg: '#2C3E50' },
+  'Barça':                          { abbr: 'FCB', color: '#fff', bg: '#A50044' },
+  'Fraikin BM. Granollers':         { abbr: 'GRA', color: '#fff', bg: '#0D3B8E' },
+  'Abanca Ademar León':             { abbr: 'ADE', color: '#fff', bg: '#1A1A1A' },
+  'Irudek Bidasoa Irún':            { abbr: 'BID', color: '#fff', bg: '#003DA5' },
+  'Bathco BM. Torrelavega':         { abbr: 'TLV', color: '#fff', bg: '#E63329' },
+  'Horneo BM. Alicante':            { abbr: 'ALI', color: '#fff', bg: '#0066CC' },
+  'Cajasol Sevilla BM. Proin':      { abbr: 'SEV', color: '#fff', bg: '#009246' },
+  'Fertiberia Puerto Sagunto':      { abbr: 'PSG', color: '#fff', bg: '#CC0000' },
+  'Recoletas Salud At. Valladolid': { abbr: 'VAL', color: '#fff', bg: '#5B2D8E' },
+  'Frigoríficos del Morrazo':       { abbr: 'MOR', color: '#fff', bg: '#004E98' },
+  'Dicorpedal Logroño La Rioja':    { abbr: 'LOG', color: '#fff', bg: '#C8102E' },
+  'Rebi Balonmano Cuenca':          { abbr: 'CUE', color: '#fff', bg: '#FF6B00' },
+  'BM Caserio Ciudad Real':         { abbr: 'CRE', color: '#fff', bg: '#006341' },
+  'Viveron Herol BM. Nava':         { abbr: 'NAV', color: '#fff', bg: '#1B4F72' },
+  'Cajasol Ángel Ximénez P. Genil': { abbr: 'PGE', color: '#fff', bg: '#8B0000' },
+  'Tubos Aranda Villa de Aranda':   { abbr: 'VDA', color: '#fff', bg: '#2C3E50' },
 }
 
 const GUINEW_COLORS = [
@@ -95,14 +115,24 @@ function ActionBtn({ href, title, bg, color, children }: { href: string; title: 
   )
 }
 
-// Club logo badge
+// Club logo badge — real logo if available, color badge fallback
 function ClubBadge({ club, size = 32 }: { club: string; size?: number }) {
+  const logo = CLUB_LOGO[club]
   const meta = CLUB_META[club]
   const abbr = meta?.abbr ?? initials(club)
   const bg = meta?.bg ?? '#374151'
   const color = meta?.color ?? '#fff'
+
+  if (logo) {
+    return (
+      <div style={{ width: size, height: size, borderRadius: size * 0.22, background: '#fff', border: '1px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', padding: size * 0.08 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={logo} alt={club} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+      </div>
+    )
+  }
   return (
-    <div style={{ width: size, height: size, borderRadius: size * 0.25, background: bg, color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.28, fontWeight: 800, letterSpacing: '-0.02em', flexShrink: 0 }}>
+    <div style={{ width: size, height: size, borderRadius: size * 0.22, background: bg, color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.28, fontWeight: 800, letterSpacing: '-0.02em', flexShrink: 0 }}>
       {abbr}
     </div>
   )
