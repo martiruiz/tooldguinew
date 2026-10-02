@@ -1112,7 +1112,7 @@ export const DATA: YTBEntry[] = [
   },
 ]
 
-const NAVY = '#1629BA'
+const NAVY = '#0006FF'
 const YTB_RED = '#CC0000'
 
 function CopyBtn({ text, label }: { text: string; label: string }) {

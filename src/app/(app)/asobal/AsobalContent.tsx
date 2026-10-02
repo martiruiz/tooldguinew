@@ -951,8 +951,8 @@ export function AsobalContent() {
           <button key={key} onClick={() => setAsobalTab(key)}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', border: 'none', cursor: 'pointer',
               fontFamily: 'inherit', fontSize: 13, fontWeight: asobalTab === key ? 700 : 500,
-              color: asobalTab === key ? '#1629BA' : '#6B7280', background: 'none',
-              borderBottom: asobalTab === key ? '2px solid #1629BA' : '2px solid transparent',
+              color: asobalTab === key ? '#0006FF' : '#6B7280', background: 'none',
+              borderBottom: asobalTab === key ? '2px solid #0006FF' : '2px solid transparent',
               marginBottom: -1, transition: 'all .15s' }}>
             <Icon size={14} />
             {label}
@@ -980,7 +980,7 @@ export function AsobalContent() {
       <style>{`
         .asb-j-item { padding:8px 12px; border-radius:8px; cursor:pointer; transition:background .15s; display:flex; align-items:center; justify-content:space-between; gap:8px; }
         .asb-j-item:hover { background:rgba(0,0,0,0.04); }
-        .asb-j-item.active { background:rgba(22,41,186,0.07); border-left:2px solid #1629BA; padding-left:10px; }
+        .asb-j-item.active { background:rgba(0,6,255,0.07); border-left:2px solid #0006FF; padding-left:10px; }
         .asb-match-card { background:#fff; border:1px solid rgba(0,0,0,0.07); border-radius:10px; margin-bottom:8px; box-shadow:0 1px 3px rgba(0,0,0,0.05); position:relative; }
         .asb-match-header { padding:10px 14px; display:flex; align-items:center; gap:10px; cursor:pointer; }
         .asb-match-header:hover { background:rgba(0,0,0,0.02); }
