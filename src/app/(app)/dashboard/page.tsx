@@ -11,67 +11,89 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  // Tasks due today or overdue
   const today = new Date().toISOString().split('T')[0]
-  const { data: myTasks } = await supabase
-    .from('tasks')
-    .select('*, client:clients(id,name,logo_url), project:projects(id,name), responsible:profiles!tasks_responsible_id_fkey(id,full_name)')
-    .eq('responsible_id', user.id)
-    .neq('status', 'done')
-    .order('deadline', { ascending: true })
-    .limit(10)
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+  const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999)
 
-  const { data: allProfiles } = await supabase.from('profiles').select('id, full_name, avatar_url').eq('is_active', true).order('full_name')
-  const { data: allClients } = await supabase.from('clients').select('id, name').order('name')
-  const { data: allProjects } = await supabase.from('projects').select('id, name').order('name')
+  // Run all DB queries in parallel
+  const [
+    { data: profile },
+    { data: myTasks },
+    { data: allProfiles },
+    { data: allClients },
+    { data: allProjects },
+    { data: myProjects },
+    { data: activity },
+    { data: todayMeetings },
+    { data: blockedTasks },
+    { data: opportunities },
+    { data: inboxNotifs },
+    { data: importantDates },
+    { count: activeClientsCount },
+    { count: activeProjectsCount },
+    { count: pendingTasksCount },
+  ] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('tasks')
+      .select('*, client:clients(id,name,logo_url), project:projects(id,name), responsible:profiles!tasks_responsible_id_fkey(id,full_name)')
+      .eq('responsible_id', user.id).neq('status', 'done').order('deadline', { ascending: true }).limit(10),
+    supabase.from('profiles').select('id, full_name, avatar_url').eq('is_active', true).order('full_name'),
+    supabase.from('clients').select('id, name').order('name'),
+    supabase.from('projects').select('id, name').order('name'),
+    supabase.from('projects')
+      .select('*, client:clients(id,name,logo_url)')
+      .eq('responsible_id', user.id).eq('status', 'active').limit(5),
+    supabase.from('activity_logs')
+      .select('*, user:profiles(id,full_name)')
+      .order('created_at', { ascending: false }).limit(8),
+    supabase.from('meetings')
+      .select('*, client:clients(id,name)')
+      .gte('start_time', todayStart.toISOString())
+      .lte('start_time', todayEnd.toISOString())
+      .order('start_time', { ascending: true }),
+    supabase.from('tasks')
+      .select('*, client:clients(id,name), responsible:profiles!tasks_responsible_id_fkey(id,full_name)')
+      .eq('status', 'blocked').order('updated_at', { ascending: false }).limit(8),
+    supabase.from('opportunities').select('stage, value, close_date, created_at').order('created_at', { ascending: false }),
+    supabase.from('notifications')
+      .select('*').eq('user_id', user.id).eq('read', false)
+      .order('created_at', { ascending: false }).limit(20),
+    supabase.from('cal_important_dates').select('*').order('date', { ascending: true }),
+    supabase.from('clients').select('*', { count: 'exact', head: true }).eq('status', 'active').neq('health', 'risk'),
+    supabase.from('projects').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+    supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('responsible_id', user.id).neq('status', 'done'),
+  ])
 
-  // Active projects
-  const { data: myProjects } = await supabase
-    .from('projects')
-    .select('*, client:clients(id,name,logo_url)')
-    .eq('responsible_id', user.id)
-    .eq('status', 'active')
-    .limit(5)
+  const isSuperAdmin = (profile as Profile)?.role === 'superadmin'
+  const isManager = (profile as Profile)?.role === 'manager'
 
-  // Recent activity
-  const { data: activity } = await supabase
-    .from('activity_logs')
-    .select('*, user:profiles(id,full_name)')
-    .order('created_at', { ascending: false })
-    .limit(8)
+  // PM-specific project tasks (only for managers, non-blocking)
+  let allProjectTasks = null
+  let pmProjects = null
+  if (isManager) {
+    const { data: pmProjectIds } = await supabase.from('projects').select('id').eq('responsible_id', user.id).eq('status', 'active')
+    const pmIds = (pmProjectIds ?? []).map((p: { id: string }) => p.id)
+    if (pmIds.length > 0) {
+      const [{ data: pTasks }, { data: pProjects }] = await Promise.all([
+        supabase.from('tasks')
+          .select('*, client:clients(id,name), project:projects(id,name), responsible:profiles!tasks_responsible_id_fkey(id,full_name)')
+          .in('project_id', pmIds).neq('status', 'done').order('deadline', { ascending: true }).limit(100),
+        supabase.from('projects').select('*, client:clients(id,name,logo_url)').eq('responsible_id', user.id).eq('status', 'active').order('name'),
+      ])
+      allProjectTasks = pTasks
+      pmProjects = pProjects
+    }
+  }
 
-  // Meetings today
-  const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
-  const todayEnd = new Date()
-  todayEnd.setHours(23, 59, 59, 999)
-
-  const { data: todayMeetings } = await supabase
-    .from('meetings')
-    .select('*, client:clients(id,name)')
-    .gte('start_time', todayStart.toISOString())
-    .lte('start_time', todayEnd.toISOString())
-    .order('start_time', { ascending: true })
-
-  // Google Calendar events today (from all connected team members)
-  let gcalMeetings: Meeting[] = []
+  // Google Calendar: fetch in parallel with a timeout, don't block if slow
+  let allTodayMeetings: Meeting[] = todayMeetings || []
   try {
-    const admin = createAdmin(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-    const { data: allTokens } = await admin
-      .from('google_calendar_tokens')
+    const admin = createAdmin(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+    const { data: allTokens } = await admin.from('google_calendar_tokens')
       .select('user_id, access_token, refresh_token, expiry_date')
 
     if (allTokens && allTokens.length > 0) {
-      const events = await Promise.all(
+      const gcalPromise = Promise.all(
         allTokens.map(async (tokenRow: { user_id: string; access_token: string; refresh_token: string | null; expiry_date: number | null }) => {
           if (!tokenRow.access_token) return []
           try {
@@ -98,104 +120,27 @@ export default async function DashboardPage() {
               created_by: tokenRow.user_id,
               created_at: e.created || new Date().toISOString(),
             } as Meeting))
-          } catch {
-            return []
-          }
+          } catch { return [] }
         })
       )
-      // Merge + deduplicate by title+start_time, prefer gcal entries
-      const gcalRaw: Meeting[] = events.flat()
-      const seen = new Set<string>()
-      const merged: Meeting[] = []
-      for (const m of [...(todayMeetings || []), ...gcalRaw]) {
-        const key = `${m.title?.toLowerCase()?.trim()}|${m.start_time?.slice(0, 16)}`
-        if (!seen.has(key)) { seen.add(key); merged.push(m) }
+      // 3 second timeout so slow Google API never blocks the page
+      const timeoutPromise = new Promise<null>(resolve => setTimeout(() => resolve(null), 3000))
+      const result = await Promise.race([gcalPromise, timeoutPromise])
+
+      if (result !== null) {
+        const gcalRaw: Meeting[] = (result as Meeting[][]).flat()
+        const seen = new Set<string>()
+        const merged: Meeting[] = []
+        for (const m of [...(todayMeetings || []), ...gcalRaw]) {
+          const key = `${m.title?.toLowerCase()?.trim()}|${m.start_time?.slice(0, 16)}`
+          if (!seen.has(key)) { seen.add(key); merged.push(m) }
+        }
+        allTodayMeetings = merged.sort((a, b) => a.start_time.localeCompare(b.start_time))
       }
-      gcalMeetings = merged.sort((a, b) => a.start_time.localeCompare(b.start_time))
     }
   } catch (err) {
     console.error('[dashboard] gcal fetch failed:', err)
   }
-
-  const allTodayMeetings = gcalMeetings.length > 0 ? gcalMeetings : (todayMeetings || [])
-
-  // Blocked tasks (any blocked task where user is responsible or created_by)
-  const { data: blockedTasks } = await supabase
-    .from('tasks')
-    .select('*, client:clients(id,name), responsible:profiles!tasks_responsible_id_fkey(id,full_name)')
-    .eq('status', 'blocked')
-    .neq('status', 'done')
-    .order('updated_at', { ascending: false })
-    .limit(8)
-
-  // CRM summary for superadmin
-  const isSuperAdmin = (profile as Profile)?.role === 'superadmin'
-  const isManager = (profile as Profile)?.role === 'manager'
-
-  const { data: opportunities } = isSuperAdmin
-    ? await supabase.from('opportunities').select('stage, value, close_date, created_at').order('created_at', { ascending: false })
-    : { data: null }
-
-  // PM-specific data: all tasks on projects where user is responsible
-  const { data: pmProjectIds } = isManager
-    ? await supabase.from('projects').select('id').eq('responsible_id', user.id).eq('status', 'active')
-    : { data: null }
-
-  const pmIds = (pmProjectIds ?? []).map((p: { id: string }) => p.id)
-
-  const { data: allProjectTasks } = isManager && pmIds.length > 0
-    ? await supabase
-        .from('tasks')
-        .select('*, client:clients(id,name), project:projects(id,name), responsible:profiles!tasks_responsible_id_fkey(id,full_name)')
-        .in('project_id', pmIds)
-        .neq('status', 'done')
-        .order('deadline', { ascending: true })
-        .limit(100)
-    : { data: null }
-
-  const { data: pmProjects } = isManager
-    ? await supabase
-        .from('projects')
-        .select('*, client:clients(id,name,logo_url)')
-        .eq('responsible_id', user.id)
-        .eq('status', 'active')
-        .order('name')
-    : { data: null }
-
-  // Inbox notifications
-  const { data: inboxNotifs } = await supabase
-    .from('notifications')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('read', false)
-    .order('created_at', { ascending: false })
-    .limit(20)
-
-  // Important dates — same as calendari page (all dates, sorted)
-  const { data: importantDates, error: importantDatesError } = await supabase
-    .from('cal_important_dates')
-    .select('*')
-    .order('date', { ascending: true })
-  if (importantDatesError) console.error('[dashboard] importantDates error:', importantDatesError.message)
-
-  // AI Insights (superadmin + manager only)
-  // Stats
-  const { count: activeClientsCount } = await supabase
-    .from('clients')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'active')
-    .neq('health', 'risk')
-
-  const { count: activeProjectsCount } = await supabase
-    .from('projects')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'active')
-
-  const { count: pendingTasksCount } = await supabase
-    .from('tasks')
-    .select('*', { count: 'exact', head: true })
-    .eq('responsible_id', user.id)
-    .neq('status', 'done')
 
   return (
     <>
@@ -212,7 +157,7 @@ export default async function DashboardPage() {
         currentUserId={user.id}
         blockedTasks={blockedTasks || []}
         inboxNotifs={inboxNotifs || []}
-        opportunities={opportunities || []}
+        opportunities={isSuperAdmin ? (opportunities || []) : []}
         stats={{
           activeClients: activeClientsCount || 0,
           activeProjects: activeProjectsCount || 0,

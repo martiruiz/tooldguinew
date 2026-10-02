@@ -10,15 +10,15 @@ export default async function ContingutPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-
   const admin = createAdminClient()
 
   const [
+    { data: profile },
     { data: items },
     { data: clients },
     { data: profiles },
   ] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
     admin.from('content_items')
       .select('*, client:clients(id,name,logo_url), assignee:profiles!content_items_assigned_to_fkey(id,full_name,avatar_url)')
       .order('created_at', { ascending: false }),

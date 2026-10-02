@@ -7,19 +7,21 @@ export default async function ProjectsPage() {
   const supabase = await createSupabase()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user!.id).single()
-
-  const { data: projects } = await supabase
-    .from('projects')
-    .select(`
+  const [
+    { data: profile },
+    { data: projects },
+    { data: clients },
+    { data: profiles },
+  ] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user!.id).single(),
+    supabase.from('projects').select(`
       *,
       client:clients(id, name, logo_url),
       responsible:profiles(id, full_name)
-    `)
-    .order('updated_at', { ascending: false })
-
-  const { data: clients } = await supabase.from('clients').select('id, name').eq('status', 'active').order('name')
-  const { data: profiles } = await supabase.from('profiles').select('id, full_name').eq('is_active', true)
+    `).order('updated_at', { ascending: false }),
+    supabase.from('clients').select('id, name').eq('status', 'active').order('name'),
+    supabase.from('profiles').select('id, full_name').eq('is_active', true),
+  ])
 
   return (
     <>

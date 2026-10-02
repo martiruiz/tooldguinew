@@ -18,23 +18,15 @@ import './app-layout.css'
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
 
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  console.log('[Layout] user:', user?.id ?? null, '| error:', userError?.message ?? null)
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  const [{ data: profile }, { data: allProfiles }] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('profiles').select('id, full_name, avatar_url').eq('is_active', true),
+  ])
 
-  console.log('[Layout] profile:', profile?.id ?? null, 'is_active:', profile?.is_active ?? null, '| error:', profileError?.message ?? null)
   if (!profile || !profile.is_active) redirect('/login')
-
-  const { data: allProfiles } = await supabase
-    .from('profiles')
-    .select('id, full_name, avatar_url')
-    .eq('is_active', true)
 
   return (
     <LanguageProvider>
