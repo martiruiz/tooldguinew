@@ -6,7 +6,7 @@ const C = {
   navyLight:  '#162D6A',   // nav lighter variant
   headerText: '#FFFFFF',   // white on navy
   barHome:    '#CC0000',   // ASOBAL red → Barça home
-  bmgHome:    '#1565C0',   // blue → Granollers home
+  bmgHome:    '#1A3E6E',   // navy-blue → Granollers home
   clasico:    '#B45309',   // amber gold → clàssic
   rowText:    '#111827',
   fueraText:  '#9CA3AF',

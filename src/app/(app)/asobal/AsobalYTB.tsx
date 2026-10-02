@@ -1225,11 +1225,11 @@ export function AsobalYTB() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', background: NAVY }}>
                   <div
                     onClick={() => toggle(group.label)}
-                    style={{ gridColumn: '1 / -1', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: isCollapsed ? 'none' : '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', userSelect: 'none' }}
+                    style={{ gridColumn: '1 / -1', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: isCollapsed ? 'none' : '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', userSelect: 'none', borderLeft: `4px solid ${YTB_RED}` }}
                   >
                     {isCollapsed ? <ChevronRight size={14} color="rgba(255,255,255,0.75)" /> : <ChevronDown size={14} color="rgba(255,255,255,0.75)" />}
                     <span style={{ fontSize: 12, fontWeight: 900, color: '#fff', textTransform: 'uppercase', letterSpacing: '.1em' }}>{group.label}</span>
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: 600 }}>{group.entries.length} {group.entries.length === 1 ? 'entrada' : 'entrades'}</span>
+                    <span style={{ fontSize: 10, color: YTB_RED, fontWeight: 700, background: 'rgba(204,0,0,0.15)', borderRadius: 4, padding: '1px 6px' }}>{group.entries.length} {group.entries.length === 1 ? 'entrada' : 'entrades'}</span>
                   </div>
                   {!isCollapsed && (['Títol', 'Descripció SEO', 'Paraules clau'] as const).map(label => (
                     <div key={label} style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: '.1em', padding: '5px 14px' }}>{label}</div>
@@ -1255,7 +1255,7 @@ export function AsobalYTB() {
                       <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                         <div style={{ fontSize: 10.5, color: '#374151', lineHeight: 1.6 }}>
                           {entry.keywords.split(', ').map((kw, ki) => (
-                            <span key={ki} style={{ display: 'inline-block', background: 'rgba(11,31,74,0.06)', color: NAVY, borderRadius: 4, padding: '1px 5px', margin: '2px 2px 2px 0', fontSize: 10, fontWeight: 600 }}>{kw}</span>
+                            <span key={ki} style={{ display: 'inline-block', background: 'rgba(11,31,74,0.05)', color: NAVY, borderRadius: 4, padding: '1px 5px', margin: '2px 2px 2px 0', fontSize: 10, fontWeight: 600 }}>{kw}</span>
                           ))}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
