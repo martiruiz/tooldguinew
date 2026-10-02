@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Copy, Check } from 'lucide-react'
+import { Copy, Check, Sparkles, Calendar, Send, ChevronDown, ChevronUp } from 'lucide-react'
 
 interface Template {
   id: string
@@ -147,12 +147,36 @@ function generateCopy(template: string, vars: Record<string, string>): string {
   return result
 }
 
+interface AIVariant { text: string; note: string }
+
+// Tomorrow 10am as default schedule time
+function defaultScheduleDate() {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  d.setHours(10, 0, 0, 0)
+  return d.toISOString().slice(0, 16) // "YYYY-MM-DDTHH:MM"
+}
+
 export function AsobalCopys() {
   const [selectedCat, setSelectedCat] = useState<string | null>(null)
   const [selectedPlatform, setSelectedPlatform] = useState<'all' | 'instagram' | 'twitter'>('all')
   const [activeTemplate, setActiveTemplate] = useState<Template | null>(null)
   const [vars, setVars] = useState<Record<string, string>>({})
   const [copied, setCopied] = useState(false)
+
+  // AI generation
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiVariants, setAiVariants] = useState<AIVariant[]>([])
+  const [aiContext, setAiContext] = useState('')
+  const [showAiPanel, setShowAiPanel] = useState(false)
+  const [selectedVariant, setSelectedVariant] = useState<string | null>(null)
+
+  // Metricool scheduling
+  const [scheduleDate, setScheduleDate] = useState(defaultScheduleDate())
+  const [scheduleNetworks, setScheduleNetworks] = useState<string[]>(['instagram'])
+  const [scheduling, setScheduling] = useState(false)
+  const [scheduleResult, setScheduleResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const [showSchedule, setShowSchedule] = useState(false)
 
   const filtered = useMemo(() => TEMPLATES.filter(t => {
     if (selectedCat && t.category !== selectedCat) return false
@@ -161,17 +185,86 @@ export function AsobalCopys() {
   }), [selectedCat, selectedPlatform])
 
   const preview = activeTemplate ? generateCopy(activeTemplate.template, vars) : ''
+  // The text that will be copied/scheduled (prefer selected AI variant over template preview)
+  const activeText = selectedVariant ?? preview
 
   const handleSelectTemplate = (t: Template) => {
     setActiveTemplate(t)
     setVars({})
     setCopied(false)
+    setAiVariants([])
+    setSelectedVariant(null)
+    setScheduleResult(null)
   }
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(preview)
+    await navigator.clipboard.writeText(activeText)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleGenerateAI = async () => {
+    if (!activeTemplate) return
+    setAiLoading(true)
+    setAiVariants([])
+    setSelectedVariant(null)
+    try {
+      const jornada = vars['JORNADA'] ?? ''
+      const context = [
+        aiContext,
+        vars['LOCAL'] ? `Local: ${vars['LOCAL']}` : '',
+        vars['VISITANT'] ? `Visitant: ${vars['VISITANT']}` : '',
+        vars['MVP'] ? `MVP: ${vars['MVP']}` : '',
+      ].filter(Boolean).join('. ')
+
+      const res = await fetch('/api/asobal/generate-copy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: activeTemplate.category,
+          context,
+          platform: activeTemplate.platform,
+          jornada,
+        }),
+      })
+      const data = await res.json()
+      if (data.variants) setAiVariants(data.variants)
+    } catch {
+      setAiVariants([{ text: 'Error generant el copy. Intenta-ho de nou.', note: 'Error' }])
+    }
+    setAiLoading(false)
+  }
+
+  const handleSchedule = async () => {
+    if (!activeText.trim()) return
+    setScheduling(true)
+    setScheduleResult(null)
+    try {
+      const res = await fetch('/api/asobal/schedule-post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: activeText,
+          scheduledAt: new Date(scheduleDate).toISOString(),
+          networks: scheduleNetworks,
+        }),
+      })
+      const data = await res.json()
+      if (data.dev_mode) {
+        setScheduleResult({ ok: true, message: 'Mode dev: afegeix METRICOOL_USER_TOKEN a .env.local per publicar de veritat.' })
+      } else if (data.ok) {
+        setScheduleResult({ ok: true, message: `Publicat a Metricool! Xarxes: ${scheduleNetworks.join(', ')}` })
+      } else {
+        setScheduleResult({ ok: false, message: 'Error al Metricool. Comprova el token.' })
+      }
+    } catch {
+      setScheduleResult({ ok: false, message: 'Error de connexió.' })
+    }
+    setScheduling(false)
+  }
+
+  const toggleNetwork = (net: string) => {
+    setScheduleNetworks(prev => prev.includes(net) ? prev.filter(n => n !== net) : [...prev, net])
   }
 
   const pl = activeTemplate ? PLATFORM_COLORS[activeTemplate.platform] : null
@@ -312,6 +405,77 @@ export function AsobalCopys() {
                 <div style={{ background: '#F8F9FA', borderRadius: 8, padding: '12px 14px', fontSize: 13, color: '#111827', whiteSpace: 'pre-wrap', lineHeight: 1.6, fontFamily: 'inherit', minHeight: 60 }}>
                   {preview}
                 </div>
+              </div>
+
+              {/* AI generation panel */}
+              <div style={{ borderBottom: '1px solid #F0F0F0' }}>
+                <button onClick={() => setShowAiPanel(v => !v)}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', background: showAiPanel ? 'rgba(139,92,246,0.06)' : 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: '#7C3AED' }}>
+                  <Sparkles size={14} />
+                  <span style={{ fontSize: 12.5, fontWeight: 700, flex: 1, textAlign: 'left' }}>Genera variant amb IA</span>
+                  {showAiPanel ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                </button>
+                {showAiPanel && (
+                  <div style={{ padding: '0 16px 14px' }}>
+                    <input value={aiContext} onChange={e => setAiContext(e.target.value)}
+                      placeholder="Context extra (p.ex. 'empat dramàtic', 'remontada increïble'…)"
+                      style={{ width: '100%', padding: '7px 10px', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 7, fontSize: 12.5, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }} />
+                    <button onClick={handleGenerateAI} disabled={aiLoading}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 7, border: 'none', cursor: aiLoading ? 'wait' : 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700, background: 'linear-gradient(135deg,#7C3AED,#6D28D9)', color: '#fff', opacity: aiLoading ? 0.7 : 1 }}>
+                      <Sparkles size={13} />
+                      {aiLoading ? 'Generant…' : '3 variants IA'}
+                    </button>
+                    {/* AI variants */}
+                    {aiVariants.length > 0 && (
+                      <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {aiVariants.map((v, i) => (
+                          <button key={i} onClick={() => setSelectedVariant(selectedVariant === v.text ? null : v.text)}
+                            style={{ textAlign: 'left', padding: '10px 12px', borderRadius: 8, border: `2px solid ${selectedVariant === v.text ? '#7C3AED' : 'rgba(0,0,0,0.1)'}`, cursor: 'pointer', background: selectedVariant === v.text ? 'rgba(139,92,246,0.06)' : '#FAFAFA', fontFamily: 'inherit', transition: 'all .12s' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>Variant {i + 1} · {v.note}</div>
+                            <div style={{ fontSize: 12.5, color: '#111827', whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>{v.text}</div>
+                            {selectedVariant === v.text && <div style={{ marginTop: 6, fontSize: 10.5, color: '#7C3AED', fontWeight: 700 }}>✓ Seleccionada</div>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Schedule to Metricool */}
+              <div style={{ borderBottom: '1px solid #F0F0F0' }}>
+                <button onClick={() => setShowSchedule(v => !v)}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', background: showSchedule ? 'rgba(5,150,105,0.06)' : 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: '#059669' }}>
+                  <Calendar size={14} />
+                  <span style={{ fontSize: 12.5, fontWeight: 700, flex: 1, textAlign: 'left' }}>Programar a Metricool</span>
+                  {showSchedule ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                </button>
+                {showSchedule && (
+                  <div style={{ padding: '0 16px 14px' }}>
+                    <div style={{ fontSize: 10.5, color: '#6B7280', marginBottom: 6 }}>Data i hora</div>
+                    <input type="datetime-local" value={scheduleDate} onChange={e => setScheduleDate(e.target.value)}
+                      style={{ padding: '7px 10px', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 7, fontSize: 12.5, fontFamily: 'inherit', outline: 'none', marginBottom: 10, width: '100%', boxSizing: 'border-box' }} />
+                    <div style={{ fontSize: 10.5, color: '#6B7280', marginBottom: 6 }}>Xarxes</div>
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+                      {['instagram', 'twitter', 'facebook', 'tiktok'].map(net => (
+                        <button key={net} onClick={() => toggleNetwork(net)}
+                          style={{ padding: '4px 10px', borderRadius: 6, border: `2px solid ${scheduleNetworks.includes(net) ? '#059669' : 'rgba(0,0,0,0.12)'}`, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11.5, fontWeight: 600, background: scheduleNetworks.includes(net) ? '#F0FDF4' : '#fff', color: scheduleNetworks.includes(net) ? '#059669' : '#6B7280' }}>
+                          {net === 'twitter' ? 'X/Twitter' : net.charAt(0).toUpperCase() + net.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                    <button onClick={handleSchedule} disabled={scheduling || !activeText.trim() || scheduleNetworks.length === 0}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', cursor: scheduling ? 'wait' : 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, background: 'linear-gradient(135deg,#059669,#047857)', color: '#fff', opacity: (!activeText.trim() || scheduleNetworks.length === 0) ? 0.5 : 1 }}>
+                      <Send size={13} />
+                      {scheduling ? 'Programant…' : 'Programar ara'}
+                    </button>
+                    {scheduleResult && (
+                      <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 7, background: scheduleResult.ok ? '#F0FDF4' : '#FEF2F2', color: scheduleResult.ok ? '#059669' : '#EF4444', fontSize: 12, fontWeight: 600 }}>
+                        {scheduleResult.message}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Copy button */}
