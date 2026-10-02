@@ -638,22 +638,25 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
                   style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: '#F9FAFB', border: 'none', borderTop: '1px solid #F0F0F0', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>
-                    {monthDates.length === 0 ? 'Sense esdeveniments aquest mes' : `${monthDates.length} esdeveniment${monthDates.length !== 1 ? 's' : ''} aquest mes`}
+                    {importantDates.length === 0 ? 'Sense esdeveniments' : `${importantDates.length} data${importantDates.length !== 1 ? 's' : ''} importants`}
                   </span>
                   {calDatesOpen ? <ChevronUp size={14} color="#9CA3AF" /> : <ChevronDown size={14} color="#9CA3AF" />}
                 </button>
 
-                {calDatesOpen && monthDates.length > 0 && (
-                  <div style={{ borderTop: '1px solid #F0F0F0' }}>
-                    {monthDates.map((ev, i) => {
+                {calDatesOpen && importantDates.length > 0 && (
+                  <div style={{ borderTop: '1px solid #F0F0F0', maxHeight: 320, overflowY: 'auto' }}>
+                    {importantDates.map((ev, i) => {
                       const d = new Date(ev.date + 'T00:00:00')
                       const dayN = d.getDate()
+                      const evMonth = d.getMonth()
+                      const evYear = d.getFullYear()
                       const isPast = d < now && d.toDateString() !== now.toDateString()
+                      const isThisMonth = evMonth === month && evYear === year
                       return (
-                        <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', borderBottom: i < monthDates.length - 1 ? '1px solid #F7F7F7' : 'none', opacity: isPast ? 0.5 : 1 }}>
-                          <div style={{ minWidth: 32, height: 32, borderRadius: 8, background: '#F3F4F6', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <span style={{ fontSize: 13, fontWeight: 800, color: '#111827', lineHeight: 1 }}>{dayN}</span>
-                            <span style={{ fontSize: 9, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase' }}>{monthNames[month].slice(0, 3)}</span>
+                        <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', borderBottom: i < importantDates.length - 1 ? '1px solid #F7F7F7' : 'none', opacity: isPast ? 0.5 : 1 }}>
+                          <div style={{ minWidth: 32, height: 32, borderRadius: 8, background: isThisMonth ? '#EFF6FF' : '#F3F4F6', border: isThisMonth ? '1px solid #BFDBFE' : 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <span style={{ fontSize: 13, fontWeight: 800, color: isThisMonth ? '#1D4ED8' : '#111827', lineHeight: 1 }}>{dayN}</span>
+                            <span style={{ fontSize: 9, fontWeight: 600, color: isThisMonth ? '#3B82F6' : '#9CA3AF', textTransform: 'uppercase' }}>{monthNames[evMonth].slice(0, 3)}</span>
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 12.5, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.name}</div>
