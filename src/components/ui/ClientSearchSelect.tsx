@@ -16,6 +16,10 @@ interface Props {
   emptyLabel?: string
 }
 
+const GUINEW_ID = '__guinew_internal__'
+const GUINEW_NAME = 'Agència Guinew'
+const GUINEW_COLOR = '#0006FF'
+
 function initial(name: string) { return name.slice(0, 2).toUpperCase() }
 function avColor(name: string) {
   const colors = ['#254067','#7C3AED','#059669','#D97706','#DC2626','#2563EB','#0891B2','#65A30D']
@@ -28,7 +32,9 @@ export function ClientSearchSelect({ clients, value, onChange, placeholder = 'Ce
   const [q, setQ] = useState('')
   const ref = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const selected = clients.find(c => c.id === value)
+  const isGuinew = value === GUINEW_ID
+  const selected = isGuinew ? null : clients.find(c => c.id === value)
+  const showGuinew = !q || GUINEW_NAME.toLowerCase().includes(q.toLowerCase())
   const filtered = q ? clients.filter(c => c.name.toLowerCase().includes(q.toLowerCase())) : clients
 
   useEffect(() => {
@@ -42,7 +48,12 @@ export function ClientSearchSelect({ clients, value, onChange, placeholder = 'Ce
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <div className="clisel-trigger" onClick={() => { setOpen(o => !o); setTimeout(() => inputRef.current?.focus(), 50) }}>
-        {selected ? (
+        {isGuinew ? (
+          <>
+            <div className="clisel-av clisel-av--guinew">AG</div>
+            <span className="clisel-name">{GUINEW_NAME}</span>
+          </>
+        ) : selected ? (
           <>
             {selected.logo_url
               ? <img src={selected.logo_url} alt="" className="clisel-logo" />
@@ -65,7 +76,16 @@ export function ClientSearchSelect({ clients, value, onChange, placeholder = 'Ce
             <button className="clisel-item" onClick={() => { onChange('', ''); setOpen(false); setQ('') }}>
               <span style={{ color: '#9CA3AF', fontStyle: 'italic', fontSize: 12.5 }}>{emptyLabel}</span>
             </button>
-            {filtered.length === 0 && <div style={{ padding: '10px 14px', color: '#9CA3AF', fontSize: 12.5 }}>Cap resultat</div>}
+            {showGuinew && (
+              <button className={`clisel-item clisel-item--guinew${isGuinew ? ' clisel-item--sel' : ''}`}
+                onClick={() => { onChange(GUINEW_ID, GUINEW_NAME); setOpen(false); setQ('') }}>
+                <div className="clisel-av clisel-av--guinew">AG</div>
+                <span className="clisel-item-name" style={{ fontWeight: 600 }}>{GUINEW_NAME}</span>
+                <span className="clisel-guinew-badge">intern</span>
+                {isGuinew && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0006FF" strokeWidth="2.5" style={{ marginLeft: 'auto', flexShrink: 0 }}><polyline points="20 6 9 17 4 12"/></svg>}
+              </button>
+            )}
+            {filtered.length === 0 && !showGuinew && <div style={{ padding: '10px 14px', color: '#9CA3AF', fontSize: 12.5 }}>Cap resultat</div>}
             {filtered.map(c => (
               <button key={c.id} className={`clisel-item${c.id === value ? ' clisel-item--sel' : ''}`}
                 onClick={() => { onChange(c.id, c.name); setOpen(false); setQ('') }}>
@@ -95,6 +115,9 @@ export function ClientSearchSelect({ clients, value, onChange, placeholder = 'Ce
         .clisel-item:hover { background: #F8F9FB; }
         .clisel-item--sel { background: #EFF6FF; }
         .clisel-item-name { font-size: 13px; color: #111827; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .clisel-av--guinew { background: ${GUINEW_COLOR} !important; font-size: 8.5px; letter-spacing: 0; }
+        .clisel-item--guinew { border-bottom: 1px solid #F3F4F6; margin-bottom: 3px; }
+        .clisel-guinew-badge { font-size: 10px; color: ${GUINEW_COLOR}; background: #EEF2FF; border-radius: 4px; padding: 1px 5px; font-weight: 600; letter-spacing: 0.2px; flex-shrink: 0; }
       `}</style>
     </div>
   )
