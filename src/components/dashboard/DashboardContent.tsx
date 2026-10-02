@@ -585,7 +585,9 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
             const firstDay = new Date(year, month, 1).getDay() // 0=Sun
             const firstMon = firstDay === 0 ? 6 : firstDay - 1 // shift so Mon=0
             const daysInMonth = new Date(year, month + 1, 0).getDate()
-            const dateSet = new Set(importantDates.map(d => parseInt(d.date.split('-')[2])))
+            const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`
+            const monthDates = importantDates.filter(d => d.date.startsWith(monthStr))
+            const dateSet = new Set(monthDates.map(d => parseInt(d.date.split('-')[2])))
             const cells: (number | null)[] = Array(firstMon).fill(null)
             for (let i = 1; i <= daysInMonth; i++) cells.push(i)
             while (cells.length % 7 !== 0) cells.push(null)
@@ -636,19 +638,19 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
                   style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: '#F9FAFB', border: 'none', borderTop: '1px solid #F0F0F0', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>
-                    {importantDates.length === 0 ? 'Sense esdeveniments aquest mes' : `${importantDates.length} esdeveniment${importantDates.length !== 1 ? 's' : ''} aquest mes`}
+                    {monthDates.length === 0 ? 'Sense esdeveniments aquest mes' : `${monthDates.length} esdeveniment${monthDates.length !== 1 ? 's' : ''} aquest mes`}
                   </span>
                   {calDatesOpen ? <ChevronUp size={14} color="#9CA3AF" /> : <ChevronDown size={14} color="#9CA3AF" />}
                 </button>
 
-                {calDatesOpen && importantDates.length > 0 && (
+                {calDatesOpen && monthDates.length > 0 && (
                   <div style={{ borderTop: '1px solid #F0F0F0' }}>
-                    {importantDates.map((ev, i) => {
+                    {monthDates.map((ev, i) => {
                       const d = new Date(ev.date + 'T00:00:00')
                       const dayN = d.getDate()
                       const isPast = d < now && d.toDateString() !== now.toDateString()
                       return (
-                        <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', borderBottom: i < importantDates.length - 1 ? '1px solid #F7F7F7' : 'none', opacity: isPast ? 0.5 : 1 }}>
+                        <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', borderBottom: i < monthDates.length - 1 ? '1px solid #F7F7F7' : 'none', opacity: isPast ? 0.5 : 1 }}>
                           <div style={{ minWidth: 32, height: 32, borderRadius: 8, background: '#F3F4F6', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <span style={{ fontSize: 13, fontWeight: 800, color: '#111827', lineHeight: 1 }}>{dayN}</span>
                             <span style={{ fontSize: 9, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase' }}>{monthNames[month].slice(0, 3)}</span>
