@@ -7,6 +7,7 @@ import { AsobalCopys } from './AsobalCopys'
 import { AsobalEquip } from './AsobalEquip'
 import { AsobalFranquicia } from './AsobalFranquicia'
 import { AsobalCalendari } from './AsobalCalendari'
+import { AsobalYTB } from './AsobalYTB'
 
 const TEAMS: Record<string, string> = {
   LOG: 'Logroño', BAR: 'Barça', GRA: 'Granollers', CAN: 'Morrazo',
@@ -799,7 +800,7 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
 
 export function AsobalContent() {
   const supabase = useRef(createClient()).current
-  const [asobalTab, setAsobalTab] = useState<'jornades' | 'copys' | 'equip' | 'franquicia' | 'calendari'>('jornades')
+  const [asobalTab, setAsobalTab] = useState<'jornades' | 'copys' | 'equip' | 'franquicia' | 'calendari' | 'ytb'>('jornades')
 
   const [selectedJ, setSelectedJ] = useState(() => {
     const today = new Date()
@@ -941,7 +942,8 @@ export function AsobalContent() {
           { key: 'equip',    label: 'Equip comunicació', icon: Users2 },
           { key: 'franquicia', label: 'Franquícia',      icon: Award },
           { key: 'calendari',  label: 'Planificación Jornada', icon: CalendarDays },
-        ] as { key: 'jornades'|'copys'|'equip'|'franquicia'|'calendari'; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
+          { key: 'ytb',        label: 'Posicionamiento YTB',   icon: PlaySquare },
+        ] as { key: 'jornades'|'copys'|'equip'|'franquicia'|'calendari'|'ytb'; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setAsobalTab(key)}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', border: 'none', cursor: 'pointer',
               fontFamily: 'inherit', fontSize: 13, fontWeight: asobalTab === key ? 700 : 500,
@@ -962,6 +964,8 @@ export function AsobalContent() {
       {asobalTab === 'franquicia' && <AsobalFranquicia />}
       {/* Calendari sessions tab */}
       {asobalTab === 'calendari' && <AsobalCalendari />}
+      {/* Posicionamiento YTB tab */}
+      {asobalTab === 'ytb' && <AsobalYTB />}
 
       {/* Jornades tab */}
       {asobalTab === 'jornades' && <>
