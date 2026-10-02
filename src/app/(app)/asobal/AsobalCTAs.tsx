@@ -255,13 +255,19 @@ export function AsobalCTAs() {
       </div>
 
       {/* Grid */}
+      <style>{`
+        .asb-ctas-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; align-items:start; }
+        @media(max-width:1024px) { .asb-ctas-grid { grid-template-columns:repeat(3,1fr); } }
+        @media(max-width:680px)  { .asb-ctas-grid { grid-template-columns:repeat(2,1fr); } }
+        @media(max-width:420px)  { .asb-ctas-grid { grid-template-columns:1fr; } }
+      `}</style>
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px' }}>
         {filtered.length === 0 && (
           <div style={{ padding: '40px 0', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>
             Cap resultat per &ldquo;{q}&rdquo;
           </div>
         )}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, alignItems: 'start' }}>
+        <div className="asb-ctas-grid">
           {filtered.map(cat => (
             <div key={cat.key} style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
               {/* Column header */}

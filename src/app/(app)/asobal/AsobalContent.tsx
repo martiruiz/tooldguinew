@@ -937,7 +937,16 @@ export function AsobalContent() {
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
 
       {/* Tab bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '8px 14px 0', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.08)', flexShrink: 0 }}>
+      <style>{`
+        .asb-tabbar { display:flex; align-items:center; gap:2px; padding:8px 14px 0; background:#fff; border-bottom:1px solid rgba(0,0,0,0.08); flex-shrink:0; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+        .asb-tabbar::-webkit-scrollbar { display:none; }
+        .asb-tab-btn { display:flex; align-items:center; gap:6px; padding:7px 14px; border:none; cursor:pointer; font-family:inherit; font-size:13px; font-weight:500; color:#6B7280; background:none; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .15s; flex-shrink:0; white-space:nowrap; }
+        .asb-tab-btn.active { font-weight:700; color:#0006FF; border-bottom-color:#0006FF; }
+        @media(max-width:640px) {
+          .asb-tab-btn { padding:6px 10px; font-size:11px; gap:4px; }
+        }
+      `}</style>
+      <div className="asb-tabbar">
         {([
           { key: 'jornades',   label: 'Jornades',          icon: Trophy },
           { key: 'copys',    label: 'Copys',             icon: BookOpen },
@@ -949,11 +958,7 @@ export function AsobalContent() {
           { key: 'creadors',   label: 'Creadors',              icon: Users },
         ] as { key: 'jornades'|'copys'|'equip'|'franquicia'|'calendari'|'ytb'|'ctas'|'creadors'; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setAsobalTab(key)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', border: 'none', cursor: 'pointer',
-              fontFamily: 'inherit', fontSize: 13, fontWeight: asobalTab === key ? 700 : 500,
-              color: asobalTab === key ? '#0006FF' : '#6B7280', background: 'none',
-              borderBottom: asobalTab === key ? '2px solid #0006FF' : '2px solid transparent',
-              marginBottom: -1, transition: 'all .15s' }}>
+            className={`asb-tab-btn${asobalTab === key ? ' active' : ''}`}>
             <Icon size={14} />
             {label}
           </button>

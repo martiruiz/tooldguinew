@@ -1222,7 +1222,19 @@ export function AsobalYTB() {
               return (
               <div key={group.label} style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 {/* Jornada header */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', background: NAVY }}>
+                <style>{`
+                  .asb-ytb-header-cols { display:grid; grid-template-columns:1fr 1fr 1fr; background:${NAVY}; }
+                  .asb-ytb-row { display:grid; grid-template-columns:1fr 1fr 1fr; border-top:1px solid rgba(0,0,0,0.06); }
+                  .asb-ytb-col { padding:10px 12px; display:flex; flex-direction:column; gap:6px; }
+                  .asb-ytb-col:not(:last-child) { border-right:1px solid rgba(0,0,0,0.06); }
+                  @media(max-width:640px) {
+                    .asb-ytb-header-cols { grid-template-columns:1fr; }
+                    .asb-ytb-header-cols > div.col-label { display:none; }
+                    .asb-ytb-row { grid-template-columns:1fr; }
+                    .asb-ytb-col:not(:last-child) { border-right:none; border-bottom:1px solid rgba(0,0,0,0.06); }
+                  }
+                `}</style>
+                <div className="asb-ytb-header-cols">
                   <div
                     onClick={() => toggle(group.label)}
                     style={{ gridColumn: '1 / -1', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: isCollapsed ? 'none' : '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', userSelect: 'none', borderLeft: `4px solid ${YTB_RED}` }}
@@ -1232,7 +1244,7 @@ export function AsobalYTB() {
                     <span style={{ fontSize: 10, color: YTB_RED, fontWeight: 700, background: 'rgba(204,0,0,0.15)', borderRadius: 4, padding: '1px 6px' }}>{group.entries.length} {group.entries.length === 1 ? 'entrada' : 'entrades'}</span>
                   </div>
                   {!isCollapsed && (['Títol', 'Descripció SEO', 'Paraules clau'] as const).map(label => (
-                    <div key={label} style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: '.1em', padding: '5px 14px' }}>{label}</div>
+                    <div key={label} className="col-label" style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: '.1em', padding: '5px 14px' }}>{label}</div>
                   ))}
                 </div>
                 {/* Rows */}
@@ -1240,22 +1252,22 @@ export function AsobalYTB() {
                   const kwCount = entry.keywords.length
                   const isTemplate = !entry.titulo.includes('|')
                   return (
-                    <div key={globalIdx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderTop: '1px solid rgba(0,0,0,0.06)', background: isTemplate ? 'rgba(11,31,74,0.025)' : globalIdx % 2 === 0 ? '#fff' : '#F8F9FB' }}>
+                    <div key={globalIdx} className="asb-ytb-row" style={{ background: isTemplate ? 'rgba(0,6,255,0.025)' : globalIdx % 2 === 0 ? '#fff' : '#F8F9FB' }}>
                       {/* Col 1 – Títol */}
-                      <div style={{ padding: '10px 12px', borderRight: '1px solid rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div className="asb-ytb-col">
                         <div style={{ fontSize: 11.5, fontWeight: 700, color: '#111827', lineHeight: 1.4 }}>{entry.titulo}</div>
                         <CopyBtn text={entry.titulo} label="Títol" />
                       </div>
                       {/* Col 2 – Descripció */}
-                      <div style={{ padding: '10px 12px', borderRight: '1px solid rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div className="asb-ytb-col">
                         <div style={{ fontSize: 11, color: '#374151', lineHeight: 1.55 }}>{entry.descripcion}</div>
                         <CopyBtn text={entry.descripcion} label="Descripció" />
                       </div>
                       {/* Col 3 – Keywords */}
-                      <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div className="asb-ytb-col">
                         <div style={{ fontSize: 10.5, color: '#374151', lineHeight: 1.6 }}>
                           {entry.keywords.split(', ').map((kw, ki) => (
-                            <span key={ki} style={{ display: 'inline-block', background: 'rgba(11,31,74,0.05)', color: NAVY, borderRadius: 4, padding: '1px 5px', margin: '2px 2px 2px 0', fontSize: 10, fontWeight: 600 }}>{kw}</span>
+                            <span key={ki} style={{ display: 'inline-block', background: 'rgba(0,6,255,0.05)', color: NAVY, borderRadius: 4, padding: '1px 5px', margin: '2px 2px 2px 0', fontSize: 10, fontWeight: 600 }}>{kw}</span>
                           ))}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

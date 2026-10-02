@@ -156,7 +156,8 @@ export function AsobalCalendari() {
       </div>
 
       {/* Taula */}
-      <div style={{ border: '2px solid ' + C.navy, borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 12px rgba(10,15,107,0.12)' }}>
+      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' as any }}>
+      <div style={{ border: '2px solid ' + C.navy, borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 12px rgba(10,15,107,0.12)', minWidth: 400 }}>
 
         {/* Main title */}
         <div style={{ background: C.navy, padding: '10px 12px', textAlign: 'center' }}>
@@ -176,6 +177,7 @@ export function AsobalCalendari() {
 
         {/* Segona Volta */}
         {SEGUNDA.map((row, i) => <TableRow key={`s-${i}`} row={row} idx={i} />)}
+      </div>
       </div>
     </div>
   )
