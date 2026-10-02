@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X, Image as ImageIcon, Layers, Film, Zap, Copy, PlaySquare } from 'lucide-react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X, Image as ImageIcon, Layers, Film, Zap, Copy, PlaySquare, BookOpen } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { AsobalCopys } from './AsobalCopys'
 
 const TEAMS: Record<string, string> = {
   LOG: 'Logroño', BAR: 'Barça', GRA: 'Granollers', CAN: 'Morrazo',
@@ -795,6 +796,7 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
 
 export function AsobalContent() {
   const supabase = useRef(createClient()).current
+  const [asobalTab, setAsobalTab] = useState<'jornades' | 'copys'>('jornades')
 
   const [selectedJ, setSelectedJ] = useState(() => {
     const today = new Date()
@@ -927,6 +929,31 @@ export function AsobalContent() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+
+      {/* Tab bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '8px 14px 0', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.08)', flexShrink: 0 }}>
+        {([
+          { key: 'jornades', label: 'Jornades', icon: Trophy },
+          { key: 'copys',    label: 'Copys',    icon: BookOpen },
+        ] as { key: 'jornades'|'copys'; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
+          <button key={key} onClick={() => setAsobalTab(key)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', border: 'none', cursor: 'pointer',
+              fontFamily: 'inherit', fontSize: 13, fontWeight: asobalTab === key ? 700 : 500,
+              color: asobalTab === key ? '#1b3bda' : '#6B7280', background: 'none',
+              borderBottom: asobalTab === key ? '2px solid #1b3bda' : '2px solid transparent',
+              marginBottom: -1, transition: 'all .15s' }}>
+            <Icon size={14} />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Copys tab */}
+      {asobalTab === 'copys' && <AsobalCopys />}
+
+      {/* Jornades tab */}
+      {asobalTab === 'jornades' && <>
+
       <style>{`
         .asb-j-item { padding:8px 12px; border-radius:8px; cursor:pointer; transition:background .15s; display:flex; align-items:center; justify-content:space-between; gap:8px; }
         .asb-j-item:hover { background:rgba(0,0,0,0.04); }
@@ -1245,6 +1272,8 @@ export function AsobalContent() {
           />
         </div>
       </div>
+
+      </>}
     </div>
   )
 }
