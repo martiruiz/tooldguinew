@@ -908,16 +908,27 @@ export function ContentPipeline({ items: initialItems, clients, profiles, curren
         .cp-btn-new:hover { background: #254067; }
 
         /* Board */
-        .cp-board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; flex: 1; min-height: 0; }
+        .cp-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; flex: 1; min-height: 0; }
         .cp-col { display: flex; flex-direction: column; background: #F8F9FB; border-radius: 14px; min-height: 0; overflow: hidden; }
 
-        @media (max-width: 900px) {
-          .cp-root { overflow-x: hidden; padding: 14px 16px 90px; gap: 10px; }
-          .cp-toolbar-top { width: 100%; }
-          .cp-filters-row { width: 100%; }
-          .cp-board { display: flex !important; flex-direction: row; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding-bottom: 8px; flex: none; min-height: 0; height: calc(100vh - 200px); }
-          .cp-col { min-width: 240px; max-width: 240px; scroll-snap-align: start; flex-shrink: 0; height: 100%; }
-          .cp-col-body { flex: 1; overflow-y: auto; }
+        @media (max-width: 767px) {
+          .cp-root { overflow-x: hidden; padding: 12px 12px 100px; gap: 10px; height: auto; overflow: visible; }
+          .cp-toolbar-top { width: 100%; flex-wrap: wrap; }
+          .cp-filters-row { width: 100%; flex-direction: column; }
+          .cp-filters-row > div { max-width: 100%; }
+          .cp-btn-new { width: 100%; justify-content: center; }
+          .cp-board { display: flex; flex-direction: column; gap: 12px; flex: none; height: auto; overflow: visible; }
+          .cp-col { min-height: 0; height: auto; border-radius: 12px; }
+          .cp-col-body { max-height: 400px; overflow-y: auto; }
+          .ci-modal { max-height: 90vh; overflow-y: auto; border-radius: 16px 16px 0 0; position: fixed; bottom: 0; left: 0; right: 0; top: auto; max-width: 100%; width: 100%; transform: none; }
+          .ci-modal-bg { align-items: flex-end; }
+          .ap-grid { gap: 6px; }
+          .ap-item { min-width: 46px; padding: 6px 8px; }
+          .chips-wrap { gap: 5px; }
+          .chip { padding: 4px 9px; font-size: 12px; }
+        }
+        @media (min-width: 768px) and (max-width: 1100px) {
+          .cp-board { grid-template-columns: repeat(3, 1fr); gap: 10px; }
         }
         .cp-col-hdr { display: flex; align-items: center; gap: 8px; padding: 14px 14px 10px; flex-shrink: 0; }
         .cp-col-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
