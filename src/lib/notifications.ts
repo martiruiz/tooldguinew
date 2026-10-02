@@ -98,17 +98,21 @@ export async function sendEmailNotification(opts: {
     // Gmail SMTP fallback
     try {
       const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
         auth: { user: gmailUser, pass: gmailPass },
       })
-      await transporter.sendMail({
+      const info = await transporter.sendMail({
         from: `"Guinew OS" <${gmailUser}>`,
         to: `"${opts.toName}" <${opts.toEmail}>`,
         subject: opts.subject,
         html: opts.htmlContent,
       })
-    } catch (err) {
-      console.error('[notifications] Gmail SMTP send failed:', err)
+      console.log('[notifications] Gmail SMTP sent OK:', info.messageId)
+    } catch (err: any) {
+      console.error('[notifications] Gmail SMTP send failed:', err?.message || err)
+      throw new Error(`Email send failed: ${err?.message}`)
     }
   }
 }
