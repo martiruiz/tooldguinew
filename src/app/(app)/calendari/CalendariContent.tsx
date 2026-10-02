@@ -6,21 +6,24 @@ import {
   CalendarDays, Flag, Disc3, Trophy, Plus, X, Pencil, Trash2,
   MapPin, Users, ChevronDown, ChevronUp, Check, AlertCircle,
   Package, MonitorPlay, BookOpen, UserPlus, Save, CalendarRange,
-  ArrowRight, Clock,
+  ArrowRight, Clock, Upload,
 } from 'lucide-react'
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
 interface ImportantDate {
   id: string; title: string; date: string; description?: string; color: string
   priority?: 'alta' | 'mitjana' | 'opcional'; deadline?: string; client_id?: string
-  created_at?: string
+  created_at?: string; category?: string
 }
 interface Album {
   id: string; tournament_name: string; date_start: string; date_end?: string
   album_type: 'physical' | 'digital' | 'both'; notes?: string; price?: number
+  sale_start?: string; sale_end?: string; comm_sent?: boolean; graphics_done?: boolean
 }
 interface Tournament {
-  id: string; name: string; date_start: string; date_end?: string; location?: string; notes?: string
+  id: string; name: string; date_start: string; date_end?: string; location?: string; notes?: string; logo_url?: string
+  album_type?: string; album_price?: number; sale_start?: string; sale_end?: string
+  comm_sent?: boolean; graphics_done?: boolean; album_notes?: string
 }
 interface TournamentStaff {
   id: string; tournament_id: string; person_name: string; role: string
@@ -41,6 +44,32 @@ const ALBUM_TYPES = [
   { key: 'digital',  label: 'Digital',         Icon: MonitorPlay },
   { key: 'both',     label: 'Físic + Digital', Icon: Disc3 },
 ]
+
+const TOURNAMENT_COLOR = '#f59e0b' // amber for tournament dots in calendar
+
+const ALBUM_STEPS = [
+  { key: 'graphics_done', label: 'Grafismes fets' },
+  { key: 'comm_sent',     label: 'Comunicació enviada' },
+  { key: 'sale_start',    label: 'Venda llançada' },
+  { key: 'sale_end',      label: 'Venda tancada' },
+] as const
+
+function albumProgressPct(a: Album, todayStr: string): number {
+  let done = 0
+  if (a.graphics_done)                            done++
+  if (a.comm_sent)                                done++
+  if (a.sale_start && a.sale_start <= todayStr)   done++
+  if (a.sale_end   && a.sale_end   <= todayStr)   done++
+  return done / 4
+}
+
+function progressColor(pct: number): string {
+  if (pct === 0)    return '#ef4444'
+  if (pct <= 0.25)  return '#f97316'
+  if (pct <= 0.5)   return '#f59e0b'
+  if (pct <= 0.75)  return '#84cc16'
+  return '#22c55e'
+}
 
 /* ─── Calendar range: Sep 2026 → Dec 2027 ───────────────────────────── */
 const CAL_MONTHS: { year: number; month: number }[] = []
@@ -115,13 +144,14 @@ export function CalendariContent({
 
   /* Modals */
   const [dateModal, setDateModal] = useState<Partial<ImportantDate>|null>(null)
-  const [albumModal, setAlbumModal] = useState<Partial<Album>|null>(null)
+  const [albumModal, setAlbumModal] = useState<Tournament|null>(null)
   const [tournamentModal, setTournamentModal] = useState<Partial<Tournament>|null>(null)
   const [staffModal, setStaffModal] = useState<{tournamentId:string; existing?:TournamentStaff}|null>(null)
 
   /* Dates view filters */
-  const [filterClient, setFilterClient] = useState<string|null>(null) // null = all
-  const [filterPriority, setFilterPriority] = useState<string|null>(null)
+  const [filterYear, setFilterYear] = useState<number|null>(null)
+  const [filterMonth, setFilterMonth] = useState<number|null>(null) // 0-based
+  const [filterCategory, setFilterCategory] = useState<string|null>(null)
 
   /* Client color map */
   const clientColor = useCallback((clientId: string|undefined): string => {
@@ -167,7 +197,7 @@ export function CalendariContent({
   const saveDate = async (d: Partial<ImportantDate>) => {
     if (!d.title || !d.date) return
     setError(null)
-    const payload = { title:d.title, date:d.date, description:d.description, color:d.color??'#4f6ef7', priority:d.priority??'mitjana', deadline:d.deadline??null, client_id:d.client_id??null }
+    const payload = { title:d.title, date:d.date, description:d.description, color:d.color??'#4f6ef7', priority:d.priority??'mitjana', deadline:d.deadline??null, client_id:d.client_id??null, category:d.category??null }
     const { error } = d.id
       ? await supabase.from('cal_important_dates').update(payload).eq('id', d.id)
       : await supabase.from('cal_important_dates').insert(payload)
@@ -182,7 +212,7 @@ export function CalendariContent({
   const saveAlbum = async (a: Partial<Album>) => {
     if (!a.tournament_name || !a.date_start) return
     setError(null)
-    const payload = { tournament_name:a.tournament_name, date_start:a.date_start, date_end:a.date_end, album_type:a.album_type??'both', notes:a.notes, price:a.price }
+    const payload = { tournament_name:a.tournament_name, date_start:a.date_start, date_end:a.date_end, album_type:a.album_type??'both', notes:a.notes, price:a.price, sale_start:a.sale_start||null, sale_end:a.sale_end||null, comm_sent:a.comm_sent??false, graphics_done:a.graphics_done??false }
     const { error } = a.id
       ? await supabase.from('cal_albums').update(payload).eq('id', a.id)
       : await supabase.from('cal_albums').insert(payload)
@@ -192,12 +222,22 @@ export function CalendariContent({
   const deleteAlbum = async (id: string) => {
     await supabase.from('cal_albums').delete().eq('id', id); await refresh('albums')
   }
+  const toggleAlbumField = async (id: string, field: 'comm_sent'|'graphics_done', value: boolean) => {
+    await supabase.from('cal_tournaments').update({ [field]: value }).eq('id', id)
+    await refresh('tournaments')
+  }
+  const saveAlbumData = async (t: Partial<Tournament>) => {
+    if (!t.id) return
+    const payload = { album_type: t.album_type??'both', album_price: t.album_price??null, sale_start: t.sale_start||null, sale_end: t.sale_end||null, album_notes: t.album_notes||null }
+    await supabase.from('cal_tournaments').update(payload).eq('id', t.id)
+    setAlbumModal(null); await refresh('tournaments')
+  }
 
   /* CRUD: Tournaments */
   const saveTournament = async (t: Partial<Tournament>) => {
     if (!t.name || !t.date_start) return
     setError(null)
-    const payload = { name:t.name, date_start:t.date_start, date_end:t.date_end, location:t.location, notes:t.notes }
+    const payload = { name:t.name, date_start:t.date_start, date_end:t.date_end, location:t.location, notes:t.notes, logo_url:t.logo_url }
     const { error } = t.id
       ? await supabase.from('cal_tournaments').update(payload).eq('id', t.id)
       : await supabase.from('cal_tournaments').insert(payload)
@@ -227,10 +267,13 @@ export function CalendariContent({
 
   /* Filtered dates for current tab view */
   const filteredDates = dates.filter(d => {
-    if (filterClient && d.client_id !== filterClient) return false
-    if (filterPriority && d.priority !== filterPriority) return false
+    if (filterYear) { const y = parseInt(d.date.split('-')[0]); if (y !== filterYear) return false }
+    if (filterMonth !== null) { const m = parseInt(d.date.split('-')[1]) - 1; if (m !== filterMonth) return false }
+    if (filterCategory && d.category !== filterCategory) return false
     return true
   })
+  /* Derived: unique categories in data */
+  const allCategories = Array.from(new Set(dates.map(d => d.category).filter(Boolean))) as string[]
 
   /* Next upcoming date */
   const todayStr = today()
@@ -239,7 +282,7 @@ export function CalendariContent({
   /* Tabs */
   const tabs = [
     { key:'dates',       label:'Dates importants', Icon:Flag,     count:dates.length },
-    { key:'albums',      label:'Àlbums',           Icon:Disc3,    count:albums.length },
+    { key:'albums',      label:'Àlbums',           Icon:Disc3,    count:tournaments.length },
     { key:'tournaments', label:'Tornejos',         Icon:Trophy,   count:tournaments.length },
   ] as const
 
@@ -289,7 +332,7 @@ export function CalendariContent({
 
           {/* Next upcoming banner */}
           {nextDate && (
-            <div style={{ display:'flex', alignItems:'center', gap:16, background:'#fafafa', border:'1.5px solid #e5e7eb', borderRadius:12, padding:'14px 20px', marginBottom:24 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:16, background:'#fafafa', border:'1.5px solid #e5e7eb', borderRadius:12, padding:'14px 20px', marginBottom:12 }}>
               <span style={{ fontSize:10, fontWeight:800, color:'#6b7280', letterSpacing:'.1em', textTransform:'uppercase', whiteSpace:'nowrap' }}>Pròxima data</span>
               <div style={{ width:1, height:24, background:'#e5e7eb' }}/>
               <span style={{ fontSize:15, fontWeight:700, color:'#111827' }}>{nextDate.title}</span>
@@ -311,36 +354,49 @@ export function CalendariContent({
           )}
 
           {/* Filter bar */}
-          <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:28, flexWrap:'wrap' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-              <span style={{ fontSize:12, fontWeight:600, color:'#9ca3af' }}>Client</span>
-              {[null, ...clients.map(c => c.id)].map((cid, i) => {
-                const col = cid ? CLIENT_PALETTE[(i-1) % CLIENT_PALETTE.length] : '#6b7280'
-                const name = cid ? (clients.find(c=>c.id===cid)?.name ?? '') : 'Tots'
-                const active = filterClient === cid
+          <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:28 }}>
+            {/* Year */}
+            <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+              <span style={{ fontSize:11, fontWeight:700, color:'#9ca3af', letterSpacing:'.06em', textTransform:'uppercase', minWidth:52 }}>Any</span>
+              {[null, 2026, 2027].map(y => {
+                const active = filterYear === y
                 return (
-                  <button key={cid??'all'} onClick={() => setFilterClient(active ? null : cid)}
-                    style={{ display:'flex', alignItems:'center', gap:5, padding:'4px 12px', borderRadius:20, border:`1.5px solid ${active ? col : '#e5e7eb'}`, background:active ? `${col}14` : '#fff', color:active ? col : '#6b7280', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', transition:'all .12s', whiteSpace:'nowrap' }}>
-                    <span style={{ width:7, height:7, borderRadius:'50%', background:col, display:'inline-block', flexShrink:0 }}/>
-                    {name}
+                  <button key={y??'all'} onClick={() => setFilterYear(active ? null : y)}
+                    style={{ padding:'4px 14px', borderRadius:20, border:`1.5px solid ${active ? '#111827' : '#e5e7eb'}`, background:active ? '#111827' : '#fff', color:active ? '#fff' : '#6b7280', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', transition:'all .12s' }}>
+                    {y ?? 'Tots'}
                   </button>
                 )
               })}
             </div>
-            <div style={{ width:1, height:20, background:'#e5e7eb' }}/>
-            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-              <span style={{ fontSize:12, fontWeight:600, color:'#9ca3af' }}>Prioritat</span>
-              {(Object.entries(PRIORITY_CFG) as [string, typeof PRIORITY_CFG.alta][]).map(([k, cfg]) => {
-                const active = filterPriority === k
+            {/* Month */}
+            <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+              <span style={{ fontSize:11, fontWeight:700, color:'#9ca3af', letterSpacing:'.06em', textTransform:'uppercase', minWidth:52 }}>Mes</span>
+              {[null, ...Array.from({length:12},(_,i)=>i)].map(m => {
+                const active = filterMonth === m
+                const label = m === null ? 'Tots' : MONTHS_CA[m].slice(0,3)
                 return (
-                  <button key={k} onClick={() => setFilterPriority(active ? null : k)}
-                    style={{ display:'flex', alignItems:'center', gap:5, padding:'4px 12px', borderRadius:20, border:`1.5px solid ${active ? cfg.color : '#e5e7eb'}`, background:active ? cfg.bg : '#fff', color:active ? cfg.color : '#6b7280', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', transition:'all .12s' }}>
-                    <span style={{ width:7, height:7, borderRadius:'50%', background:cfg.color, display:'inline-block' }}/>
-                    {cfg.label}
+                  <button key={m??'all'} onClick={() => setFilterMonth(active ? null : m)}
+                    style={{ padding:'4px 10px', borderRadius:20, border:`1.5px solid ${active ? '#2563eb' : '#e5e7eb'}`, background:active ? '#eff6ff' : '#fff', color:active ? '#2563eb' : '#6b7280', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit', transition:'all .12s' }}>
+                    {label}
                   </button>
                 )
               })}
             </div>
+            {/* Category */}
+            {allCategories.length > 0 && (
+              <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                <span style={{ fontSize:11, fontWeight:700, color:'#9ca3af', letterSpacing:'.06em', textTransform:'uppercase', minWidth:52 }}>Esport</span>
+                {[null, ...allCategories].map(cat => {
+                  const active = filterCategory === cat
+                  return (
+                    <button key={cat??'all'} onClick={() => setFilterCategory(active ? null : cat)}
+                      style={{ padding:'4px 12px', borderRadius:20, border:`1.5px solid ${active ? '#7c3aed' : '#e5e7eb'}`, background:active ? '#f5f3ff' : '#fff', color:active ? '#7c3aed' : '#6b7280', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit', transition:'all .12s' }}>
+                      {cat ?? 'Tot'}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {/* Mini calendar grids */}
@@ -358,7 +414,23 @@ export function CalendariContent({
                 if (!dotsMap[day]) dotsMap[day] = []
                 dotsMap[day].push(clientColor(d.client_id))
               })
-              const hasAny = monthDates.length > 0
+              // Add tournament dots (amber)
+              tournaments.forEach(t => {
+                const addTournDot = (dateStr?: string) => {
+                  if (!dateStr) return
+                  const [ty, tm, td] = dateStr.split('-').map(Number)
+                  if (ty === year && tm === month + 1) {
+                    if (!dotsMap[td]) dotsMap[td] = []
+                    if (!dotsMap[td].includes(TOURNAMENT_COLOR)) dotsMap[td].push(TOURNAMENT_COLOR)
+                  }
+                }
+                addTournDot(t.date_start)
+                if (t.date_end && t.date_end !== t.date_start) addTournDot(t.date_end)
+              })
+              const hasAny = monthDates.length > 0 || tournaments.some(t => {
+                const inMonth = (d?: string) => { if (!d) return false; const [ty,tm] = d.split('-').map(Number); return ty===year && tm===month+1 }
+                return inMonth(t.date_start) || inMonth(t.date_end)
+              })
               return (
                 <div key={`${year}-${month}`} style={{ background:'#fff', border:'1px solid #f0f0f0', borderRadius:14, padding:'16px 14px', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
@@ -396,8 +468,8 @@ export function CalendariContent({
             })}
           </div>
 
-          {/* List by month */}
-          {filteredDates.length === 0 ? (
+          {/* List by month — dates + tournaments merged */}
+          {filteredDates.length === 0 && tournaments.length === 0 ? (
             <EmptyState icon={CalendarDays} label="Cap data important registrada"/>
           ) : (
             <div style={{ display:'flex', flexDirection:'column', gap:32 }}>
@@ -406,61 +478,101 @@ export function CalendariContent({
                   const [dy, dm] = d.date.split('-').map(Number)
                   return dy === year && dm === month + 1
                 })
-                if (monthItems.length === 0) return null
+                const monthTournaments = tournaments.filter(t => {
+                  const [ty, tm] = t.date_start.split('-').map(Number)
+                  return ty === year && tm === month + 1
+                })
+                if (monthItems.length === 0 && monthTournaments.length === 0) return null
                 const highCount = monthItems.filter(d => d.priority === 'alta').length
+                // Merge and sort by date
+                type Entry = { sortKey: string; type: 'date'|'tournament'; d?: typeof monthItems[0]; t?: Tournament }
+                const entries: Entry[] = [
+                  ...monthItems.map(d => ({ sortKey: d.date, type:'date' as const, d })),
+                  ...monthTournaments.map(t => ({ sortKey: t.date_start, type:'tournament' as const, t })),
+                ].sort((a,b) => a.sortKey.localeCompare(b.sortKey))
                 return (
                   <div key={`list-${year}-${month}`}>
                     <div style={{ display:'flex', alignItems:'center', gap:12, paddingBottom:12, borderBottom:'2px solid #111827', marginBottom:0 }}>
                       <span style={{ fontSize:20, fontWeight:800, color:'#111827', letterSpacing:'-.02em', textTransform:'uppercase' }}>{MONTHS_CA[month]} {year}</span>
                       {highCount > 0 && <span style={{ fontSize:12, color:'#6b7280' }}>{highCount} d&apos;alta prioritat</span>}
+                      {monthTournaments.length > 0 && <span style={{ fontSize:11, fontWeight:700, background:'#fef3c7', color:'#92400e', borderRadius:8, padding:'2px 8px' }}>{monthTournaments.length} {monthTournaments.length===1?'torneig':'tornejos'}</span>}
                     </div>
-                    {monthItems.map((d, idx) => {
-                      const dt = new Date(d.date + 'T12:00:00')
-                      const dayNum = dt.getDate()
-                      const dayName = dt.toLocaleDateString('ca-ES', { weekday:'short' }).toUpperCase().replace('.','')
-                      const pCfg = d.priority ? PRIORITY_CFG[d.priority] : PRIORITY_CFG.opcional
-                      const cCol = clientColor(d.client_id)
-                      const cName = d.client_id ? clientName(d.client_id) : null
-                      return (
-                        <div key={d.id} style={{ display:'flex', gap:20, padding:'20px 0', borderBottom: idx < monthItems.length-1 ? '1px solid #f0f0f0' : 'none' }}>
-                          {/* Day number */}
-                          <div style={{ width:52, flexShrink:0, textAlign:'center' }}>
-                            <div style={{ fontSize:36, fontWeight:900, color:'#111827', lineHeight:1 }}>{dayNum}</div>
-                            <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', marginTop:2 }}>{dayName}</div>
-                          </div>
-                          {/* Content */}
-                          <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ fontSize:16, fontWeight:700, color:'#111827', marginBottom:4 }}>{d.title}</div>
-                            {d.description && <div style={{ fontSize:13, color:'#6b7280', lineHeight:1.5, marginBottom:8 }}>{d.description}</div>}
-                            <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
-                              {cName && (
-                                <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:11, fontWeight:700, color:cCol, background:`${cCol}14`, border:`1px solid ${cCol}30`, borderRadius:20, padding:'3px 10px' }}>
-                                  <span style={{ width:6, height:6, borderRadius:'50%', background:cCol, display:'inline-block' }}/>
-                                  {cName}
+                    {entries.map(({ type, d, t }, idx) => {
+                      if (type === 'date' && d) {
+                        const dt = new Date(d.date + 'T12:00:00')
+                        const dayNum = dt.getDate()
+                        const dayName = dt.toLocaleDateString('ca-ES', { weekday:'short' }).toUpperCase().replace('.','')
+                        const pCfg = d.priority ? PRIORITY_CFG[d.priority] : PRIORITY_CFG.opcional
+                        const cCol = clientColor(d.client_id)
+                        const cName = d.client_id ? clientName(d.client_id) : null
+                        return (
+                          <div key={d.id} style={{ display:'flex', gap:20, padding:'20px 0', borderBottom: idx < entries.length-1 ? '1px solid #f0f0f0' : 'none' }}>
+                            <div style={{ width:52, flexShrink:0, textAlign:'center' }}>
+                              <div style={{ fontSize:36, fontWeight:900, color:'#111827', lineHeight:1 }}>{dayNum}</div>
+                              <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', marginTop:2 }}>{dayName}</div>
+                            </div>
+                            <div style={{ flex:1, minWidth:0 }}>
+                              <div style={{ fontSize:16, fontWeight:700, color:'#111827', marginBottom:4 }}>{d.title}</div>
+                              {d.description && <div style={{ fontSize:13, color:'#6b7280', lineHeight:1.5, marginBottom:8 }}>{d.description}</div>}
+                              <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                                {cName && (
+                                  <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:11, fontWeight:700, color:cCol, background:`${cCol}14`, border:`1px solid ${cCol}30`, borderRadius:20, padding:'3px 10px' }}>
+                                    <span style={{ width:6, height:6, borderRadius:'50%', background:cCol, display:'inline-block' }}/>
+                                    {cName}
+                                  </span>
+                                )}
+                                <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, fontWeight:700, color:pCfg.color, background:pCfg.bg, border:`1px solid ${pCfg.color}30`, borderRadius:20, padding:'3px 10px' }}>
+                                  Prioritat {pCfg.label.toLowerCase()}
                                 </span>
-                              )}
-                              <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, fontWeight:700, color:pCfg.color, background:pCfg.bg, border:`1px solid ${pCfg.color}30`, borderRadius:20, padding:'3px 10px' }}>
-                                Prioritat {pCfg.label.toLowerCase()}
-                              </span>
-                            </div>
-                          </div>
-                          {/* Deadline */}
-                          <div style={{ flexShrink:0, textAlign:'right' }}>
-                            {d.deadline && (
-                              <div>
-                                <div style={{ fontSize:11, color:'#9ca3af', fontWeight:500, marginBottom:3 }}>Llest abans de</div>
-                                <div style={{ fontSize:16, fontWeight:800, color:'#111827' }}>
-                                  {new Date(d.deadline+'T12:00:00').toLocaleDateString('ca-ES', { day:'numeric', month:'short' })}
-                                </div>
                               </div>
-                            )}
-                            <div style={{ display:'flex', gap:4, marginTop:8, justifyContent:'flex-end' }}>
-                              <IconBtn icon={Pencil} onClick={() => setDateModal(d)}/>
-                              <IconBtn icon={Trash2} onClick={() => deleteDate(d.id)} danger/>
+                            </div>
+                            <div style={{ flexShrink:0, textAlign:'right' }}>
+                              {d.deadline && (
+                                <div>
+                                  <div style={{ fontSize:11, color:'#9ca3af', fontWeight:500, marginBottom:3 }}>Llest abans de</div>
+                                  <div style={{ fontSize:16, fontWeight:800, color:'#111827' }}>
+                                    {new Date(d.deadline+'T12:00:00').toLocaleDateString('ca-ES', { day:'numeric', month:'short' })}
+                                  </div>
+                                </div>
+                              )}
+                              <div style={{ display:'flex', gap:4, marginTop:8, justifyContent:'flex-end' }}>
+                                <IconBtn icon={Pencil} onClick={() => setDateModal(d)}/>
+                                <IconBtn icon={Trash2} onClick={() => deleteDate(d.id)} danger/>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )
+                        )
+                      }
+                      if (type === 'tournament' && t) {
+                        const dt = new Date(t.date_start + 'T12:00:00')
+                        const dayNum = dt.getDate()
+                        const dayName = dt.toLocaleDateString('ca-ES', { weekday:'short' }).toUpperCase().replace('.','')
+                        return (
+                          <div key={t.id} style={{ display:'flex', gap:20, padding:'20px 0', borderBottom: idx < entries.length-1 ? '1px solid #f0f0f0' : 'none' }}>
+                            <div style={{ width:52, flexShrink:0, textAlign:'center' }}>
+                              <div style={{ fontSize:36, fontWeight:900, color:TOURNAMENT_COLOR, lineHeight:1 }}>{dayNum}</div>
+                              <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', marginTop:2 }}>{dayName}</div>
+                            </div>
+                            <div style={{ flex:1, minWidth:0 }}>
+                              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                                {t.logo_url
+                                  ? <img src={t.logo_url} alt="" style={{ width:22, height:22, objectFit:'contain', borderRadius:4 }}/>
+                                  : <Trophy size={15} color={TOURNAMENT_COLOR}/>
+                                }
+                                <span style={{ fontSize:16, fontWeight:700, color:'#111827' }}>{t.name}</span>
+                              </div>
+                              <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                                {t.date_end && t.date_end !== t.date_start && (
+                                  <span style={{ fontSize:12, color:'#6b7280' }}>fins al {formatDate(t.date_end)}</span>
+                                )}
+                                {t.location && <span style={{ fontSize:11, color:'#6b7280', display:'flex', alignItems:'center', gap:3 }}><MapPin size={10}/>{t.location}</span>}
+                                <span style={{ fontSize:11, fontWeight:700, background:'#fef3c7', color:'#92400e', borderRadius:20, padding:'2px 9px' }}>Torneig</span>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      }
+                      return null
                     })}
                   </div>
                 )
@@ -473,37 +585,104 @@ export function CalendariContent({
       {/* ═══════════════ TAB: Àlbums ══════════════════════════════════════ */}
       {tab === 'albums' && (
         <section>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:24 }}>
             <div>
-              <h2 style={{ fontSize:20, fontWeight:700, color:'#111827', margin:0 }}>Calendari d&apos;àlbums</h2>
-              <p style={{ fontSize:13, color:'#6b7280', margin:'4px 0 0' }}>Tornejos on venem àlbums físics, digitals o ambdós.</p>
+              <p style={{ fontSize:11, fontWeight:700, color:'#9ca3af', letterSpacing:'.1em', textTransform:'uppercase', margin:'0 0 6px' }}>Un àlbum per torneig</p>
+              <h2 style={{ fontSize:28, fontWeight:800, color:'#111827', margin:0, letterSpacing:'-.02em' }}>Àlbums</h2>
             </div>
-            <button onClick={() => setAlbumModal({ album_type:'both', date_start:today() })}
-              style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 18px', borderRadius:10, border:'none', background:'#111827', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-              <Plus size={15}/>Nou àlbum
-            </button>
           </div>
-          {albums.length === 0 ? <EmptyState icon={Disc3} label="Cap àlbum registrat"/> : (
-            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              {albums.map(a => {
-                const typeInfo = ALBUM_TYPES.find(t => t.key === a.album_type) ?? ALBUM_TYPES[2]
+          {tournaments.length === 0 ? <EmptyState icon={Disc3} label="Cap torneig registrat"/> : (
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              {tournaments.map(t => {
+                const albumT = t.album_type ?? 'both'
+                const typeInfo = ALBUM_TYPES.find(x => x.key === albumT) ?? ALBUM_TYPES[2]
+                // Adapt the album fields from the Tournament
+                const albumLike = { graphics_done: t.graphics_done, comm_sent: t.comm_sent, sale_start: t.sale_start, sale_end: t.sale_end }
+                const pct = albumProgressPct(albumLike as any, todayStr)
+                const pColor = progressColor(pct)
+                const pctInt = Math.round(pct * 100)
+                const daysToEvent = t.date_start ? Math.ceil((new Date(t.date_start+'T12:00:00').getTime() - new Date(todayStr+'T12:00:00').getTime()) / 86400000) : null
+
+                const stepStatus = [
+                  { label:'Grafismes', done: !!t.graphics_done, active: !t.graphics_done },
+                  { label:'Comunicació', done: !!t.comm_sent, active: !!t.graphics_done && !t.comm_sent },
+                  { label:'Venda llançada', done: !!(t.sale_start && t.sale_start <= todayStr), active: !!(t.comm_sent && !(t.sale_start && t.sale_start <= todayStr)) },
+                  { label:'Venda tancada', done: !!(t.sale_end && t.sale_end <= todayStr), active: !!(t.sale_start && t.sale_start <= todayStr && !(t.sale_end && t.sale_end <= todayStr)) },
+                ]
+
                 return (
-                  <div key={a.id} style={{ display:'flex', alignItems:'center', gap:16, background:'#fff', border:'1px solid #f0f0f0', borderRadius:12, padding:'14px 18px', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
-                    <div style={{ width:38, height:38, borderRadius:10, background:'#f8fafc', border:'1px solid #e5e7eb', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <typeInfo.Icon size={18} color="#4b5563"/>
-                    </div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontSize:14, fontWeight:700, color:'#111827' }}>{a.tournament_name}</div>
-                      <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:3 }}>
-                        <span style={{ fontSize:11, color:'#6b7280' }}>{formatDate(a.date_start)}{a.date_end && a.date_end !== a.date_start ? ` → ${formatDate(a.date_end)}` : ''}</span>
-                        <span style={{ fontSize:11, fontWeight:700, background:'#f3f4f6', color:'#374151', borderRadius:6, padding:'2px 8px' }}>{typeInfo.label.toUpperCase()}</span>
-                        {a.price && <span style={{ fontSize:11, color:'#059669', fontWeight:700 }}>{a.price.toFixed(2)} €</span>}
+                  <div key={t.id} style={{ background:'#fff', border:'1px solid #f0f0f0', borderRadius:14, padding:'18px 20px', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }}>
+                    {/* Header row */}
+                    <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:14 }}>
+                      <div style={{ width:40, height:40, borderRadius:10, background:'linear-gradient(135deg,#f8fafc,#f1f5f9)', border:'1px solid #e5e7eb', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, overflow:'hidden' }}>
+                        {t.logo_url
+                          ? <img src={t.logo_url} alt="" style={{ width:'100%', height:'100%', objectFit:'contain', padding:4 }}/>
+                          : <typeInfo.Icon size={18} color="#4b5563"/>
+                        }
                       </div>
-                      {a.notes && <div style={{ fontSize:12, color:'#9ca3af', marginTop:2 }}>{a.notes}</div>}
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:15, fontWeight:700, color:'#111827' }}>{t.name}</div>
+                        <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:3, flexWrap:'wrap' }}>
+                          <span style={{ fontSize:11, color:'#6b7280' }}>{formatDate(t.date_start)}{t.date_end && t.date_end !== t.date_start ? ` → ${formatDate(t.date_end)}` : ''}</span>
+                          <span style={{ fontSize:10, fontWeight:700, background:'#f3f4f6', color:'#374151', borderRadius:6, padding:'2px 7px' }}>{typeInfo.label.toUpperCase()}</span>
+                          {t.album_price && <span style={{ fontSize:11, color:'#059669', fontWeight:700 }}>{Number(t.album_price).toFixed(2)} €</span>}
+                          {daysToEvent !== null && daysToEvent >= 0 && (
+                            <span style={{ fontSize:10, fontWeight:700, background: daysToEvent <= 14 ? '#fef2f2' : '#f0fdf4', color: daysToEvent <= 14 ? '#dc2626' : '#166534', borderRadius:6, padding:'2px 7px' }}>
+                              {daysToEvent === 0 ? 'Avui!' : `${daysToEvent}d`}
+                            </span>
+                          )}
+                          {daysToEvent !== null && daysToEvent < 0 && (
+                            <span style={{ fontSize:10, fontWeight:700, background:'#f3f4f6', color:'#6b7280', borderRadius:6, padding:'2px 7px' }}>Finalitzat</span>
+                          )}
+                        </div>
+                      </div>
+                      <IconBtn icon={Pencil} onClick={() => setAlbumModal(t)}/>
                     </div>
-                    <div style={{ display:'flex', gap:6, flexShrink:0 }}>
-                      <IconBtn icon={Pencil} onClick={() => setAlbumModal(a)}/>
-                      <IconBtn icon={Trash2} onClick={() => deleteAlbum(a.id)} danger/>
+
+                    {/* Progress bar */}
+                    <div style={{ marginBottom:12 }}>
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:5 }}>
+                        <span style={{ fontSize:11, fontWeight:700, color:'#6b7280', letterSpacing:'.05em', textTransform:'uppercase' }}>Procés de venda</span>
+                        <span style={{ fontSize:11, fontWeight:800, color: pColor }}>{pctInt}%</span>
+                      </div>
+                      <div style={{ height:8, borderRadius:99, background:'#f3f4f6', overflow:'hidden' }}>
+                        <div style={{ height:'100%', width:`${pctInt}%`, background:`linear-gradient(90deg, #ef4444, ${pColor})`, borderRadius:99, transition:'width .3s ease' }}/>
+                      </div>
+                    </div>
+
+                    {/* Steps */}
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6 }}>
+                      {stepStatus.map((s, i) => (
+                        <div key={i} style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 8px', borderRadius:8, background: s.done ? '#f0fdf4' : s.active ? '#fffbeb' : '#f8fafc', border:`1px solid ${s.done ? '#bbf7d0' : s.active ? '#fde68a' : '#f0f0f0'}` }}>
+                          <div style={{ width:14, height:14, borderRadius:'50%', background: s.done ? '#22c55e' : s.active ? '#f59e0b' : '#e5e7eb', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                            {s.done && <Check size={9} color="#fff" strokeWidth={3}/>}
+                          </div>
+                          <span style={{ fontSize:10, fontWeight:600, color: s.done ? '#166534' : s.active ? '#92400e' : '#9ca3af', lineHeight:1.2 }}>{s.label}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Quick toggles */}
+                    <div style={{ display:'flex', gap:8, marginTop:10 }}>
+                      <button onClick={() => toggleAlbumField(t.id, 'graphics_done', !t.graphics_done)}
+                        style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:7, border:`1.5px solid ${t.graphics_done ? '#22c55e' : '#e5e7eb'}`, background: t.graphics_done ? '#f0fdf4' : '#fff', color: t.graphics_done ? '#166534' : '#6b7280', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                        <div style={{ width:13, height:13, borderRadius:4, background: t.graphics_done ? '#22c55e' : '#e5e7eb', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                          {t.graphics_done && <Check size={9} color="#fff" strokeWidth={3}/>}
+                        </div>
+                        Grafismes fets
+                      </button>
+                      <button onClick={() => toggleAlbumField(t.id, 'comm_sent', !t.comm_sent)}
+                        style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:7, border:`1.5px solid ${t.comm_sent ? '#22c55e' : '#e5e7eb'}`, background: t.comm_sent ? '#f0fdf4' : '#fff', color: t.comm_sent ? '#166534' : '#6b7280', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                        <div style={{ width:13, height:13, borderRadius:4, background: t.comm_sent ? '#22c55e' : '#e5e7eb', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                          {t.comm_sent && <Check size={9} color="#fff" strokeWidth={3}/>}
+                        </div>
+                        Comunicació enviada
+                      </button>
+                      {t.sale_start && (
+                        <span style={{ fontSize:11, color:'#6b7280', display:'flex', alignItems:'center', gap:3, marginLeft:'auto' }}>
+                          Venda: {formatDate(t.sale_start)}{t.sale_end ? ` → ${formatDate(t.sale_end)}` : ''}
+                        </span>
+                      )}
                     </div>
                   </div>
                 )
@@ -534,8 +713,11 @@ export function CalendariContent({
                 return (
                   <div key={t.id} style={{ background:'#fff', border:'1px solid #f0f0f0', borderRadius:14, overflow:'hidden', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:14, padding:'16px 18px', cursor:'pointer' }} onClick={() => setExpandedTournament(expanded ? null : t.id)}>
-                      <div style={{ width:40, height:40, borderRadius:10, background:'linear-gradient(135deg,#f8fafc,#f1f5f9)', border:'1px solid #e5e7eb', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                        <Trophy size={18} color="#4b5563"/>
+                      <div style={{ width:40, height:40, borderRadius:10, background:'linear-gradient(135deg,#f8fafc,#f1f5f9)', border:'1px solid #e5e7eb', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, overflow:'hidden' }}>
+                        {t.logo_url
+                          ? <img src={t.logo_url} alt="" style={{ width:'100%', height:'100%', objectFit:'contain', padding:4 }}/>
+                          : <Trophy size={18} color="#4b5563"/>
+                        }
                       </div>
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ fontSize:15, fontWeight:700, color:'#111827' }}>{t.name}</div>
@@ -606,7 +788,7 @@ export function CalendariContent({
 
       {/* Modals */}
       {dateModal && <DateModal initial={dateModal} clients={clients} clientColor={clientColor} onSave={saveDate} onClose={() => setDateModal(null)}/>}
-      {albumModal && <AlbumModal initial={albumModal} onSave={saveAlbum} onClose={() => setAlbumModal(null)}/>}
+      {albumModal && <AlbumModal initial={albumModal as Tournament} onSave={saveAlbumData} onClose={() => setAlbumModal(null)}/>}
       {tournamentModal && <TournamentModal initial={tournamentModal} onSave={saveTournament} onClose={() => setTournamentModal(null)}/>}
       {staffModal && <StaffModal tournamentId={staffModal.tournamentId} existing={staffModal.existing} onSave={saveStaff} onClose={() => setStaffModal(null)}/>}
     </div>
@@ -640,10 +822,12 @@ function DateModal({ initial, clients, clientColor, onSave, onClose }: {
   const [form, setForm] = useState({
     title:initial.title??'', date:initial.date??today(), description:initial.description??'',
     color:initial.color??'#4f6ef7', priority:initial.priority??'mitjana' as ImportantDate['priority'],
-    deadline:initial.deadline??'', client_id:initial.client_id??'', id:initial.id
+    deadline:initial.deadline??'', client_id:initial.client_id??'', category:initial.category??'', id:initial.id
   })
   const [saving, setSaving] = useState(false)
-  const handleSave = async () => { setSaving(true); await onSave({ ...form, deadline:form.deadline||undefined, client_id:form.client_id||undefined }); setSaving(false) }
+  const handleSave = async () => { setSaving(true); await onSave({ ...form, deadline:form.deadline||undefined, client_id:form.client_id||undefined, category:form.category||undefined }); setSaving(false) }
+
+  const CATEGORY_SUGGESTIONS = ['Futbol','Bàsquet','Handbol','Waterpolo','Community Manager','Atletisme','Ciclisme','Tennis','Natació','Rugbi','Golf','F1']
 
   return (
     <Modal title={form.id ? 'Editar data' : 'Nova data important'} onClose={onClose} wide>
@@ -690,6 +874,18 @@ function DateModal({ initial, clients, clientColor, onSave, onClose }: {
           </div>
         </div>
         <div>
+          <label style={labelStyle}>Esport / Categoria (opcional)</label>
+          <input style={fieldStyle} value={form.category} onChange={e => setForm(p=>({...p,category:e.target.value}))} placeholder="Ex: Futbol, Bàsquet, Community Manager..."/>
+          <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginTop:7 }}>
+            {CATEGORY_SUGGESTIONS.map(s => (
+              <button key={s} onClick={() => setForm(p=>({...p,category:s}))}
+                style={{ padding:'3px 10px', borderRadius:20, border:`1.5px solid ${form.category===s?'#7c3aed':'#e5e7eb'}`, background:form.category===s?'#f5f3ff':'#fff', color:form.category===s?'#7c3aed':'#6b7280', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
           <label style={labelStyle}>Descripció (opcional)</label>
           <textarea style={{ ...fieldStyle, resize:'vertical', minHeight:72 }} value={form.description} onChange={e => setForm(p=>({...p,description:e.target.value}))} placeholder="Idea de peça, context..."/>
         </div>
@@ -699,35 +895,45 @@ function DateModal({ initial, clients, clientColor, onSave, onClose }: {
   )
 }
 
-/* ─── Modal: Album ───────────────────────────────────────────────────── */
-function AlbumModal({ initial, onSave, onClose }: { initial:Partial<Album>; onSave:(a:Partial<Album>)=>Promise<void>; onClose:()=>void }) {
-  const [form, setForm] = useState({ tournament_name:initial.tournament_name??'', date_start:initial.date_start??today(), date_end:initial.date_end??'', album_type:initial.album_type??'both' as Album['album_type'], notes:initial.notes??'', price:initial.price??'' as number|'', id:initial.id })
+/* ─── Modal: Album (edita dades d'àlbum d'un Tournament) ─────────────── */
+function AlbumModal({ initial, onSave, onClose }: { initial:Tournament; onSave:(t:Partial<Tournament>)=>Promise<void>; onClose:()=>void }) {
+  const [form, setForm] = useState({
+    album_type: initial.album_type??'both',
+    album_price: initial.album_price??'' as number|'',
+    sale_start: initial.sale_start??'',
+    sale_end: initial.sale_end??'',
+    album_notes: initial.album_notes??'',
+    id: initial.id,
+  })
   const [saving, setSaving] = useState(false)
-  const handleSave = async () => { setSaving(true); await onSave({ ...form, price:form.price!==''?Number(form.price):undefined }); setSaving(false) }
+  const handleSave = async () => {
+    setSaving(true)
+    await onSave({ ...form, album_price: form.album_price !== '' ? Number(form.album_price) : undefined })
+    setSaving(false)
+  }
   return (
-    <Modal title={form.id?'Editar àlbum':'Nou àlbum'} onClose={onClose}>
+    <Modal title={`Àlbum · ${initial.name}`} onClose={onClose}>
       <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-        <div>
-          <label style={labelStyle}>Nom del torneig</label>
-          <input style={fieldStyle} value={form.tournament_name} onChange={e => setForm(p=>({...p,tournament_name:e.target.value}))} placeholder="Ex: Copa Asobal 2026..."/>
-        </div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-          <div><label style={labelStyle}>Data inici</label><input type="date" style={fieldStyle} value={form.date_start} onChange={e => setForm(p=>({...p,date_start:e.target.value}))}/></div>
-          <div><label style={labelStyle}>Data fi (opcional)</label><input type="date" style={fieldStyle} value={form.date_end} onChange={e => setForm(p=>({...p,date_end:e.target.value}))}/></div>
-        </div>
         <div>
           <label style={labelStyle}>Tipus d&apos;àlbum</label>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
             {ALBUM_TYPES.map(t => (
-              <button key={t.key} onClick={() => setForm(p=>({...p,album_type:t.key as Album['album_type']}))}
+              <button key={t.key} onClick={() => setForm(p=>({...p,album_type:t.key}))}
                 style={{ padding:'10px 8px', borderRadius:10, border:`1.5px solid ${form.album_type===t.key?'#111827':'#e5e7eb'}`, background:form.album_type===t.key?'#111827':'#fff', color:form.album_type===t.key?'#fff':'#6b7280', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
                 <t.Icon size={16}/>{t.label}
               </button>
             ))}
           </div>
         </div>
-        <div><label style={labelStyle}>Preu (€, opcional)</label><input type="number" style={fieldStyle} value={form.price} onChange={e => setForm(p=>({...p,price:e.target.value===''?'':parseFloat(e.target.value)}))} placeholder="0.00" min="0" step="0.01"/></div>
-        <div><label style={labelStyle}>Notes (opcional)</label><textarea style={{ ...fieldStyle, resize:'vertical', minHeight:64 }} value={form.notes} onChange={e => setForm(p=>({...p,notes:e.target.value}))} placeholder="Observacions..."/></div>
+        <div style={{ background:'#f8fafc', borderRadius:10, padding:'14px 16px' }}>
+          <label style={{ ...labelStyle, marginBottom:10 }}>Dates de venda</label>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+            <div><label style={labelStyle}>Llançament venda</label><input type="date" style={fieldStyle} value={form.sale_start} onChange={e => setForm(p=>({...p,sale_start:e.target.value}))}/></div>
+            <div><label style={labelStyle}>Tancament venda</label><input type="date" style={fieldStyle} value={form.sale_end} onChange={e => setForm(p=>({...p,sale_end:e.target.value}))}/></div>
+          </div>
+        </div>
+        <div><label style={labelStyle}>Preu (€, opcional)</label><input type="number" style={fieldStyle} value={form.album_price} onChange={e => setForm(p=>({...p,album_price:e.target.value===''?'':parseFloat(e.target.value)}))} placeholder="0.00" min="0" step="0.01"/></div>
+        <div><label style={labelStyle}>Notes (opcional)</label><textarea style={{ ...fieldStyle, resize:'vertical', minHeight:64 }} value={form.album_notes} onChange={e => setForm(p=>({...p,album_notes:e.target.value}))} placeholder="Observacions..."/></div>
         <ModalFooter onClose={onClose} onSave={handleSave} saving={saving}/>
       </div>
     </Modal>
@@ -736,8 +942,23 @@ function AlbumModal({ initial, onSave, onClose }: { initial:Partial<Album>; onSa
 
 /* ─── Modal: Tournament ──────────────────────────────────────────────── */
 function TournamentModal({ initial, onSave, onClose }: { initial:Partial<Tournament>; onSave:(t:Partial<Tournament>)=>Promise<void>; onClose:()=>void }) {
-  const [form, setForm] = useState({ name:initial.name??'', date_start:initial.date_start??today(), date_end:initial.date_end??'', location:initial.location??'', notes:initial.notes??'', id:initial.id })
+  const [form, setForm] = useState({ name:initial.name??'', date_start:initial.date_start??today(), date_end:initial.date_end??'', location:initial.location??'', notes:initial.notes??'', id:initial.id, logo_url:initial.logo_url??'' })
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !form.id) return
+    setUploading(true)
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('tournamentId', form.id)
+    const res = await fetch('/api/tournaments/upload-logo', { method:'POST', body:fd })
+    const json = await res.json()
+    if (json.url) setForm(p => ({ ...p, logo_url: json.url }))
+    setUploading(false)
+  }
+
   const handleSave = async () => { setSaving(true); await onSave(form); setSaving(false) }
   return (
     <Modal title={form.id?'Editar torneig':'Nou torneig'} onClose={onClose}>
@@ -749,6 +970,32 @@ function TournamentModal({ initial, onSave, onClose }: { initial:Partial<Tournam
         </div>
         <div><label style={labelStyle}>Ubicació (opcional)</label><input style={fieldStyle} value={form.location} onChange={e => setForm(p=>({...p,location:e.target.value}))} placeholder="Ciutat o recinte..."/></div>
         <div><label style={labelStyle}>Notes (opcional)</label><textarea style={{ ...fieldStyle, resize:'vertical', minHeight:72 }} value={form.notes} onChange={e => setForm(p=>({...p,notes:e.target.value}))} placeholder="Informació addicional..."/></div>
+
+        {/* Logo upload — only available when editing an existing tournament */}
+        {form.id && (
+          <div>
+            <label style={labelStyle}>Logo del torneig</label>
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+              <div style={{ width:52, height:52, borderRadius:10, border:'1.5px solid #e5e7eb', background:'#f8fafc', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', flexShrink:0 }}>
+                {form.logo_url
+                  ? <img src={form.logo_url} alt="" style={{ width:'100%', height:'100%', objectFit:'contain', padding:4 }}/>
+                  : <Trophy size={20} color="#9ca3af"/>
+                }
+              </div>
+              <label style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 16px', borderRadius:9, border:'1.5px dashed #d1d5db', background:'transparent', color:'#6b7280', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                <Upload size={14}/>
+                {uploading ? 'Pujant...' : form.logo_url ? 'Canviar logo' : 'Pujar logo'}
+                <input type="file" accept="image/*" style={{ display:'none' }} onChange={handleLogoChange} disabled={uploading}/>
+              </label>
+            </div>
+          </div>
+        )}
+        {!form.id && (
+          <div style={{ fontSize:12, color:'#9ca3af', background:'#f8fafc', borderRadius:8, padding:'8px 12px' }}>
+            Desa el torneig primer per poder pujar el logo.
+          </div>
+        )}
+
         <ModalFooter onClose={onClose} onSave={handleSave} saving={saving}/>
       </div>
     </Modal>
