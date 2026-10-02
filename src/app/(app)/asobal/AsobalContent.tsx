@@ -940,7 +940,7 @@ export function AsobalContent() {
           { key: 'copys',    label: 'Copys',             icon: BookOpen },
           { key: 'equip',    label: 'Equip comunicació', icon: Users2 },
           { key: 'franquicia', label: 'Franquícia',      icon: Award },
-          { key: 'calendari',  label: 'Calendari',       icon: CalendarDays },
+          { key: 'calendari',  label: 'Planificación Jornada', icon: CalendarDays },
         ] as { key: 'jornades'|'copys'|'equip'|'franquicia'|'calendari'; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setAsobalTab(key)}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', border: 'none', cursor: 'pointer',

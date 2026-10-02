@@ -1,16 +1,15 @@
 'use client'
 
-// Colors
+// Colors ASOBAL brand
 const C = {
-  navy:    '#0A0F6B',
-  yellow:  '#FFD600',
-  green:   '#00C851',
-  blue:    '#1565C0',
-  clasico: '#1565C0',
-  fuera:   'transparent',
-  headerText: '#FFD600',
-  rowText: '#111',
-  fueraText: '#555',
+  navy:       '#0B1F4A',   // ASOBAL deep navy
+  navyLight:  '#162D6A',   // nav lighter variant
+  headerText: '#FFFFFF',   // white on navy
+  barHome:    '#CC0000',   // ASOBAL red → Barça home
+  bmgHome:    '#1565C0',   // blue → Granollers home
+  clasico:    '#B45309',   // amber gold → clàssic
+  rowText:    '#111827',
+  fueraText:  '#9CA3AF',
 }
 
 interface Row {
@@ -77,14 +76,14 @@ function isClasico(row: Row) {
 function cellStyle(val: string, type: 'bar' | 'bmg', rowIsClasico: boolean): React.CSSProperties {
   if (isFuera(val)) return { background: 'transparent', color: C.fueraText }
   if (rowIsClasico) return { background: C.clasico, color: '#fff', fontWeight: 800 }
-  if (type === 'bar' && isBarHome(val)) return { background: C.yellow, color: '#000', fontWeight: 800 }
-  if (type === 'bmg' && isBmgHome(val)) return { background: C.green, color: '#000', fontWeight: 800 }
+  if (type === 'bar' && isBarHome(val)) return { background: C.barHome, color: '#fff', fontWeight: 800 }
+  if (type === 'bmg' && isBmgHome(val)) return { background: C.bmgHome, color: '#fff', fontWeight: 800 }
   return { background: 'rgba(0,0,0,0.06)', color: '#374151', fontWeight: 600 }
 }
 
 function rowBg(row: Row, idx: number) {
-  if (isClasico(row)) return 'rgba(21,101,192,0.06)'
-  return idx % 2 === 0 ? '#fff' : '#F9FAFB'
+  if (isClasico(row)) return 'rgba(180,83,9,0.06)'
+  return idx % 2 === 0 ? '#fff' : '#F4F6FB'
 }
 
 const COL = '56px 72px 1fr 1fr 1fr'
@@ -111,7 +110,7 @@ function TableRow({ row, idx }: { row: Row; idx: number }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: COL, background: rowBg(row, idx), borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
       {/* Jornada */}
-      <div style={{ ...td, fontWeight: 800, color: clasico ? C.clasico : C.navy, fontSize: 11 }}>{row.jornada}</div>
+      <div style={{ ...td, fontWeight: 800, color: clasico ? C.clasico : C.navy, fontSize: 11, fontFamily: 'monospace' }}>{row.jornada}</div>
       {/* Fecha */}
       <div style={{ ...td, color: '#374151', fontWeight: 600, fontSize: 11 }}>{row.fecha}</div>
       {/* BAR */}
@@ -145,13 +144,13 @@ export function AsobalCalendari() {
       {/* Llegenda */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
         {[
-          { bg: C.yellow, color: '#000', label: 'Sessió Barça (casa)' },
-          { bg: C.green,  color: '#000', label: 'Sessió Granollers (casa)' },
-          { bg: C.clasico, color: '#fff', label: 'Clàssic FCB-BMG' },
+          { bg: C.barHome,  color: C.barHome,  label: 'Sessió Barça (casa)' },
+          { bg: C.bmgHome,  color: C.bmgHome,  label: 'Sessió Granollers (casa)' },
+          { bg: C.clasico,  color: C.clasico,  label: 'Clàssic FCB-BMG' },
         ].map(({ bg, color, label }) => (
-          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#555' }}>
-            <div style={{ width: 14, height: 14, borderRadius: 3, background: bg, border: '1px solid rgba(0,0,0,0.1)' }} />
-            <span style={{ color }}>{label}</span>
+          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
+            <div style={{ width: 14, height: 14, borderRadius: 3, background: bg }} />
+            <span style={{ color, fontWeight: 600 }}>{label}</span>
           </div>
         ))}
       </div>
@@ -161,7 +160,7 @@ export function AsobalCalendari() {
 
         {/* Main title */}
         <div style={{ background: C.navy, padding: '10px 12px', textAlign: 'center' }}>
-          <div style={{ fontSize: 14, fontWeight: 900, color: C.yellow, letterSpacing: '.1em', textTransform: 'uppercase' }}>
+          <div style={{ fontSize: 14, fontWeight: 900, color: C.headerText, letterSpacing: '.1em', textTransform: 'uppercase' }}>
             Planificación Calendario de Sesiones
           </div>
         </div>
@@ -172,7 +171,7 @@ export function AsobalCalendari() {
 
         {/* Separador Segona Volta */}
         <div style={{ background: C.navy, padding: '7px 12px', textAlign: 'right' }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: C.yellow, letterSpacing: '.1em', textTransform: 'uppercase' }}>Visitantes Segunda Vuelta →</span>
+          <span style={{ fontSize: 11, fontWeight: 800, color: C.headerText, letterSpacing: '.1em', textTransform: 'uppercase', opacity: 0.85 }}>Visitantes Segunda Vuelta →</span>
         </div>
 
         {/* Segona Volta */}
