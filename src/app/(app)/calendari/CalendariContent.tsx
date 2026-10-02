@@ -22,9 +22,10 @@ interface Album {
 }
 interface Tournament {
   id: string; name: string; date_start: string; date_end?: string; location?: string; notes?: string; logo_url?: string
-  album_type?: string; album_price?: number; sale_start?: string; sale_end?: string
+  album_type?: string; sale_start?: string; sale_end?: string
   comm_sent?: boolean; graphics_done?: boolean; album_notes?: string
-  album_min?: number; album_sold?: number
+  album_min?: number
+  sold_1foto?: number; sold_2fotos?: number; sold_digital?: number
 }
 interface TournamentStaff {
   id: string; tournament_id: string; person_name: string; role: string
@@ -229,7 +230,7 @@ export function CalendariContent({
   }
   const saveAlbumData = async (t: Partial<Tournament>) => {
     if (!t.id) return
-    const payload = { album_type: t.album_type??'both', album_price: t.album_price??null, sale_start: t.sale_start||null, sale_end: t.sale_end||null, album_notes: t.album_notes||null, album_min: t.album_min??null, album_sold: t.album_sold??0 }
+    const payload = { album_type: t.album_type??'both', sale_start: t.sale_start||null, sale_end: t.sale_end||null, album_notes: t.album_notes||null, album_min: t.album_min??null, sold_1foto: t.sold_1foto??0, sold_2fotos: t.sold_2fotos??0, sold_digital: t.sold_digital??0 }
     await supabase.from('cal_tournaments').update(payload).eq('id', t.id)
     setAlbumModal(null); await refresh('tournaments')
   }
@@ -626,7 +627,7 @@ export function CalendariContent({
                         <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:3, flexWrap:'wrap' }}>
                           <span style={{ fontSize:11, color:'#6b7280' }}>{formatDate(t.date_start)}{t.date_end && t.date_end !== t.date_start ? ` → ${formatDate(t.date_end)}` : ''}</span>
                           <span style={{ fontSize:10, fontWeight:700, background:'#f3f4f6', color:'#374151', borderRadius:6, padding:'2px 7px' }}>{typeInfo.label.toUpperCase()}</span>
-                          {t.album_price && <span style={{ fontSize:11, color:'#059669', fontWeight:700 }}>{Number(t.album_price).toFixed(2)} €</span>}
+                          {((t.sold_1foto??0)+(t.sold_2fotos??0)+(t.sold_digital??0)) > 0 && <span style={{ fontSize:11, color:'#059669', fontWeight:700 }}>{(t.sold_1foto??0)*15+(t.sold_2fotos??0)*20+(t.sold_digital??0)*30} €</span>}
                           {daysToEvent !== null && daysToEvent >= 0 && (
                             <span style={{ fontSize:10, fontWeight:700, background: daysToEvent <= 14 ? '#fef2f2' : '#f0fdf4', color: daysToEvent <= 14 ? '#dc2626' : '#166534', borderRadius:6, padding:'2px 7px' }}>
                               {daysToEvent === 0 ? 'Avui!' : `${daysToEvent}d`}
@@ -664,26 +665,37 @@ export function CalendariContent({
                     </div>
 
                     {/* Sales counter */}
-                    {(t.album_min != null || (t.album_sold ?? 0) > 0) && (() => {
-                      const sold = t.album_sold ?? 0
+                    {(() => {
+                      const s1 = t.sold_1foto ?? 0
+                      const s2 = t.sold_2fotos ?? 0
+                      const sd = t.sold_digital ?? 0
+                      const sold = s1 + s2 + sd
+                      const revenue = s1 * 15 + s2 * 20 + sd * 30
                       const min = t.album_min ?? 0
+                      if (sold === 0 && min === 0) return null
                       const salesPct = min > 0 ? Math.min(100, Math.round((sold / min) * 100)) : 100
                       const ok = min === 0 || sold >= min
                       const barColor = ok ? '#22c55e' : sold >= min * 0.7 ? '#f59e0b' : '#ef4444'
                       return (
                         <div style={{ marginTop:10, background: ok ? '#f0fdf4' : '#fef9ec', border:`1px solid ${ok ? '#bbf7d0' : '#fde68a'}`, borderRadius:10, padding:'10px 12px' }}>
                           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                            <span style={{ fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'.05em' }}>Àlbums venuts</span>
+                            <span style={{ fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'.05em' }}>Vendes</span>
                             <span style={{ fontSize:13, fontWeight:800, color: barColor }}>
                               {sold}{min > 0 ? ` / ${min} mínim` : ' venuts'}
                               {min > 0 && <span style={{ fontSize:11, fontWeight:600, color:'#9ca3af', marginLeft:6 }}>{ok ? '✓ Cobert' : `${min - sold} per cobrir`}</span>}
                             </span>
                           </div>
                           {min > 0 && (
-                            <div style={{ height:6, borderRadius:99, background:'#e5e7eb', overflow:'hidden' }}>
+                            <div style={{ height:6, borderRadius:99, background:'#e5e7eb', overflow:'hidden', marginBottom:8 }}>
                               <div style={{ height:'100%', width:`${salesPct}%`, background:barColor, borderRadius:99, transition:'width .3s ease' }}/>
                             </div>
                           )}
+                          <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+                            {s1 > 0 && <span style={{ fontSize:11, background:'#fff', border:'1px solid #e5e7eb', borderRadius:6, padding:'2px 8px', color:'#374151', fontWeight:600 }}>1 foto × {s1} = {s1*15}€</span>}
+                            {s2 > 0 && <span style={{ fontSize:11, background:'#fff', border:'1px solid #e5e7eb', borderRadius:6, padding:'2px 8px', color:'#374151', fontWeight:600 }}>2 fotos × {s2} = {s2*20}€</span>}
+                            {sd > 0 && <span style={{ fontSize:11, background:'#fff', border:'1px solid #e5e7eb', borderRadius:6, padding:'2px 8px', color:'#374151', fontWeight:600 }}>Digital × {sd} = {sd*30}€</span>}
+                            {revenue > 0 && <span style={{ fontSize:12, fontWeight:800, color:'#059669', marginLeft:'auto' }}>{revenue}€ ingressats</span>}
+                          </div>
                         </div>
                       )
                     })()}
@@ -922,26 +934,33 @@ function DateModal({ initial, clients, clientColor, onSave, onClose }: {
 }
 
 /* ─── Modal: Album (edita dades d'àlbum d'un Tournament) ─────────────── */
+const PRICE_1FOTO = 15
+const PRICE_2FOTOS = 20
+const PRICE_DIGITAL = 30
+
 function AlbumModal({ initial, onSave, onClose }: { initial:Tournament; onSave:(t:Partial<Tournament>)=>Promise<void>; onClose:()=>void }) {
   const [form, setForm] = useState({
     album_type: initial.album_type??'both',
-    album_price: initial.album_price??'' as number|'',
     sale_start: initial.sale_start??'',
     sale_end: initial.sale_end??'',
     album_notes: initial.album_notes??'',
     album_min: initial.album_min??'' as number|'',
-    album_sold: initial.album_sold??'' as number|'',
+    sold_1foto: initial.sold_1foto??0,
+    sold_2fotos: initial.sold_2fotos??0,
+    sold_digital: initial.sold_digital??0,
     id: initial.id,
   })
   const [saving, setSaving] = useState(false)
+  const totalSold = form.sold_1foto + form.sold_2fotos + form.sold_digital
+  const totalRevenue = form.sold_1foto * PRICE_1FOTO + form.sold_2fotos * PRICE_2FOTOS + form.sold_digital * PRICE_DIGITAL
+  const min = typeof form.album_min === 'number' ? form.album_min : 0
+  const salesPct = min > 0 ? Math.min(100, Math.round((totalSold / min) * 100)) : 0
+  const ok = min > 0 && totalSold >= min
+  const barColor = ok ? '#22c55e' : totalSold >= min * 0.7 ? '#f59e0b' : '#ef4444'
+
   const handleSave = async () => {
     setSaving(true)
-    await onSave({
-      ...form,
-      album_price: form.album_price !== '' ? Number(form.album_price) : undefined,
-      album_min: form.album_min !== '' ? Number(form.album_min) : undefined,
-      album_sold: form.album_sold !== '' ? Number(form.album_sold) : 0,
-    })
+    await onSave({ ...form, album_min: form.album_min !== '' ? Number(form.album_min) : undefined })
     setSaving(false)
   }
   return (
@@ -958,6 +977,7 @@ function AlbumModal({ initial, onSave, onClose }: { initial:Tournament; onSave:(
             ))}
           </div>
         </div>
+
         <div style={{ background:'#f8fafc', borderRadius:10, padding:'14px 16px' }}>
           <label style={{ ...labelStyle, marginBottom:10 }}>Dates de venda</label>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
@@ -965,14 +985,55 @@ function AlbumModal({ initial, onSave, onClose }: { initial:Tournament; onSave:(
             <div><label style={labelStyle}>Tancament venda</label><input type="date" style={fieldStyle} value={form.sale_end} onChange={e => setForm(p=>({...p,sale_end:e.target.value}))}/></div>
           </div>
         </div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-          <div><label style={labelStyle}>Preu (€, opcional)</label><input type="number" style={fieldStyle} value={form.album_price} onChange={e => setForm(p=>({...p,album_price:e.target.value===''?'':parseFloat(e.target.value)}))} placeholder="0.00" min="0" step="0.01"/></div>
-          <div><label style={labelStyle}>Mínim per ser rentable</label><input type="number" style={fieldStyle} value={form.album_min} onChange={e => setForm(p=>({...p,album_min:e.target.value===''?'':parseInt(e.target.value)}))} placeholder="Ex: 50" min="0" step="1"/></div>
-        </div>
+
         <div>
-          <label style={labelStyle}>Àlbums venuts fins avui</label>
-          <input type="number" style={fieldStyle} value={form.album_sold} onChange={e => setForm(p=>({...p,album_sold:e.target.value===''?'':parseInt(e.target.value)}))} placeholder="0" min="0" step="1"/>
+          <label style={labelStyle}>Mínim per ser rentable</label>
+          <input type="number" style={fieldStyle} value={form.album_min} onChange={e => setForm(p=>({...p,album_min:e.target.value===''?'':parseInt(e.target.value)}))} placeholder="Ex: 50" min="0" step="1"/>
         </div>
+
+        {/* Vendes per tipus */}
+        <div style={{ background:'#f8fafc', borderRadius:10, padding:'14px 16px' }}>
+          <label style={{ ...labelStyle, marginBottom:10 }}>Vendes per tipus (preus fixos)</label>
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            {([
+              { key:'sold_1foto' as const, label:'1 foto', price:PRICE_1FOTO },
+              { key:'sold_2fotos' as const, label:'2 fotos', price:PRICE_2FOTOS },
+              { key:'sold_digital' as const, label:'Pack 10 digital', price:PRICE_DIGITAL },
+            ] as const).map(row => (
+              <div key={row.key} style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <span style={{ fontSize:12, fontWeight:700, color:'#374151', minWidth:110 }}>{row.label}</span>
+                <span style={{ fontSize:11, color:'#9ca3af', minWidth:32 }}>{row.price}€</span>
+                <div style={{ display:'flex', alignItems:'center', gap:6, marginLeft:'auto' }}>
+                  <button onClick={() => setForm(p=>({...p,[row.key]:Math.max(0,p[row.key]-1)}))}
+                    style={{ width:28, height:28, borderRadius:6, border:'1.5px solid #e5e7eb', background:'#fff', fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#374151', fontFamily:'inherit' }}>−</button>
+                  <span style={{ fontSize:15, fontWeight:800, color:'#111827', minWidth:28, textAlign:'center' }}>{form[row.key]}</span>
+                  <button onClick={() => setForm(p=>({...p,[row.key]:p[row.key]+1}))}
+                    style={{ width:28, height:28, borderRadius:6, border:'1.5px solid #e5e7eb', background:'#fff', fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#374151', fontFamily:'inherit' }}>+</button>
+                </div>
+                <span style={{ fontSize:12, fontWeight:700, color:'#059669', minWidth:48, textAlign:'right' }}>{form[row.key] * row.price}€</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Resum */}
+          <div style={{ marginTop:12, paddingTop:10, borderTop:'1px solid #e5e7eb', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <span style={{ fontSize:12, fontWeight:700, color:'#6b7280' }}>Total venuts: {totalSold}</span>
+            <span style={{ fontSize:14, fontWeight:800, color:'#059669' }}>{totalRevenue}€ ingressats</span>
+          </div>
+
+          {min > 0 && (
+            <div style={{ marginTop:10 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                <span style={{ fontSize:11, color:'#6b7280' }}>{ok ? '✓ Mínim cobert' : `${min - totalSold} per cobrir el mínim`}</span>
+                <span style={{ fontSize:11, fontWeight:700, color:barColor }}>{salesPct}%</span>
+              </div>
+              <div style={{ height:6, borderRadius:99, background:'#e5e7eb', overflow:'hidden' }}>
+                <div style={{ height:'100%', width:`${salesPct}%`, background:barColor, borderRadius:99 }}/>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div><label style={labelStyle}>Notes (opcional)</label><textarea style={{ ...fieldStyle, resize:'vertical', minHeight:64 }} value={form.album_notes} onChange={e => setForm(p=>({...p,album_notes:e.target.value}))} placeholder="Observacions..."/></div>
         <ModalFooter onClose={onClose} onSave={handleSave} saving={saving}/>
       </div>
