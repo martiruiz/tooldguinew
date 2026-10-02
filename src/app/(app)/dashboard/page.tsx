@@ -171,6 +171,16 @@ export default async function DashboardPage() {
     .order('created_at', { ascending: false })
     .limit(20)
 
+  // Important dates current month
+  const monthStart = new Date(today); monthStart.setDate(1)
+  const monthEnd = new Date(today); monthEnd.setMonth(monthEnd.getMonth() + 1); monthEnd.setDate(0)
+  const { data: importantDates } = await supabase
+    .from('cal_important_dates')
+    .select('id, name, date, category, priority')
+    .gte('date', monthStart.toISOString().split('T')[0])
+    .lte('date', monthEnd.toISOString().split('T')[0])
+    .order('date', { ascending: true })
+
   // AI Insights (superadmin + manager only)
   // Stats
   const { count: activeClientsCount } = await supabase
@@ -213,6 +223,7 @@ export default async function DashboardPage() {
         }}
         allProjectTasks={allProjectTasks || []}
         pmProjects={pmProjects || []}
+        importantDates={importantDates || []}
       />
     </>
   )

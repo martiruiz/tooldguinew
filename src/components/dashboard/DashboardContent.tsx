@@ -48,6 +48,7 @@ interface Props {
   opportunities?: CRMOpportunity[]
   allProjectTasks?: Task[]
   pmProjects?: Project[]
+  importantDates?: { id: string; name: string; date: string; category?: string; priority?: string }[]
 }
 
 function getGreetingKey(): 'greetMorning' | 'greetAfternoon' | 'greetEvening' {
@@ -64,7 +65,7 @@ const priorityColor: Record<string, string> = {
   low: '#9A9A9A',
 }
 
-export function DashboardContent({ user, tasks, projects, activity, meetings, stats, profiles, clients, allProjects, currentUserId, blockedTasks, inboxNotifs, opportunities = [], allProjectTasks = [], pmProjects = [] }: Props) {
+export function DashboardContent({ user, tasks, projects, activity, meetings, stats, profiles, clients, allProjects, currentUserId, blockedTasks, inboxNotifs, opportunities = [], allProjectTasks = [], pmProjects = [], importantDates = [] }: Props) {
   const { t: tr } = useLanguage()
   const isSuperAdmin = user.role === 'superadmin'
   const isManager = user.role === 'manager'
@@ -94,10 +95,11 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
   const [showNewTask, setShowNewTask] = useState(false)
   const [showNewClient, setShowNewClient] = useState(false)
   const [showNewProject, setShowNewProject] = useState(false)
+  const [calDatesOpen, setCalDatesOpen] = useState(false)
 
   // Dashboard widget reorder with up/down buttons
   const LEFT_WIDGETS = ['tasks-today', 'upcoming', 'active-projects', 'daily-checklist', 'chat-pending']
-  const RIGHT_WIDGETS = ['attention', 'today-at-guinew', 'inbox', 'blocked', 'activity']
+  const RIGHT_WIDGETS = ['cal-dates', 'attention', 'today-at-guinew', 'inbox', 'blocked', 'activity']
   const [widgetOrder, setWidgetOrder] = useState<Record<string, number>>({})
   useEffect(() => {
     try {
@@ -570,8 +572,101 @@ export function DashboardContent({ user, tasks, projects, activity, meetings, st
           </div>
         </div>
 
-        {/* Right: Atenció + Avui a Guinew + Activity */}
+        {/* Right: Cal dates + Atenció + Avui a Guinew + Activity */}
         <div className="dash-col">
+          {/* Widget: Calendari dates importants */}
+          {(() => {
+            const now = new Date()
+            const year = now.getFullYear()
+            const month = now.getMonth()
+            const todayNum = now.getDate()
+            const monthNames = ['Gener','Febrer','Març','Abril','Maig','Juny','Juliol','Agost','Setembre','Octubre','Novembre','Desembre']
+            const dayNames = ['Dl','Dt','Dc','Dj','Dv','Ds','Dg']
+            const firstDay = new Date(year, month, 1).getDay() // 0=Sun
+            const firstMon = firstDay === 0 ? 6 : firstDay - 1 // shift so Mon=0
+            const daysInMonth = new Date(year, month + 1, 0).getDate()
+            const dateSet = new Set(importantDates.map(d => parseInt(d.date.split('-')[2])))
+            const cells: (number | null)[] = Array(firstMon).fill(null)
+            for (let i = 1; i <= daysInMonth; i++) cells.push(i)
+            while (cells.length % 7 !== 0) cells.push(null)
+            return (
+              <div className="dash-widget" {...wProps('cal-dates', 'right')} style={{ padding: 0, overflow: 'hidden' }}>
+                {/* Mini calendar */}
+                <div style={{ padding: '14px 16px 10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {moveButtons('cal-dates', 'right')}
+                      <Calendar size={14} strokeWidth={2} color="#1B2B4B" />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{monthNames[month]} {year}</span>
+                    </div>
+                    <Link href="/calendari" style={{ fontSize: 11, color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 3, textDecoration: 'none' }}>
+                      Veure tot <ArrowRight size={11} />
+                    </Link>
+                  </div>
+                  {/* Day headers */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2, marginBottom: 4 }}>
+                    {dayNames.map(d => (
+                      <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: '#9CA3AF', padding: '2px 0' }}>{d}</div>
+                    ))}
+                  </div>
+                  {/* Day cells */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2 }}>
+                    {cells.map((day, i) => {
+                      if (!day) return <div key={i} />
+                      const isToday = day === todayNum
+                      const hasDot = dateSet.has(day)
+                      return (
+                        <div key={i} style={{ textAlign: 'center', padding: '4px 0', borderRadius: 6, background: isToday ? '#1B2B4B' : 'transparent', position: 'relative' }}>
+                          <span style={{ fontSize: 11, fontWeight: isToday ? 800 : hasDot ? 700 : 400, color: isToday ? '#fff' : hasDot ? '#1B2B4B' : '#6B7280' }}>{day}</span>
+                          {hasDot && !isToday && (
+                            <div style={{ position: 'absolute', bottom: 2, left: '50%', transform: 'translateX(-50%)', width: 4, height: 4, borderRadius: '50%', background: '#EF4444' }} />
+                          )}
+                          {hasDot && isToday && (
+                            <div style={{ position: 'absolute', bottom: 2, left: '50%', transform: 'translateX(-50%)', width: 4, height: 4, borderRadius: '50%', background: '#fff' }} />
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Desplegable esdeveniments */}
+                <button
+                  onClick={() => setCalDatesOpen(o => !o)}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: '#F9FAFB', border: 'none', borderTop: '1px solid #F0F0F0', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>
+                    {importantDates.length === 0 ? 'Sense esdeveniments aquest mes' : `${importantDates.length} esdeveniment${importantDates.length !== 1 ? 's' : ''} aquest mes`}
+                  </span>
+                  {calDatesOpen ? <ChevronUp size={14} color="#9CA3AF" /> : <ChevronDown size={14} color="#9CA3AF" />}
+                </button>
+
+                {calDatesOpen && importantDates.length > 0 && (
+                  <div style={{ borderTop: '1px solid #F0F0F0' }}>
+                    {importantDates.map((ev, i) => {
+                      const d = new Date(ev.date + 'T00:00:00')
+                      const dayN = d.getDate()
+                      const isPast = d < now && d.toDateString() !== now.toDateString()
+                      return (
+                        <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', borderBottom: i < importantDates.length - 1 ? '1px solid #F7F7F7' : 'none', opacity: isPast ? 0.5 : 1 }}>
+                          <div style={{ minWidth: 32, height: 32, borderRadius: 8, background: '#F3F4F6', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <span style={{ fontSize: 13, fontWeight: 800, color: '#111827', lineHeight: 1 }}>{dayN}</span>
+                            <span style={{ fontSize: 9, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase' }}>{monthNames[month].slice(0, 3)}</span>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.name}</div>
+                            {ev.category && <div style={{ fontSize: 11, color: '#9CA3AF' }}>{ev.category}</div>}
+                          </div>
+                          {ev.priority === 'urgent' && <span style={{ fontSize: 10, fontWeight: 700, background: '#FEF2F2', color: '#DC2626', borderRadius: 5, padding: '2px 6px', flexShrink: 0 }}>URGENT</span>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+
           {/* Atenció requerida */}
           {attentionItems.length > 0 && (
             <div className="attention-block dash-widget" {...wProps('attention', 'right')}>
