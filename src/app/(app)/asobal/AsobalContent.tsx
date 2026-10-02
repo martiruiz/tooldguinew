@@ -1,10 +1,12 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X, Image as ImageIcon, Layers, Film, Zap, Copy, PlaySquare, BookOpen, Users2 } from 'lucide-react'
+import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X, Image as ImageIcon, Layers, Film, Zap, Copy, PlaySquare, BookOpen, Users2, Award, CalendarDays } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { AsobalCopys } from './AsobalCopys'
 import { AsobalEquip } from './AsobalEquip'
+import { AsobalFranquicia } from './AsobalFranquicia'
+import { AsobalCalendari } from './AsobalCalendari'
 
 const TEAMS: Record<string, string> = {
   LOG: 'Logroño', BAR: 'Barça', GRA: 'Granollers', CAN: 'Morrazo',
@@ -797,7 +799,7 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
 
 export function AsobalContent() {
   const supabase = useRef(createClient()).current
-  const [asobalTab, setAsobalTab] = useState<'jornades' | 'copys' | 'equip'>('jornades')
+  const [asobalTab, setAsobalTab] = useState<'jornades' | 'copys' | 'equip' | 'franquicia' | 'calendari'>('jornades')
 
   const [selectedJ, setSelectedJ] = useState(() => {
     const today = new Date()
@@ -934,10 +936,12 @@ export function AsobalContent() {
       {/* Tab bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '8px 14px 0', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.08)', flexShrink: 0 }}>
         {([
-          { key: 'jornades', label: 'Jornades',         icon: Trophy },
-          { key: 'copys',  label: 'Copys',            icon: BookOpen },
-          { key: 'equip',  label: 'Equip comunicació', icon: Users2 },
-        ] as { key: 'jornades'|'copys'|'equip'; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
+          { key: 'jornades',   label: 'Jornades',          icon: Trophy },
+          { key: 'copys',    label: 'Copys',             icon: BookOpen },
+          { key: 'equip',    label: 'Equip comunicació', icon: Users2 },
+          { key: 'franquicia', label: 'Franquícia',      icon: Award },
+          { key: 'calendari',  label: 'Calendari',       icon: CalendarDays },
+        ] as { key: 'jornades'|'copys'|'equip'|'franquicia'|'calendari'; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setAsobalTab(key)}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', border: 'none', cursor: 'pointer',
               fontFamily: 'inherit', fontSize: 13, fontWeight: asobalTab === key ? 700 : 500,
@@ -954,6 +958,10 @@ export function AsobalContent() {
       {asobalTab === 'copys' && <AsobalCopys />}
       {/* Equip comunicació tab */}
       {asobalTab === 'equip' && <AsobalEquip />}
+      {/* Franquícia tab */}
+      {asobalTab === 'franquicia' && <AsobalFranquicia />}
+      {/* Calendari sessions tab */}
+      {asobalTab === 'calendari' && <AsobalCalendari />}
 
       {/* Jornades tab */}
       {asobalTab === 'jornades' && <>
