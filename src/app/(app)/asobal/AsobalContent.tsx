@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X, Image as ImageIcon, Layers, Film, Zap, Copy, PlaySquare, BookOpen, Users2, Award, CalendarDays } from 'lucide-react'
+import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X, Image as ImageIcon, Layers, Film, Zap, Copy, PlaySquare, BookOpen, Users2, Award, CalendarDays, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { AsobalCopys } from './AsobalCopys'
 import { AsobalEquip } from './AsobalEquip'
@@ -9,6 +9,7 @@ import { AsobalFranquicia } from './AsobalFranquicia'
 import { AsobalCalendari } from './AsobalCalendari'
 import { AsobalYTB } from './AsobalYTB'
 import { AsobalCTAs } from './AsobalCTAs'
+import { AsobalCreadores } from './AsobalCreadores'
 
 const TEAMS: Record<string, string> = {
   LOG: 'Logroño', BAR: 'Barça', GRA: 'Granollers', CAN: 'Morrazo',
@@ -801,7 +802,7 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
 
 export function AsobalContent() {
   const supabase = useRef(createClient()).current
-  const [asobalTab, setAsobalTab] = useState<'jornades' | 'copys' | 'equip' | 'franquicia' | 'calendari' | 'ytb' | 'ctas'>('jornades')
+  const [asobalTab, setAsobalTab] = useState<'jornades' | 'copys' | 'equip' | 'franquicia' | 'calendari' | 'ytb' | 'ctas' | 'creadors'>('jornades')
 
   const [selectedJ, setSelectedJ] = useState(() => {
     const today = new Date()
@@ -945,12 +946,13 @@ export function AsobalContent() {
           { key: 'calendari',  label: 'Planificación Jornada', icon: CalendarDays },
           { key: 'ytb',        label: 'Posicionamiento YTB',   icon: PlaySquare },
           { key: 'ctas',       label: 'CTAs',                  icon: Zap },
-        ] as { key: 'jornades'|'copys'|'equip'|'franquicia'|'calendari'|'ytb'|'ctas'; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
+          { key: 'creadors',   label: 'Creadors',              icon: Users },
+        ] as { key: 'jornades'|'copys'|'equip'|'franquicia'|'calendari'|'ytb'|'ctas'|'creadors'; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setAsobalTab(key)}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', border: 'none', cursor: 'pointer',
               fontFamily: 'inherit', fontSize: 13, fontWeight: asobalTab === key ? 700 : 500,
-              color: asobalTab === key ? '#0B1F4A' : '#6B7280', background: 'none',
-              borderBottom: asobalTab === key ? '2px solid #0B1F4A' : '2px solid transparent',
+              color: asobalTab === key ? '#1629BA' : '#6B7280', background: 'none',
+              borderBottom: asobalTab === key ? '2px solid #1629BA' : '2px solid transparent',
               marginBottom: -1, transition: 'all .15s' }}>
             <Icon size={14} />
             {label}
@@ -970,6 +972,7 @@ export function AsobalContent() {
       {asobalTab === 'ytb' && <AsobalYTB />}
       {/* CTAs tab */}
       {asobalTab === 'ctas' && <AsobalCTAs />}
+      {asobalTab === 'creadors' && <AsobalCreadores />}
 
       {/* Jornades tab */}
       {asobalTab === 'jornades' && <>
@@ -977,7 +980,7 @@ export function AsobalContent() {
       <style>{`
         .asb-j-item { padding:8px 12px; border-radius:8px; cursor:pointer; transition:background .15s; display:flex; align-items:center; justify-content:space-between; gap:8px; }
         .asb-j-item:hover { background:rgba(0,0,0,0.04); }
-        .asb-j-item.active { background:rgba(11,31,74,0.07); border-left:2px solid #0B1F4A; padding-left:10px; }
+        .asb-j-item.active { background:rgba(22,41,186,0.07); border-left:2px solid #1629BA; padding-left:10px; }
         .asb-match-card { background:#fff; border:1px solid rgba(0,0,0,0.07); border-radius:10px; margin-bottom:8px; box-shadow:0 1px 3px rgba(0,0,0,0.05); position:relative; }
         .asb-match-header { padding:10px 14px; display:flex; align-items:center; gap:10px; cursor:pointer; }
         .asb-match-header:hover { background:rgba(0,0,0,0.02); }

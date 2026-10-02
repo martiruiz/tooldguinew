@@ -2,7 +2,7 @@
 
 // Colors ASOBAL brand
 const C = {
-  navy:       '#0B1F4A',   // ASOBAL deep navy
+  navy:       '#1629BA',   // ASOBAL blue
   navyLight:  '#162D6A',   // nav lighter variant
   headerText: '#FFFFFF',   // white on navy
   barHome:    '#CC0000',   // ASOBAL red → Barça home
