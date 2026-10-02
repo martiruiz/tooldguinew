@@ -1,9 +1,10 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X, Image as ImageIcon, Layers, Film, Zap, Copy, PlaySquare, BookOpen } from 'lucide-react'
+import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X, Image as ImageIcon, Layers, Film, Zap, Copy, PlaySquare, BookOpen, Users2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { AsobalCopys } from './AsobalCopys'
+import { AsobalEquip } from './AsobalEquip'
 
 const TEAMS: Record<string, string> = {
   LOG: 'Logroño', BAR: 'Barça', GRA: 'Granollers', CAN: 'Morrazo',
@@ -796,7 +797,7 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
 
 export function AsobalContent() {
   const supabase = useRef(createClient()).current
-  const [asobalTab, setAsobalTab] = useState<'jornades' | 'copys'>('jornades')
+  const [asobalTab, setAsobalTab] = useState<'jornades' | 'copys' | 'equip'>('jornades')
 
   const [selectedJ, setSelectedJ] = useState(() => {
     const today = new Date()
@@ -933,9 +934,10 @@ export function AsobalContent() {
       {/* Tab bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '8px 14px 0', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.08)', flexShrink: 0 }}>
         {([
-          { key: 'jornades', label: 'Jornades', icon: Trophy },
-          { key: 'copys',    label: 'Copys',    icon: BookOpen },
-        ] as { key: 'jornades'|'copys'; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
+          { key: 'jornades', label: 'Jornades',         icon: Trophy },
+          { key: 'copys',  label: 'Copys',            icon: BookOpen },
+          { key: 'equip',  label: 'Equip comunicació', icon: Users2 },
+        ] as { key: 'jornades'|'copys'|'equip'; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setAsobalTab(key)}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', border: 'none', cursor: 'pointer',
               fontFamily: 'inherit', fontSize: 13, fontWeight: asobalTab === key ? 700 : 500,
@@ -950,6 +952,8 @@ export function AsobalContent() {
 
       {/* Copys tab */}
       {asobalTab === 'copys' && <AsobalCopys />}
+      {/* Equip comunicació tab */}
+      {asobalTab === 'equip' && <AsobalEquip />}
 
       {/* Jornades tab */}
       {asobalTab === 'jornades' && <>
