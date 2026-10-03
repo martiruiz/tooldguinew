@@ -256,19 +256,36 @@ export function FinancesContent({ clients, profiles, userId }: { clients: Client
         const suppliers = (dbSuppliers || []).map(rowToSupplier)
         const structureCosts = (dbSC || []).map(rowToSC)
         const settings = dbSettings as any
+        const baseSuppliers = suppliers.length > 0 ? suppliers : SEED_SUPPLIERS
+        // Auto-sync: add any collaborator from records not already in the suppliers list
+        const knownNames = new Set(baseSuppliers.map(s => s.name.toLowerCase().trim()))
+        const derivedSuppliers: Supplier[] = []
+        for (const rec of records) {
+          for (const col of rec.collaborators) {
+            if (col.name.trim() && !knownNames.has(col.name.toLowerCase().trim())) {
+              knownNames.add(col.name.toLowerCase().trim())
+              derivedSuppliers.push({ id: uid(), name: col.name.trim(), category: col.role.trim(), contact: '', notes: '', monthlyFee: 0, structureAmount: 0, irpfPct: 0, ivaPct: 21 })
+            }
+          }
+        }
+        const finalSuppliers = derivedSuppliers.length > 0 ? [...baseSuppliers, ...derivedSuppliers] : baseSuppliers
         const loaded: FinanceData = {
           records,
-          suppliers: suppliers.length > 0 ? suppliers : SEED_SUPPLIERS,
+          suppliers: finalSuppliers,
           structureCosts: structureCosts.length > 0 ? structureCosts : SEED_STRUCTURE_COSTS,
           marginObjective: settings?.margin_objective != null ? Number(settings.margin_objective) : defaultData.marginObjective,
           allocationMode: settings?.allocation_mode || defaultData.allocationMode,
           monthlyAccountingTotals: settings?.monthly_accounting_totals || DEFAULT_ACCOUNTING_TOTALS,
         }
         setData(loaded)
+        // Persist any derived suppliers to Supabase
+        if (derivedSuppliers.length > 0) {
+          supabase.from('finance_suppliers').upsert(derivedSuppliers.map(s => supplierToRow(s, userId)))
+        }
         prevIdsRef.current = {
           records: new Set(records.map(r => r.id)),
-          suppliers: new Set(suppliers.map(s => s.id)),
-          structureCosts: new Set(structureCosts.map(sc => sc.id)),
+          suppliers: new Set(finalSuppliers.map(s => s.id)),
+          structureCosts: new Set(loaded.structureCosts.map(sc => sc.id)),
         }
       } else {
         // No data yet — try to migrate from localStorage, otherwise use seeds
@@ -1296,27 +1313,29 @@ function RecordForm({ record, clients, profiles, data, kpis, marginObjective, on
           <div className="rf-card-title">Col·laboradors assignats</div>
           <button className="rf-add-btn" onClick={addCollab}><Plus size={14} />Afegir col·laborador</button>
         </div>
-        <div className="rf-card-hint">El nom s'autocompleta amb la teva llista de Proveïdors.</div>
+        <div className="rf-card-hint">Tria un proveïdor existent o escriu un nom nou — s'afegirà automàticament a Proveïdors en guardar.</div>
         <div className="rf-collab-table">
           <div className="rf-collab-header">
             <span>Nom</span><span>Rol</span><span>Cost</span><span></span>
           </div>
           {r.collaborators.map(c => (
             <div key={c.id} className="rf-collab-row">
-              <select
+              <input
                 className="rf-collab-input rf-collab-select"
+                list={`collab-list-${c.id}`}
                 value={c.name}
+                placeholder="— Tria o escriu un nom —"
                 onChange={e => {
                   const chosen = data.suppliers.find((s: Supplier) => s.name === e.target.value)
                   updateCollab(c.id, 'name', e.target.value)
                   if (chosen) updateCollab(c.id, 'role', chosen.category)
                 }}
-              >
-                <option value="">— Tria un proveïdor —</option>
+              />
+              <datalist id={`collab-list-${c.id}`}>
                 {data.suppliers.filter((s: Supplier) => s.name.trim()).sort((a: Supplier, b: Supplier) => a.name.localeCompare(b.name)).map((s: Supplier) => (
-                  <option key={s.id} value={s.name}>{s.name}</option>
+                  <option key={s.id} value={s.name} />
                 ))}
-              </select>
+              </datalist>
               <input className="rf-collab-input" value={c.role} placeholder="Rol..." onChange={e => updateCollab(c.id, 'role', e.target.value)} />
               <input className="rf-collab-input rf-collab-input--num" type="number" min="0" value={c.cost || ''} placeholder="0.00" onChange={e => updateCollab(c.id, 'cost', parseFloat(e.target.value) || 0)} />
               <button className="rf-remove-btn" onClick={() => removeCollab(c.id)}><Trash2 size={13} /></button>

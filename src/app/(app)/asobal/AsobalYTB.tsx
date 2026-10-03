@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, X, Copy, Check, ChevronDown, ChevronRight } from 'lucide-react'
+import { Search, X, Copy, Check, ChevronDown, ChevronRight, Trash2 } from 'lucide-react'
 
 export interface YTBEntry {
   titulo: string
@@ -1153,6 +1153,7 @@ function getJornada(entry: YTBEntry): string {
 export function AsobalYTB() {
   const [q, setQ] = useState('')
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [entries, setEntries] = useState<YTBEntry[]>(DATA)
 
   const toggle = (label: string) =>
     setCollapsed(prev => {
@@ -1161,15 +1162,18 @@ export function AsobalYTB() {
       return next
     })
 
+  const deleteEntry = (globalIdx: number) =>
+    setEntries(prev => prev.filter((_, i) => i !== globalIdx))
+
   const filtered = useMemo(() => {
-    if (!q.trim()) return DATA
+    if (!q.trim()) return entries
     const query = q.toLowerCase()
-    return DATA.filter(e =>
+    return entries.filter(e =>
       e.titulo.toLowerCase().includes(query) ||
       e.descripcion.toLowerCase().includes(query) ||
       e.keywords.toLowerCase().includes(query)
     )
-  }, [q])
+  }, [q, entries])
 
   // Group by jornada preserving order
   const groups = useMemo(() => {
@@ -1223,14 +1227,17 @@ export function AsobalYTB() {
               <div key={group.label} style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 {/* Jornada header */}
                 <style>{`
-                  .asb-ytb-header-cols { display:grid; grid-template-columns:1fr 1fr 1fr; background:${NAVY}; }
-                  .asb-ytb-row { display:grid; grid-template-columns:1fr 1fr 1fr; border-top:1px solid rgba(0,0,0,0.06); }
+                  .asb-ytb-header-cols { display:grid; grid-template-columns:1fr 1fr 1fr 32px; background:${NAVY}; }
+                  .asb-ytb-row { display:grid; grid-template-columns:1fr 1fr 1fr 32px; border-top:1px solid rgba(0,0,0,0.06); }
                   .asb-ytb-col { padding:10px 12px; display:flex; flex-direction:column; gap:6px; }
                   .asb-ytb-col:not(:last-child) { border-right:1px solid rgba(0,0,0,0.06); }
+                  .asb-ytb-del { display:flex; align-items:center; justify-content:center; padding:0 6px; }
+                  .asb-ytb-del button { background:none; border:none; cursor:pointer; color:#9CA3AF; padding:4px; border-radius:4px; display:flex; align-items:center; }
+                  .asb-ytb-del button:hover { color:#DC2626; background:rgba(220,38,38,0.08); }
                   @media(max-width:640px) {
-                    .asb-ytb-header-cols { grid-template-columns:1fr; }
+                    .asb-ytb-header-cols { grid-template-columns:1fr 32px; }
                     .asb-ytb-header-cols > div.col-label { display:none; }
-                    .asb-ytb-row { grid-template-columns:1fr; }
+                    .asb-ytb-row { grid-template-columns:1fr 32px; }
                     .asb-ytb-col:not(:last-child) { border-right:none; border-bottom:1px solid rgba(0,0,0,0.06); }
                   }
                 `}</style>
@@ -1241,7 +1248,7 @@ export function AsobalYTB() {
                   >
                     {isCollapsed ? <ChevronRight size={14} color="rgba(255,255,255,0.75)" /> : <ChevronDown size={14} color="rgba(255,255,255,0.75)" />}
                     <span style={{ fontSize: 12, fontWeight: 900, color: '#fff', textTransform: 'uppercase', letterSpacing: '.1em' }}>{group.label}</span>
-                    <span style={{ fontSize: 10, color: YTB_RED, fontWeight: 700, background: 'rgba(204,0,0,0.15)', borderRadius: 4, padding: '1px 6px' }}>{group.entries.length} {group.entries.length === 1 ? 'entrada' : 'entrades'}</span>
+                    <span style={{ fontSize: 10, color: '#fff', fontWeight: 700, background: 'rgba(255,255,255,0.2)', borderRadius: 4, padding: '1px 6px' }}>{group.entries.length} {group.entries.length === 1 ? 'entrada' : 'entrades'}</span>
                   </div>
                   {!isCollapsed && (['Títol', 'Descripció SEO', 'Paraules clau'] as const).map(label => (
                     <div key={label} className="col-label" style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: '.1em', padding: '5px 14px' }}>{label}</div>
@@ -1274,6 +1281,12 @@ export function AsobalYTB() {
                           <CopyBtn text={entry.keywords} label="Keywords" />
                           <span style={{ fontSize: 10, color: kwCount > 480 ? '#DC2626' : kwCount > 420 ? '#D97706' : '#16a34a', fontWeight: 700 }}>{kwCount}/500</span>
                         </div>
+                      </div>
+                      {/* Col 4 – Delete */}
+                      <div className="asb-ytb-del">
+                        <button onClick={() => deleteEntry(globalIdx)} title="Eliminar fila">
+                          <Trash2 size={13} />
+                        </button>
                       </div>
                     </div>
                   )

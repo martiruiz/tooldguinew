@@ -912,14 +912,16 @@ export function AsobalContent() {
   const empty5 = [null, null, null, null, null] as (string | null)[]
 
   const persistTop5 = useCallback(async (jornada: number, type: 'aturada' | 'gol', slots: (string | null)[]) => {
-    await supabase.from('asobal_top5').upsert(
+    const { error } = await supabase.from('asobal_top5').upsert(
       { jornada, type, slots, updated_at: new Date().toISOString() },
       { onConflict: 'jornada,type' }
     )
+    if (error) console.error('[asobal_top5] persistTop5 error:', error.message)
   }, [supabase])
 
   const loadTop5 = useCallback(async (jornada: number) => {
-    const { data } = await supabase.from('asobal_top5').select('*').eq('jornada', jornada)
+    const { data, error } = await supabase.from('asobal_top5').select('*').eq('jornada', jornada)
+    if (error) { console.error('[asobal_top5] loadTop5 error:', error.message); return }
     if (!data) return
     const atur = data.find((r: { type: string; slots: (string | null)[] }) => r.type === 'aturada')
     const gol  = data.find((r: { type: string; slots: (string | null)[] }) => r.type === 'gol')
