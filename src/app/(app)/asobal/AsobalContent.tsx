@@ -1105,8 +1105,8 @@ export function AsobalContent() {
       {asobalTab === 'franquicia' && <AsobalFranquicia />}
       {/* Calendari sessions tab */}
       {asobalTab === 'calendari' && <AsobalCalendari />}
-      {/* Posicionamiento YTB tab */}
-      {asobalTab === 'ytb' && <AsobalYTB />}
+      {/* Posicionamiento YTB tab — kept mounted to preserve deleted-row state */}
+      <div style={{ display: asobalTab === 'ytb' ? 'contents' : 'none' }}><AsobalYTB /></div>
       {/* CTAs tab */}
       {asobalTab === 'ctas' && <AsobalCTAs />}
       {asobalTab === 'creadors' && <AsobalCreadores />}
