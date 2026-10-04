@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X, Image as ImageIcon, Layers, Film, Zap, Copy, PlaySquare, BookOpen, Users2, Award, CalendarDays, Users } from 'lucide-react'
+import { ExternalLink, Plus, Trash2, Star, ChevronDown, ChevronRight, Link2, Trophy, Pencil, LayoutGrid, X, Image as ImageIcon, Layers, Film, Zap, Copy, PlaySquare, BookOpen, Users2, Award, CalendarDays, Users, Shirt } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { AsobalCopys } from './AsobalCopys'
 import { AsobalEquip } from './AsobalEquip'
@@ -10,6 +10,7 @@ import { AsobalCalendari } from './AsobalCalendari'
 import { AsobalYTB } from './AsobalYTB'
 import { AsobalCTAs } from './AsobalCTAs'
 import { AsobalCreadores } from './AsobalCreadores'
+import { AsobalSete } from './AsobalSete'
 
 const TEAMS: Record<string, string> = {
   LOG: 'Logroño', BAR: 'Barça', GRA: 'Granollers', CAN: 'Morrazo',
@@ -802,9 +803,9 @@ function OrganigramPanel({ jornada, entries, onSave, onUpdate, onDelete, onClose
 
 export function AsobalContent() {
   const supabase = useRef(createClient()).current
-  const [asobalTab, setAsobalTab] = useState<'jornades' | 'copys' | 'equip' | 'franquicia' | 'calendari' | 'ytb' | 'ctas' | 'creadors'>('jornades')
+  const [asobalTab, setAsobalTab] = useState<'jornades' | 'copys' | 'equip' | 'franquicia' | 'calendari' | 'ytb' | 'ctas' | 'creadors' | 'sete'>('jornades')
   const [tabOrder, setTabOrder] = useState([
-    'jornades', 'copys', 'equip', 'franquicia', 'calendari', 'ytb', 'ctas', 'creadors',
+    'jornades', 'copys', 'sete', 'equip', 'franquicia', 'calendari', 'ytb', 'ctas', 'creadors',
   ])
   const dragTabIdx = useRef<number | null>(null)
   const dragOverTabIdx = useRef<number | null>(null)
@@ -1060,6 +1061,7 @@ export function AsobalContent() {
             ytb:        { label: 'Posicionamiento YTB',  icon: PlaySquare },
             ctas:       { label: 'CTAs',                 icon: Zap },
             creadors:   { label: 'Creadors',             icon: Users },
+            sete:       { label: '7 inicial',             icon: Shirt },
           }
           const { label, icon: Icon } = TAB_META[key]
           const isDragging = dragTabIdx.current === idx
@@ -1110,6 +1112,7 @@ export function AsobalContent() {
       {/* CTAs tab */}
       {asobalTab === 'ctas' && <AsobalCTAs />}
       {asobalTab === 'creadors' && <AsobalCreadores />}
+      {asobalTab === 'sete' && <AsobalSete calendar={CALENDAR} players={PLAYERS} teams={TEAMS} />}
 
       {/* Jornades tab */}
       {asobalTab === 'jornades' && <>
